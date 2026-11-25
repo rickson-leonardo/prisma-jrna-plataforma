@@ -1,0 +1,22 @@
+title: Laboratório Contábil (CCA 0174) — Base de Dados
+description: Acervo completo em camadas (Bruto, Extraído, Normalizado) + Banco de Trabalho
+databases:
+  laboratorio:
+    queries:
+      inventario_acervo:
+        title: Inventário do Acervo
+        sql: SELECT * FROM vw_inventario_acervo
+      cobertura_bruto:
+        title: Cobertura da Camada Bruta
+        sql: SELECT * FROM vw_cobertura_bruto
+      sigaa_cobertura:
+        title: Cobertura dos Itens do SIGAA
+        sql: SELECT * FROM vw_sigaa_cobertura
+      conferencias:
+        title: Conferências e Anomalias
+        sql: SELECT * FROM conferencia ORDER BY id
+  trabalho:
+    queries:
+      anotacoes:
+        title: Anotações do Grupo
+        sql: SELECT * FROM anotacao ORDER BY criado_em DESC
