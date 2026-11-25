@@ -1,0 +1,60 @@
+{% import "_macros.html" as m %}<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Sistema Contábil{% endblock %} — PRISMA JRNA</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='brand/simbolo_prisma_jrna.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<a class="sr-only" href="#conteudo">Ir para o conteúdo</a>
+<div class="layout">
+  <aside class="sidebar" aria-label="Navegação principal">
+    <div class="brand-plate">
+      <img src="{{ url_for('static', filename='brand/wordmark_prisma_jrna.png') }}" alt="PRISMA JRNA">
+      <img class="tagline" src="{{ url_for('static', filename='brand/tagline_prisma_jrna.png') }}" alt="Auditoria e Contabilidade">
+      <small>Sistema contábil e societário · Etapa 1</small>
+    </div>
+    {% set prog = progresso_estacoes() %}
+    {% macro navlink(ep, n, txt) -%}
+      {%- set p = prog.get(ep) -%}
+      <a href="{{ url_for(ep) }}" class="{{ 'active' if request.endpoint == ep }}" {{ 'aria-current=page' if request.endpoint == ep }}><span class="n">{{ n }}</span><span>{{ txt }}</span>{% if p %}<span class="pg" title="Registros homologados / total">{{ p.h }}/{{ p.t }}</span>{% else %}<span></span>{% endif %}</a>
+    {%- endmacro %}
+    <nav class="nav-links">
+      {{ navlink('painel', '0', 'Painel da contadora') }}
+      <div class="nav-sec">Operação ERP contábil</div>
+      {{ navlink('cadastro', '1', 'Cadastro, QSA e RT') }}
+      {{ navlink('instrumentos', '2', 'Contrato Social e MoU') }}
+      {{ navlink('legalizacao', '3', 'Legalização DF') }}
+      {{ navlink('planejamento', '4', 'Financeiro e tributário') }}
+      <div class="nav-sec">Sustentação do Dossiê 1</div>
+      {{ navlink('sustentacao', '5', 'Conformidade, Q1–Q10 e IA') }}
+      {{ navlink('emissao', '6', 'Emissão dos documentos') }}
+    </nav>
+    <div class="scope-box">
+      <strong>Escopo: Dossiê 1</strong><br>
+      Constituição do escritório, legalização no DF e planejamento financeiro/tributário de 36 meses.<br><br>
+      Dados importados entram em quarentena até a contadora revisar e homologar.
+      {% if session.get('usuario') %}
+        <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--l200);display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <span>Acesso: <strong>{{ session['usuario'] }}</strong></span>
+          <form method="post" action="{{ url_for('logout') }}" style="margin:0;">{{ m.csrf() }}<button class="btn btn-sec btn-sm" type="submit">Sair</button></form>
+        </div>
+      {% endif %}
+    </div>
+  </aside>
+
+  {% set _editavel = request.endpoint in ('cadastro','instrumentos','legalizacao','planejamento','sustentacao','emissao') %}
+  <main class="main" id="conteudo"{% if _editavel %} data-modo="consulta"{% endif %}>
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in msgs %}<div class="flash {{ cat }}" role="status">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+    {% if _editavel %}{{ m.modo_barra() }}{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script id="ajuda-json" type="application/json">{{ ajuda_json()|safe }}</script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

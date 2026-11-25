@@ -98,11 +98,26 @@ def extrair_criterios_matrizes_d1(sqlite_conn: sqlite3.Connection) -> list[Crite
 
 
 def aplicar_migracoes_pg(pg_conn: Any) -> list[str]:
-    """Aplica arquivos *.sql em sistema/pg/migrations em ordem alfabetica e registra em schema_migration."""
+    """Aplica arquivos *.sql em sistema/pg/migrations ainda nao registrados em schema_migration."""
     aplicadas: list[str] = []
     with pg_conn.cursor() as cur:
+        cur.execute("CREATE SCHEMA IF NOT EXISTS auditoria;")
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS auditoria.schema_migration (
+                versao TEXT PRIMARY KEY,
+                descricao TEXT NOT NULL,
+                aplicado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+            """
+        )
+        cur.execute("SELECT versao FROM auditoria.schema_migration")
+        ja_aplicadas = {str(r["versao"]) for r in cur.fetchall()}
+
         for sql_file in sorted(MIGRATIONS_DIR.glob("*.sql")):
             versao = sql_file.stem
+            if versao in ja_aplicadas:
+                continue
             sql_txt = sql_file.read_text(encoding="utf-8")
             cur.execute(sql_txt)
             cur.execute(
@@ -718,7 +733,7 @@ def migrar_staging_para_pg(
                 execute_values(
                     cur,
                     """
-                    INSERT INTO erp.d1_matriz_criterio
+                    INSERT INTO auditoria.criterio_conformidade
                         (chave, matriz, bloco, bloco_titulo, bloco_peso, codigo, descricao, referencia_fonte)
                     VALUES %s ON CONFLICT (chave) DO NOTHING
                     """,
@@ -727,7 +742,7 @@ def migrar_staging_para_pg(
                         for c in criterios
                     ],
                 )
-            contagens["erp.d1_matriz_criterio"] = len(criterios)
+            contagens["auditoria.criterio_conformidade"] = len(criterios)
 
             # --- 4. SCHEMA auditoria (evidencia + conferencia + trabalho.db) ---
             n, _ = _carregar_tabela_por_chave(

@@ -1,0 +1,34 @@
+{% import "_macros.html" as m %}<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Acesso à plataforma — PRISMA JRNA</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='brand/simbolo_prisma_jrna.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body style="min-height:100vh;display:grid;place-items:center;background:var(--n50);padding:20px;">
+  <main style="width:min(420px,100%);background:var(--w);border:1px solid var(--l200);border-radius:10px;padding:24px 26px;box-shadow:0 12px 32px rgba(17,24,39,.08);">
+    <div style="text-align:center;margin-bottom:18px;">
+      <img src="{{ url_for('static', filename='brand/wordmark_prisma_jrna.png') }}" alt="PRISMA JRNA" style="height:32px;">
+      <div style="font-size:12px;color:var(--m500);margin-top:6px;">Plataforma Contábil · Dossiê 1 (CCA 0174 / UnB)</div>
+    </div>
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in msgs %}<div class="flash {{ cat }}" role="status">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+    <form method="post" action="{{ url_for('login') }}">
+      {{ m.csrf() }}
+      <input type="hidden" name="next" value="{{ next_url or '' }}">
+      <div class="form-grid" style="grid-template-columns:1fr;">
+        {% call m.field('Usuário', 'auth.usuario') %}<input type="text" name="usuario" autocomplete="username" required autofocus>{% endcall %}
+        {% call m.field('Senha', 'auth.senha') %}<input type="password" name="senha" autocomplete="current-password" required style="width:100%;padding:6px 9px;border:1px solid var(--l300);border-radius:5px;font:inherit;font-size:13px;">{% endcall %}
+      </div>
+      <div class="barra-acoes" style="justify-content:flex-end;">
+        <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center;">Entrar na plataforma</button>
+      </div>
+    </form>
+  </main>
+  <script id="ajuda-json" type="application/json">{{ ajuda_json()|safe }}</script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

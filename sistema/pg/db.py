@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from typing import Any
+from urllib.parse import parse_qsl, unquote, urlparse
 
 import psycopg2
 from psycopg2.extensions import connection as PgConnection
@@ -41,22 +42,48 @@ def obter_database_url() -> str:
     return url
 
 
-def parse_database_url(url: str | None = None) -> dict[str, str | int]:
-    """Extrai host, port, user, password e dbname de DATABASE_URL."""
+def parse_database_url(url: str | None = None) -> dict[str, Any]:
+    """Extrai host, port, user, password, dbname e parametros extras de DATABASE_URL."""
     alvo = url or obter_database_url()
     u = urlparse(alvo)
     if u.scheme not in ("postgresql", "postgres"):
         raise ValueError(f"Esquema de DATABASE_URL invalido: {u.scheme!r}")
+    extras = dict(parse_qsl(u.query, keep_blank_values=False))
+    host = u.hostname or "localhost"
+    if host not in ("localhost", "127.0.0.1", "::1") and "sslmode" not in extras:
+        extras["sslmode"] = "require"
     return {
-        "host": u.hostname or "localhost",
+        "host": host,
         "port": int(u.port or 5432),
         "user": unquote(u.username or "postgres"),
         "password": unquote(u.password or ""),
         "dbname": (u.path or "/lab_contabil").lstrip("/") or "lab_contabil",
+        "extras": extras,
     }
 
 
-def conectar_pg(dbname_override: str | None = None, autocommit: bool = False) -> PgConnection:
+class _ConexaoGerenciada:
+    """Garante fechamento da conexao ao sair de `with conectar_pg() as conn:` (essencial em pooler/serverless)."""
+
+    def __init__(self, conn: PgConnection) -> None:
+        self._conn = conn
+
+    def __enter__(self) -> PgConnection:
+        self._conn.__enter__()
+        return self._conn
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        try:
+            self._conn.__exit__(exc_type, exc_val, exc_tb)
+        finally:
+            if not self._conn.closed:
+                self._conn.close()
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._conn, name)
+
+
+def conectar_pg(dbname_override: str | None = None, autocommit: bool = False) -> Any:
     """Abre conexao psycopg2 com RealDictCursor no banco configurado."""
     cfg = parse_database_url()
     dbname = dbname_override or str(cfg["dbname"])
@@ -67,9 +94,10 @@ def conectar_pg(dbname_override: str | None = None, autocommit: bool = False) ->
         password=str(cfg["password"]),
         dbname=dbname,
         cursor_factory=RealDictCursor,
+        **dict(cfg.get("extras") or {}),
     )
     conn.autocommit = autocommit
-    return conn
+    return _ConexaoGerenciada(conn)
 
 
 def garantir_banco_existe() -> str:

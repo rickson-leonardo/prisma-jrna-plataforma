@@ -1,0 +1,137 @@
+{# =====================================================================
+   Componentes reutilizaveis da UI (padrao DMA-PRISMA-2026-v3)
+   ===================================================================== #}
+
+{# Icone de ajuda contextual: hover/foco = dica rapida; clique/Enter = popover fixo (Esc ou clique fora fecha) #}
+{% macro tip(chave, rotulo='') -%}
+{%- set txt = ajuda(chave) -%}
+<span class="tip" role="button" tabindex="0" aria-expanded="false" aria-label="Ajuda{{ ': ' ~ rotulo if rotulo else '' }}" data-k="{{ chave }}"{% if not txt %} data-help-missing="{{ chave }}"{% endif %}><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="7.3" y="7" width="1.4" height="4.6" rx=".5" fill="currentColor"/><circle cx="8" cy="4.9" r=".9" fill="currentColor"/></svg></span>
+{%- endmacro %}
+
+{# Campo de formulario com rotulo + ajuda. Uso: {% call field('Ticket', 'cen.ticket') %}<input ...>{% endcall %} #}
+{% macro field(rotulo, chave, cls='') -%}
+<label class="field {{ cls }}"><span class="lbl">{{ rotulo }}{{ tip(chave, rotulo) }}</span>{{ caller() }}</label>
+{%- endmacro %}
+
+{# Cabecalho de coluna com ajuda #}
+{% macro th(rotulo, chave, cls='') -%}
+<th class="{{ cls }}" scope="col">{{ rotulo }}{% if chave %}{{ tip(chave, rotulo) }}{% endif %}</th>
+{%- endmacro %}
+
+{# Titulo institucional numerado de tabela/bloco + fonte de dados #}
+{% macro titulo_tabela(numero, texto, chave, fonte='') -%}
+<div class="tt"><h3>{% if numero %}<span class="tt-n">{{ numero }}</span>{% endif %}{{ texto }}{{ tip(chave, texto) }}</h3>{% if fonte %}<span class="fonte">Fonte: <span class="mono">{{ fonte }}</span></span>{% endif %}</div>
+{%- endmacro %}
+
+{# Badge de status com palavra explicita (nunca cor isolada); codigo tecnico so no title #}
+{% macro badge(valor, grupo='status') -%}
+<span class="badge b-{{ classe_status(valor) }}" title="Código técnico: {{ valor }}">{{ valor|rotulo(grupo) }}</span>
+{%- endmacro %}
+
+{# Select de situacao: homologar so pelo botao (exige justificativa) #}
+{% macro status_select(atual, nome='status_validacao') -%}
+<select name="{{ nome }}">
+  <option value="pendente_revisao" {{ 'selected' if atual == 'pendente_revisao' }}>Pendente de revisão</option>
+  <option value="alerta_inconsistencia" {{ 'selected' if atual == 'alerta_inconsistencia' }}>Inconsistência apontada</option>
+  {% if atual == 'homologado_contadora' %}<option value="homologado_contadora" selected>Homologado pela contadora</option>{% endif %}
+</select>
+{%- endmacro %}
+
+{# Select generico a partir dos rotulos legiveis #}
+{% macro select_rotulos(nome, grupo, atual) -%}
+<select name="{{ nome }}">{% for cod, txt in opcoes(grupo) %}<option value="{{ cod }}" {{ 'selected' if atual == cod }} title="{{ cod }}">{{ txt }}</option>{% endfor %}</select>
+{%- endmacro %}
+
+{# Botoes padrao: salvar rascunho / homologar (valida justificativa no servidor e no navegador) #}
+{% macro acoes(campo_just='justificativa_contadora', rotulo_homologar='Homologar decisão') -%}
+<div class="acoes">
+  <button class="btn btn-sec" type="submit" name="acao" value="rascunho">Salvar rascunho</button>{{ tip('acao.rascunho', 'Salvar rascunho') }}
+  <button class="btn btn-primary" type="submit" name="acao" value="homologar" data-exige="{{ campo_just }}">{{ rotulo_homologar }}</button>{{ tip('acao.homologar', rotulo_homologar) }}
+</div>
+{%- endmacro %}
+
+{# Exclusao com dialogo de confirmacao acessivel (bloqueada em Modo Consulta) #}
+{% macro excluir(url, descricao) -%}
+<form method="post" action="{{ url }}" class="js-confirm crud-excluir" data-confirm="Excluir definitivamente {{ descricao }}? Esta ação não pode ser desfeita.">
+  {{ csrf() }}<fieldset class="crud-fs crud-fs-inline" disabled><button class="btn btn-danger-ghost" type="submit">Excluir</button></fieldset>{{ tip('acao.excluir', 'Excluir') }}
+</form>
+{%- endmacro %}
+
+{# Barra superior do Modo Consulta (padrao) vs Modo Edicao na aba #}
+{% macro modo_barra() -%}
+<div class="modo-bar" id="modo-bar" role="region" aria-label="Modo de visualização e edição">
+  <div class="modo-info">
+    <span class="badge b-in" id="modo-badge">Modo Consulta (Somente leitura)</span>
+    <span class="modo-desc" id="modo-desc">Navegue, expanda registros e consulte os ícones de ajuda sem risco de alteração acidental.</span>
+  </div>
+  <div class="acoes">
+    <button type="button" class="btn btn-sec btn-sm" id="btn-modo-aba" aria-pressed="false">Ativar modo edição na aba</button>{{ tip('modo.aba', 'Alternar modo consulta e edição') }}
+  </div>
+</div>
+{%- endmacro %}
+
+{# Controle por registro/bloco: mantem Somente leitura ate clique explicito em Habilitar edicao #}
+{% macro crud_ctrl(rotulo='Habilitar edição', chave='modo.editar_item') -%}
+<div class="crud-ctrl">
+  <div class="crud-status">
+    <span class="badge b-neutro crud-estado">Somente leitura</span>
+    <span class="crud-dica">Campos protegidos contra cliques acidentais.</span>
+  </div>
+  <div class="acoes">
+    <span class="crud-opt-editar"><button type="button" class="btn btn-sec btn-sm js-crud-editar">{{ rotulo }}</button>{{ tip(chave, rotulo) }}</span>
+    <span class="crud-opt-bloquear" hidden><button type="button" class="btn btn-sec btn-sm js-crud-bloquear">Concluir / Bloquear</button>{{ tip('modo.bloquear', 'Bloquear edição') }}</span>
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro csrf() -%}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{%- endmacro %}
+
+{# Barra de progresso de homologacao #}
+{% macro progresso(feitos, total, texto) -%}
+{%- set pct = (100 * feitos / total)|round(0) if total else 0 -%}
+<div class="prog" role="group" aria-label="{{ texto }}">
+  <div class="prog-txt"><span class="mono">{{ feitos }}/{{ total }}</span> {{ texto }}{{ tip('gov.progresso', texto) }}</div>
+  <div class="prog-bar" role="progressbar" aria-valuenow="{{ pct|int }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ pct }}%"></span></div>
+</div>
+{%- endmacro %}
+
+{# Banner "Como usar esta estacao" #}
+{% macro guia(chave) -%}
+{%- set g = estacao(chave) -%}
+<details class="guia">
+  <summary>Como usar esta estação</summary>
+  <dl>
+    <dt>Na prática profissional</dt><dd>{{ g.pratica }}</dd>
+    <dt>O que validar e desenviesar</dt><dd>{{ g.desenviesar }}</dd>
+    <dt>Como sustenta o Dossiê 1</dt><dd>{{ g.dossie }}</dd>
+  </dl>
+</details>
+{%- endmacro %}
+
+{# Comparador v1 x apontamento de auditoria #}
+{% macro governanca(r) -%}
+{% if r.referencia_v1_original or r.apontamento_auditoria %}
+<div class="compare">
+  <div class="ref"><span class="ref-h">Como estava na v1{{ tip('gov.v1', 'v1') }}</span>{{ r.referencia_v1_original or 'Sem registro na v1.' }}</div>
+  <div class="ref ref-at"><span class="ref-h">Apontamento de auditoria{{ tip('gov.apontamento', 'Apontamento') }}</span>{{ r.apontamento_auditoria or 'Validar redação definitiva.' }}</div>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{# Barra de busca instantanea + filtros rapidos de quarentena para uma lista [data-lista] #}
+{% macro filtros(alvo, placeholder='Buscar por palavra ou código') -%}
+<div class="filtros" data-filtra="{{ alvo }}">
+  <label class="busca"><span class="lbl">Buscar{{ tip('gov.busca', 'Buscar') }}</span><input type="search" placeholder="{{ placeholder }}" data-busca></label>
+  <div class="chips" role="group" aria-label="Filtros rápidos">
+    <span class="lbl">Mostrar{{ tip('gov.filtros', 'Filtros') }}</span>
+    <button type="button" class="chip on" data-st="">Todos</button>
+    <button type="button" class="chip" data-st="pendente_revisao">Somente pendentes de revisão</button>
+    <button type="button" class="chip" data-st="alerta_inconsistencia">Com inconsistências</button>
+    <button type="button" class="chip" data-st="homologado_contadora">Já homologados</button>
+  </div>
+  <span class="cont mono" data-contador></span>
+</div>
+{%- endmacro %}
+
+{# Numero contabil: negativo entre parenteses #}
+{% macro num(v) -%}<span class="mono">{{ v|brl_tab }}</span>{%- endmacro %}

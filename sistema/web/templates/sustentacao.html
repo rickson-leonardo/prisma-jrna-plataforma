@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Sustentação e conformidade{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div>
+    <div class="kicker">Estação 5 · Sustentação do Dossiê 1</div>
+    <h2>Sustentação normativa, Matriz IABP (200 critérios) e diário de IA</h2>
+    <div class="subtitle">Fundamentação da contadora, autoavaliação das 4 matrizes da disciplina e uso transparente de IA.</div>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('emissao') }}">Emitir documentos do Dossiê 1</a>
+</div>
+{{ m.guia('sustentacao') }}
+
+<div class="zona"><span class="mundo mundo-sus">Sustentação</span><h2>1. Placar IABP e auditoria dos critérios</h2></div>
+<div class="grid-kpi">
+  {% for p in placar %}
+    <a class="kpi" href="{{ url_for('sustentacao', matriz=p.matriz) }}" style="text-decoration: none; {{ 'border-color: var(--g800);' if matriz_ativa == p.matriz }}">
+      <div class="k-l">{{ p.matriz|rotulo('matriz') }}{{ m.tip('col.nota10', 'Nota') }}</div>
+      <div class="val">{{ p.nota_estimada_10|num_br }} / 10</div>
+      <small>Avaliados <span class="mono">{{ p.total_itens_avaliados }}/{{ p.total_itens_aplicaveis }}</span> · apontados na v1 <span class="mono">{{ p.total_itens_v1_apontados }}</span></small>
+    </a>
+  {% endfor %}
+</div>
+<section class="card" id="criterios">
+  {{ m.titulo_tabela('Tabela 5.1', 'Critérios — ' ~ (matriz_ativa|rotulo('matriz')) ~ ' (' ~ criterios|length ~ ')', 'col.iabp', 'auditoria.avaliacao_conformidade · auditoria.criterio_conformidade') }}
+  <div class="progs">{{ m.progresso(criterios|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length, criterios|length, 'critérios desta matriz homologados') }}</div>
+  <div class="tabs">
+    {% for mz in ['plano_negocios','contrato_social','memorando','fluxo_abertura'] %}
+      <a href="{{ url_for('sustentacao', matriz=mz, pendentes=1 if apenas_pendentes else 0) }}#criterios" class="{{ 'active' if matriz_ativa == mz }}">{{ mz|rotulo('matriz') }}</a>
+    {% endfor %}
+    <a href="{{ url_for('sustentacao', matriz=matriz_ativa, pendentes=0 if apenas_pendentes else 1) }}#criterios" class="{{ 'active' if apenas_pendentes }}">{{ 'Mostrar todos' if apenas_pendentes else 'Somente não homologados' }}</a>
+  </div>
+  {{ m.filtros('lista-criterios', 'Buscar: C1, TAM, haveres, shotgun…') }}
+  <div class="lista" id="lista-criterios">
+    {% for cr in criterios %}
+      <details class="item" id="criterio-{{ cr.id }}" data-item data-status="{{ cr.status_validacao }}" style="--cols: 70px minmax(0,1fr) auto">
+        <summary>
+          <span class="it-cod">{{ cr.codigo }}</span>
+          <span class="it-tit">{{ cr.descricao }}<span class="it-sub">Bloco {{ cr.bloco }} — {{ cr.bloco_titulo }} · peso <span class="mono">{{ cr.bloco_peso }}</span></span></span>
+          <span class="it-meta">
+            {% if cr.nota_v1 is not none %}<span class="badge b-at" title="Nota atribuída pela banca na v1">v1: {{ cr.nota_v1 }}/4</span>{% endif %}
+            {% if cr.nao_aplicavel %}<span class="badge b-neutro">Não se aplica</span>{% elif cr.nota is not none %}<span class="badge b-neutro">Nota {{ cr.nota }}/4</span>{% endif %}
+            {{ m.badge(cr.status_validacao) }}
+          </span>
+        </summary>
+        <div class="corpo crud-bloco" data-crud-bloco>
+          {% if cr.critica_v1 %}<div class="compare" style="grid-template-columns: 1fr;"><div class="ref ref-at"><span class="ref-h">Crítica literal da banca (v1){{ m.tip('col.nota_v1', 'Crítica v1') }}</span>{{ cr.critica_v1 }}</div></div>{% endif %}
+          {{ m.crud_ctrl() }}
+          <form method="post" action="{{ url_for('post_criterio_salvar', av_id=cr.id) }}">
+            {{ m.csrf() }}<input type="hidden" name="matriz_ativa" value="{{ matriz_ativa }}">
+            <fieldset class="crud-fs" disabled>
+            <div class="form-grid">
+              {% call m.field('Nota da contadora (0–4)', 'cr.nota') %}
+                <select name="nota"><option value="" {{ 'selected' if cr.nota is none }}>Não avaliado</option>{% for n in (0,1,2,3,4) %}<option value="{{ n }}" {{ 'selected' if cr.nota == n }}>{{ n }} / 4</option>{% endfor %}</select>
+              {% endcall %}
+              <label class="check" style="align-self: end;"><input type="checkbox" name="nao_aplicavel" {{ 'checked' if cr.nao_aplicavel }}> Não se aplica (NA){{ m.tip('cr.na', 'NA') }}</label>
+              {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(cr.status_validacao) }}{% endcall %}
+              {% call m.field('Onde está atendido', 'cr.localizacao', 'span-all') %}<input type="text" name="referencia_localizacao" value="{{ cr.referencia_localizacao or '' }}" placeholder="Ex.: Contrato Cl. 18ª; Plano seção 8.4">{% endcall %}
+              {% call m.field('Justificativa de sustentação', 'cr.justificativa', 'span-all') %}<input type="text" name="justificativa_sustentacao" value="{{ cr.justificativa_sustentacao or '' }}">{% endcall %}
+            </div>
+            <div class="barra-acoes">{{ m.acoes('justificativa_sustentacao', 'Homologar avaliação') }}</div>
+            </fieldset>
+          </form>
+        </div>
+      </details>
+    {% else %}<p class="vazio">Nenhum critério neste filtro.</p>{% endfor %}
+  </div>
+</section>
+
+<div class="zona"><span class="mundo mundo-sus">Sustentação</span><h2>2. Consultas normativas (Q1 a Q10)</h2></div>
+<section class="card" id="consultas">
+  {{ m.titulo_tabela('Tabela 5.2', 'Registro profissional, organização contábil e Redesim-DF', 'q.resposta', 'erp.consulta_normativa') }}
+  <div class="progs">{{ m.progresso(consultas|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length, consultas|length, 'consultas homologadas') }}</div>
+  {{ m.filtros('lista-consultas', 'Buscar: CRC-DF, viabilidade, Fator R…') }}
+  <div class="lista" id="lista-consultas">
+    {% for q in consultas %}
+      <details class="item" id="consulta-{{ q.id }}" data-item data-status="{{ q.status_validacao }}" style="--cols: 46px minmax(0,1fr) auto">
+        <summary><span class="it-cod">Q{{ q.numero_questao }}</span><span class="it-tit">{{ q.enunciado }}<span class="it-sub">{{ q.norma_citada }} · acesso <span class="mono">{{ q.data_acesso }}</span></span></span><span class="it-meta">{{ m.badge(q.status_validacao) }}</span></summary>
+        <div class="corpo crud-bloco" data-crud-bloco>
+          {{ m.governanca(q) }}
+          {{ m.crud_ctrl() }}
+          <form method="post" action="{{ url_for('post_consulta_salvar', cons_id=q.id) }}">
+            {{ m.csrf() }}
+            <fieldset class="crud-fs" disabled>
+            <div class="form-grid">
+              {% call m.field('Enunciado', 'q.enunciado', 'span-all') %}<input type="text" name="enunciado" value="{{ q.enunciado }}">{% endcall %}
+              {% call m.field('Norma citada', 'q.norma', 'span-2') %}<input type="text" name="norma_citada" value="{{ q.norma_citada }}">{% endcall %}
+              {% call m.field('Data de acesso', 'q.data') %}<input type="date" name="data_acesso" value="{{ q.data_acesso }}">{% endcall %}
+              {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(q.status_validacao) }}{% endcall %}
+              {% call m.field('Link oficial', 'q.link', 'span-2') %}<input type="url" name="link_oficial" value="{{ q.link_oficial }}">{% endcall %}
+              {% call m.field('Decisão impactada', 'q.decisao', 'span-2') %}<input type="text" name="decisao_impactada" value="{{ q.decisao_impactada or '' }}">{% endcall %}
+              {% call m.field('Resposta autoral da contadora', 'q.resposta', 'span-all') %}<textarea class="longo" name="resposta_autoral">{{ q.resposta_autoral }}</textarea>{% endcall %}
+              {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ q.justificativa_contadora or '' }}">{% endcall %}
+            </div>
+            <div class="barra-acoes">{{ m.acoes() }}</div>
+            </fieldset>
+          </form>
+          <div class="barra-acoes">{{ m.excluir(url_for('post_consulta_excluir', cons_id=q.id), 'a consulta Q' ~ q.numero_questao) }}</div>
+        </div>
+      </details>
+    {% endfor %}
+    <details class="item">
+      <summary><span class="it-cod">+ Nova</span><span class="it-tit">Registrar consulta normativa</span><span></span></summary>
+      <div class="corpo crud-bloco" data-crud-bloco>
+        {{ m.crud_ctrl('Habilitar inclusão', 'modo.incluir') }}
+        <form method="post" action="{{ url_for('post_consulta_nova') }}">
+          {{ m.csrf() }}
+          <input type="hidden" name="status_validacao" value="pendente_revisao">
+          <fieldset class="crud-fs" disabled>
+          <div class="form-grid">
+            {% call m.field('Nº da questão', 'q.numero') %}<input type="text" data-fmt="int" name="numero_questao" value="{{ (consultas|length) + 1 }}">{% endcall %}
+            {% call m.field('Enunciado', 'q.enunciado', 'span-2') %}<input type="text" name="enunciado" required>{% endcall %}
+            {% call m.field('Norma citada', 'q.norma') %}<input type="text" name="norma_citada" required>{% endcall %}
+            {% call m.field('Link oficial', 'q.link', 'span-2') %}<input type="url" name="link_oficial" required>{% endcall %}
+            {% call m.field('Data de acesso', 'q.data') %}<input type="date" name="data_acesso" required>{% endcall %}
+            {% call m.field('Resposta autoral', 'q.resposta', 'span-all') %}<textarea name="resposta_autoral" required></textarea>{% endcall %}
+          </div>
+          <div class="barra-acoes"><span class="acoes"><button class="btn btn-primary" type="submit">Registrar consulta</button>{{ m.tip('acao.incluir', 'Registrar') }}</span></div>
+          </fieldset>
+        </form>
+      </div>
+    </details>
+  </div>
+
+  <h4 style="margin-top: 18px;">Quadro de decisões preliminares{{ m.tip('tab.decisoes', 'Decisões preliminares') }}</h4>
+  <div class="tabela-wrap">
+  <table>
+    <thead><tr><th class="num">Nº</th><th>Elemento decisório</th><th>Opção adotada</th><th>Alternativas consideradas</th><th>Justificativa documental</th><th>Situação</th></tr></thead>
+    <tbody>{% for d in decisoes %}<tr><td class="num">{{ d.ordem }}</td><td>{{ d.elemento }}</td><td>{{ d.opcao_adotada }}</td><td>{{ d.alternativas_consideradas or '—' }}</td><td>{{ d.justificativa_documental }}</td><td>{{ m.badge(d.status_validacao) }}</td></tr>{% endfor %}</tbody>
+  </table>
+  </div>
+</section>
+
+<div class="zona"><span class="mundo mundo-sus">Sustentação</span><h2>3. Diário de uso e revisão humana de IA</h2></div>
+<section class="card" id="diario-ia">
+  {{ m.titulo_tabela('Tabela 5.3', 'Diário transparente de IA — Dossiê 1', 'ia.revisao', 'auditoria.diario_ia') }}
+  <div class="lista">
+    {% for ia in diario_ia %}
+      <details class="item" id="ia-{{ ia.id }}" data-item data-status="{{ ia.status_validacao }}" style="--cols: 150px minmax(0,1fr) auto">
+        <summary><span class="it-cod">{{ ia.ferramenta or 'Assistente IA' }}</span><span class="it-tit">{{ ia.entregavel or '—' }}<span class="it-sub">{{ ia.finalidade }}</span></span><span class="it-meta">{{ m.badge(ia.status_validacao) }}</span></summary>
+        <div class="corpo crud-bloco" data-crud-bloco>
+          {{ m.crud_ctrl() }}
+          <form method="post" action="{{ url_for('post_ia_salvar', ia_id=ia.id) }}">
+            {{ m.csrf() }}
+            <fieldset class="crud-fs" disabled>
+            <div class="form-grid">
+              {% call m.field('Entregável', 'ia.entregavel', 'span-2') %}<input type="text" name="entregavel" value="{{ ia.entregavel or '' }}">{% endcall %}
+              {% call m.field('Ferramenta', 'ia.ferramenta') %}<input type="text" name="ferramenta" value="{{ ia.ferramenta or 'Assistente IA' }}">{% endcall %}
+              {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(ia.status_validacao) }}{% endcall %}
+              {% call m.field('Finalidade', 'ia.finalidade', 'span-all') %}<textarea name="finalidade">{{ ia.finalidade }}</textarea>{% endcall %}
+              {% call m.field('Fonte oficial conferida', 'ia.fonte', 'span-all') %}<textarea name="fonte_oficial">{{ ia.fonte_oficial }}</textarea>{% endcall %}
+              {% call m.field('Revisão humana efetuada', 'ia.revisao', 'span-all') %}<textarea name="revisao_humana">{{ ia.revisao_humana }}</textarea>{% endcall %}
+            </div>
+            <div class="barra-acoes">{{ m.acoes('revisao_humana', 'Homologar registro') }}</div>
+            </fieldset>
+          </form>
+          <div class="barra-acoes">{{ m.excluir(url_for('post_ia_excluir', ia_id=ia.id), 'este registro de IA') }}</div>
+        </div>
+      </details>
+    {% endfor %}
+    <details class="item">
+      <summary><span class="it-cod">+ Novo</span><span class="it-tit">Registrar uso de IA</span><span></span></summary>
+      <div class="corpo crud-bloco" data-crud-bloco>
+        {{ m.crud_ctrl('Habilitar inclusão', 'modo.incluir') }}
+        <form method="post" action="{{ url_for('post_ia_novo') }}">
+          {{ m.csrf() }}
+          <input type="hidden" name="status_validacao" value="pendente_revisao">
+          <fieldset class="crud-fs" disabled>
+          <div class="form-grid">
+            {% call m.field('Entregável', 'ia.entregavel') %}<input type="text" name="entregavel" required>{% endcall %}
+            {% call m.field('Ferramenta', 'ia.ferramenta') %}<input type="text" name="ferramenta" value="Assistente IA">{% endcall %}
+            {% call m.field('Finalidade', 'ia.finalidade', 'span-2') %}<input type="text" name="finalidade" required>{% endcall %}
+            {% call m.field('Fonte oficial conferida', 'ia.fonte', 'span-2') %}<input type="text" name="fonte_oficial" required>{% endcall %}
+            {% call m.field('Revisão humana efetuada', 'ia.revisao', 'span-2') %}<input type="text" name="revisao_humana" required>{% endcall %}
+          </div>
+          <div class="barra-acoes"><span class="acoes"><button class="btn btn-primary" type="submit">Registrar</button>{{ m.tip('acao.incluir', 'Registrar') }}</span></div>
+          </fieldset>
+        </form>
+      </div>
+    </details>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,80 @@
+{# Macros dos documentos PDF (DMA-PRISMA-2026-v3) — importar "with context" #}
+{% macro badge(st, grupo='status') -%}
+{%- set cls = {'homologado_contadora':'ok','pendente_revisao':'at','alerta_inconsistencia':'cr','acervo_referencia':'in','critico':'cr','alerta':'at','info':'in'}.get(st, 'neutro') -%}
+<span class="badge b-{{ cls }}">{{ rot(st, grupo) }}</span>
+{%- endmacro %}
+
+{# Marca de rascunho em itens nao homologados (nunca maquiar pendencias) #}
+{% macro marca(st) -%}
+{%- if st and st not in ('homologado_contadora', 'acervo_referencia') %} {{ badge(st) }}{% endif -%}
+{%- endmacro %}
+
+{% macro aviso() -%}
+{% if pend_doc or pendencias_total %}
+<div class="caixa at"><span class="rot">Atenção — pré-visualização com itens não homologados</span>
+  <p>Este documento foi emitido diretamente do banco em {{ emitido_em.strftime('%d/%m/%Y às %H:%M') }} com
+  <strong>{{ pend_doc }}</strong> registro(s) deste documento e <strong>{{ pendencias_total }}</strong> registro(s) do Dossiê 1
+  ainda em quarentena (pendentes de revisão ou com inconsistência). Os itens afetados estão marcados no corpo do texto.
+  Não utilizar como versão final até a homologação pela contadora responsável.</p></div>
+{% else %}
+<div class="caixa in"><span class="rot">Nota de governança</span><p>Todos os registros que compõem este documento foram homologados pela contadora responsável.</p></div>
+{% endif %}
+{%- endmacro %}
+
+{% macro ficha(extra=None) -%}
+<table class="ficha keep">
+  <tbody>
+    <tr><td>Documento</td><td>Doc. <span class="mono">{{ info.nn }}</span> — {{ info.curto }} (Dossiê 1)</td></tr>
+    <tr><td>Sociedade</td><td>{{ empresa.razao_social }} {{ marca(empresa.status_validacao) }}</td></tr>
+    <tr><td>CNPJ</td><td>{% if cnpj %}<span class="mono">{{ cnpj.valor }}</span>{% if cnpj.eh_ficticio %} — dado didático fictício{% endif %}{% else %}Não cadastrado{% endif %}</td></tr>
+    <tr><td>Sede</td><td>{{ sede_txt }}</td></tr>
+    <tr><td>Responsável técnica</td><td>{{ rt.nome or 'Não definida' }}{% if rt.crc %} — <span class="mono">{{ rt.crc }}</span>{% endif %}</td></tr>
+    {% if extra %}{% for k, v in extra %}<tr><td>{{ k }}</td><td>{{ v }}</td></tr>{% endfor %}{% endif %}
+    <tr><td>Emissão</td><td><span class="mono">{{ emitido_em.strftime('%d/%m/%Y %H:%M') }}</span> — gerado do PostgreSQL (lab_contabil)</td></tr>
+  </tbody>
+</table>
+{%- endmacro %}
+
+{% macro assinaturas(com_crc=True) -%}
+<div class="ass">
+  {% for s in socios %}
+    {%- set crc = ids_por_pessoa.get(s.pessoa_id, {}).get('CRC') -%}
+    <div><strong>{{ s.nome_canonico|upper }}</strong>{{ s.papel }}{% if com_crc and crc %}<br><span class="mono">{{ crc.valor }}</span>{% endif %}</div>
+  {% endfor %}
+</div>
+{%- endmacro %}
+
+{% macro secao_txt(documento, codigo, titulo_tag='h2', titulo=None) -%}
+{%- set s = secao(documento, codigo) -%}
+{% if s %}
+  <{{ titulo_tag }}>{{ (titulo or s.titulo)|md_inline }}{{ marca(s.status_validacao) }}</{{ titulo_tag }}>
+  {{ md(s.conteudo_md) }}
+{% endif %}
+{%- endmacro %}
+
+{% macro tabela_xl(bloco, cls='xl keep') -%}
+{% if bloco.titulo %}<p class="tt">{{ bloco.titulo }}</p>{% endif %}
+<table class="{{ cls }}">
+  <thead><tr>{% for h in bloco.cabecalho %}<th class="{{ 'num' if not loop.first }}">{{ h }}</th>{% endfor %}</tr></thead>
+  <tbody>
+    {% for ln in bloco.linhas %}
+      {%- set li = loop.index0 -%}
+      <tr class="{{ 'total' if li in bloco.totais }}">
+        {% for c in ln %}
+          {%- set cls = (c.tipo if c.tipo in ('in','lk','ok','cr') else '') ~ (' num' if c.fmt != 'txt' else '') -%}
+          <td class="{{ cls }}"{% if c.negrito %} style="font-weight:650"{% endif %}>{{ fmt_cel(c) }}</td>
+        {% endfor %}
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% if bloco.fonte %}<p class="fonte">{{ bloco.fonte }}</p>{% endif %}
+{%- endmacro %}
+
+{% macro fmt_cel(c) -%}
+{%- if c.fmt == 'brl' -%}{{ brl_tab((c.v * 100)|round|int) }}
+{%- elif c.fmt == 'pct' -%}{{ num(c.v * 100, 2) }}%
+{%- elif c.fmt == 'int' -%}{{ num(c.v, 0) }}
+{%- elif c.fmt == 'num' -%}{{ num(c.v, 2) }}
+{%- else -%}{{ c.v }}{%- endif -%}
+{%- endmacro %}

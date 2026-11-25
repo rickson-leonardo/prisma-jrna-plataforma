@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Cadastro societário e QSA{% endblock %}
+{% block content %}
+{% set todos = [empresa] + estabelecimentos|list + socios|list + identificadores|list + enquadramentos|list %}
+{% set homol = todos|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length %}
+<div class="topbar">
+  <div>
+    <div class="kicker">Estação 1 · Operação ERP</div>
+    <h2>Cadastro societário, sede, QSA e responsável técnica</h2>
+    <div class="subtitle">Sociedade, estabelecimentos, Quadro de Sócias, registros civis/profissionais e enquadramento tributário.</div>
+  </div>
+  <div class="kpi" style="min-width: 240px;">
+    <div class="k-l">Quotas ativas · capital do QSA (R$){{ m.tip('kpi.soma_quotas', 'Soma do QSA') }}</div>
+    <div class="val">{{ soma_quotas_pct|num_br }}% · {{ soma_capital_centavos|brl_tab }}</div>
+    <small>{% if soma_quotas_pct|round(2) == 100.0 %}<span class="ok-txt">Fecha 100%</span>{% else %}<span class="cr-txt">Não fecha 100%</span>{% endif %}</small>
+  </div>
+</div>
+{{ m.guia('cadastro') }}
+<div class="progs">{{ m.progresso(homol, todos|length, 'registros cadastrais homologados') }}</div>
+
+{# ---------------- Empresa ---------------- #}
+<section class="card" id="empresa" data-crud-bloco>
+  {{ m.titulo_tabela('1.1', 'Identificação da sociedade', 'emp.razao_social', 'erp.empresa · erp.pessoa') }}
+  <p>{{ m.badge(empresa.status_validacao) }} <span class="meta-tec">Origem: {{ empresa.origem_registro|rotulo('origem') }}{{ m.tip('gov.origem', 'Origem') }}</span></p>
+  {{ m.governanca(empresa) }}
+  {{ m.crud_ctrl() }}
+  <form method="post" action="{{ url_for('post_empresa') }}">
+    {{ m.csrf() }}
+    <fieldset class="crud-fs" disabled>
+    <div class="form-grid">
+      {% call m.field('Nome fantasia', 'emp.nome_curto') %}<input type="text" name="nome_curto" value="{{ empresa.nome_curto }}" required>{% endcall %}
+      {% call m.field('Razão social registrada', 'emp.razao_social', 'span-2') %}<input type="text" name="razao_social_pessoa" value="{{ empresa.razao_social_pessoa }}" required>{% endcall %}
+      {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(empresa.status_validacao) }}{% endcall %}
+      {% call m.field('Justificativa técnica da contadora', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ empresa.justificativa_contadora or '' }}" placeholder="Ex.: denominação conferida frente ao art. 1.158 CC e viabilidade de nome na JUCIS-DF.">{% endcall %}
+    </div>
+    <div class="barra-acoes">{{ m.acoes() }}</div>
+    </fieldset>
+  </form>
+</section>
+
+{# ---------------- Estabelecimentos ---------------- #}
+<section class="card" id="estabelecimentos">
+  {{ m.titulo_tabela('1.2', 'Estabelecimentos e sede no Distrito Federal', 'estab.tipo', 'erp.estabelecimento') }}
+  <div class="lista">
+    {% for e in estabelecimentos %}
+      <details class="item" id="estab-{{ e.id }}" data-item data-status="{{ e.status_validacao }}" style="--cols: 140px minmax(0,1fr) auto">
+        <summary><span class="it-cod">{{ e.cnpj }}</span><span class="it-tit">{{ e.tipo|rotulo('tipo_estab') }}<span class="it-sub">{{ e.endereco or '—' }}</span></span><span class="it-meta">{{ m.badge(e.status_validacao) }}</span></summary>
+        <div class="corpo crud-bloco" data-crud-bloco>
+          {{ m.governanca(e) }}
+          {{ m.crud_ctrl() }}
+          <form method="post" action="{{ url_for('post_est_salvar', est_id=e.id) }}">
+            {{ m.csrf() }}
+            <fieldset class="crud-fs" disabled>
+            <div class="form-grid">
+              {% call m.field('Tipo', 'estab.tipo') %}{{ m.select_rotulos('tipo', 'tipo_estab', e.tipo) }}{% endcall %}
+              {% call m.field('CNPJ', 'estab.cnpj') %}<input class="mono-in" type="text" name="cnpj" value="{{ e.cnpj }}" required>{% endcall %}
+              {% call m.field('UF', 'estab.uf') %}<input type="text" name="uf" maxlength="2" value="{{ e.uf or 'DF' }}">{% endcall %}
+              {% call m.field('Região administrativa / município', 'estab.municipio') %}<input type="text" name="municipio" value="{{ e.municipio or 'Brasilia' }}">{% endcall %}
+              {% call m.field('Endereço completo', 'estab.endereco', 'span-2') %}<input type="text" name="endereco" value="{{ e.endereco or '' }}" required>{% endcall %}
+              {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(e.status_validacao) }}{% endcall %}
+              {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ e.justificativa_contadora or '' }}">{% endcall %}
+            </div>
+            <div class="barra-acoes">{{ m.acoes() }}</div>
+            </fieldset>
+          </form>
+          <div class="barra-acoes">{{ m.excluir(url_for('post_est_excluir', est_id=e.id), 'o estabelecimento ' ~ e.cnpj) }}</div>
+        </div>
+      </details>
+    {% else %}<p class="vazio">Nenhum estabelecimento cadastrado.</p>{% endfor %}
+    <details class="item">
+      <summary><span class="it-cod">+ Novo</span><span class="it-tit">Incluir estabelecimento ou filial</span><span></span><span></span></summary>
+      <div class="corpo crud-bloco" data-crud-bloco>
+        {{ m.crud_ctrl('Habilitar inclusão', 'modo.incluir') }}
+        <form method="post" action="{{ url_for('post_est_novo') }}">
+          {{ m.csrf() }}
+          <input type="hidden" name="status_validacao" value="pendente_revisao">
+          <fieldset class="crud-fs" disabled>
+          <div class="form-grid">
+            {% call m.field('Tipo', 'estab.tipo') %}{{ m.select_rotulos('tipo', 'tipo_estab', 'filial') }}{% endcall %}
+            {% call m.field('CNPJ', 'estab.cnpj') %}<input class="mono-in" type="text" name="cnpj" required>{% endcall %}
+            {% call m.field('UF', 'estab.uf') %}<input type="text" name="uf" maxlength="2" value="DF">{% endcall %}
+            {% call m.field('Região administrativa / município', 'estab.municipio') %}<input type="text" name="municipio" value="Brasilia">{% endcall %}
+            {% call m.field('Endereço completo', 'estab.endereco', 'span-2') %}<input type="text" name="endereco" required>{% endcall %}
+            {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-2') %}<input type="text" name="justificativa_contadora">{% endcall %}
+          </div>
+          <div class="barra-acoes"><span class="acoes"><button class="btn btn-primary" type="submit">Incluir estabelecimento</button>{{ m.tip('acao.incluir', 'Incluir') }}</span></div>
+          </fieldset>
+        </form>
+      </div>
+    </details>
+  </div>
+</section>
+
+{# ---------------- Quadro de Sócias ---------------- #}
+<section class="card" id="socios">
+  {{ m.titulo_tabela('1.3', 'Quadro de Sócias e participação societária', 'kpi.soma_quotas', 'erp.participacao_societaria') }}
+  <div class="lista">
+    {% for s in socios %}
+      <details class="item" id="socia-{{ s.id }}" data-item data-status="{{ s.status_validacao }}" style="--cols: 150px minmax(0,1fr) auto">
+        <summary><span class="it-cod">{{ s.percentual_micro|pct_micro }} · {{ s.valor_centavos|brl_tab }}</span><span class="it-tit">{{ s.nome_canonico }}<span class="it-sub">{{ s.papel }} · {{ s.quotas|num_br(0) }} quotas</span></span><span class="it-meta">{{ m.badge(s.status_validacao) }}</span></summary>
+        <div class="corpo crud-bloco" data-crud-bloco>
+          {{ m.governanca(s) }}
+          {{ m.crud_ctrl() }}
+          <form method="post" action="{{ url_for('post_socio_salvar', ps_id=s.id) }}">
+            {{ m.csrf() }}
+            <fieldset class="crud-fs" disabled>
+            <div class="form-grid">
+              {% call m.field('Quotas', 'socio.quotas') %}<input type="text" data-fmt="int" name="quotas" value="{{ s.quotas or 0 }}">{% endcall %}
+              {% call m.field('Capital subscrito (R$)', 'socio.capital') %}<input type="text" data-fmt="brl" name="valor_reais" value="{{ s.valor_centavos|reais_in }}">{% endcall %}
+              {% call m.field('Participação (%)', 'socio.percentual') %}<input type="text" data-fmt="pct" name="percentual" value="{{ s.percentual_micro|pct_in }}">{% endcall %}
+              {% call m.field('Papel / administração', 'socio.papel') %}<input type="text" name="papel" value="{{ s.papel }}">{% endcall %}
+              {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(s.status_validacao) }}{% endcall %}
+              {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ s.justificativa_contadora or '' }}">{% endcall %}
+            </div>
+            <div class="barra-acoes">{{ m.acoes() }}</div>
+            </fieldset>
+          </form>
+          <div class="barra-acoes">{{ m.excluir(url_for('post_socio_excluir', ps_id=s.id), 'a participação de ' ~ s.nome_canonico) }}</div>
+        </div>
+      </details>
+    {% endfor %}
+    <details class="item">
+      <summary><span class="it-cod">+ Nova</span><span class="it-tit">Adicionar sócia ao QSA</span><span></span><span></span></summary>
+      <div class="corpo crud-bloco" data-crud-bloco>
+        {{ m.crud_ctrl('Habilitar inclusão', 'modo.incluir') }}
+        <form method="post" action="{{ url_for('post_socio_novo') }}">
+          {{ m.csrf() }}
+          <input type="hidden" name="status_validacao" value="pendente_revisao">
+          <fieldset class="crud-fs" disabled>
+          <div class="form-grid">
+            {% call m.field('Nome completo', 'socio.nome', 'span-2') %}<input type="text" name="nome_canonico" required>{% endcall %}
+            {% call m.field('Quotas', 'socio.quotas') %}<input type="text" data-fmt="int" name="quotas" required>{% endcall %}
+            {% call m.field('Capital subscrito (R$)', 'socio.capital') %}<input type="text" data-fmt="brl" name="valor_reais" required>{% endcall %}
+            {% call m.field('Participação (%)', 'socio.percentual') %}<input type="text" data-fmt="pct" name="percentual" required>{% endcall %}
+            {% call m.field('Papel / administração', 'socio.papel') %}<input type="text" name="papel" value="Sócia quotista" required>{% endcall %}
+          </div>
+          <div class="barra-acoes"><span class="acoes"><button class="btn btn-primary" type="submit">Incluir sócia</button>{{ m.tip('acao.incluir', 'Incluir') }}</span></div>
+          </fieldset>
+        </form>
+      </div>
+    </details>
+  </div>
+</section>
+
+{# ---------------- Registros ---------------- #}
+<section class="card" id="registros">
+  {{ m.titulo_tabela('1.4', 'Registros civis, fiscais e profissionais (CPF, CNPJ, CRC)', 'ident.tipo', 'erp.pessoa_identificador') }}
+  {{ m.filtros('lista-registros') }}
+  <div class="lista" id="lista-registros">
+    {% for pi in identificadores %}
+      <details class="item" id="registro-{{ pi.id }}" data-item data-status="{{ pi.status_validacao }}" style="--cols: 220px minmax(0,1fr) auto">
+        <summary><span class="it-cod">{{ pi.tipo_id }} {{ pi.valor }}</span><span class="it-tit">{{ pi.nome_canonico }}<span class="it-sub">{{ 'Dado didático fictício' if pi.eh_ficticio else 'Dado informado como real' }}</span></span><span class="it-meta">{% if pi.eh_ficticio %}<span class="badge b-in">Fictício</span>{% endif %}{{ m.badge(pi.status_validacao) }}</span></summary>
+        <div class="corpo crud-bloco" data-crud-bloco>
+          {{ m.governanca(pi) }}
+          {{ m.crud_ctrl() }}
+          <form method="post" action="{{ url_for('post_ident_salvar', pid_id=pi.id) }}">
+            {{ m.csrf() }}
+            <fieldset class="crud-fs" disabled>
+            <div class="form-grid">
+              {% call m.field('Tipo de registro', 'ident.tipo') %}<select name="tipo_id">{% for tp in ['CPF','CNPJ','CRC','NIRE','IE','IM','OUTRO'] %}<option value="{{ tp }}" {{ 'selected' if pi.tipo_id == tp }}>{{ tp }}</option>{% endfor %}</select>{% endcall %}
+              {% call m.field('Número', 'ident.valor') %}<input class="mono-in" type="text" name="valor" value="{{ pi.valor }}">{% endcall %}
+              {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(pi.status_validacao) }}{% endcall %}
+              <label class="check"><input type="checkbox" name="eh_ficticio" {{ 'checked' if pi.eh_ficticio }}> Dado didático fictício{{ m.tip('ident.ficticio', 'Fictício') }}</label>
+              {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ pi.justificativa_contadora or '' }}">{% endcall %}
+            </div>
+            <div class="barra-acoes">{{ m.acoes() }}</div>
+            </fieldset>
+          </form>
+          <div class="barra-acoes">{{ m.excluir(url_for('post_ident_excluir', pid_id=pi.id), 'o registro ' ~ pi.tipo_id ~ ' ' ~ pi.valor) }}</div>
+        </div>
+      </details>
+    {% endfor %}
+    <details class="item">
+      <summary><span class="it-cod">+ Novo</span><span class="it-tit">Adicionar registro (CPF, CNPJ, CRC, NIRE)</span><span></span><span></span></summary>
+      <div class="corpo crud-bloco" data-crud-bloco>
+        {{ m.crud_ctrl('Habilitar inclusão', 'modo.incluir') }}
+        <form method="post" action="{{ url_for('post_ident_novo') }}">
+          {{ m.csrf() }}
+          <input type="hidden" name="status_validacao" value="pendente_revisao">
+          <fieldset class="crud-fs" disabled>
+          <div class="form-grid">
+            {% call m.field('Pessoa', 'ident.pessoa') %}<select name="pessoa_id">{% for ps in pessoas %}<option value="{{ ps.id }}">{{ ps.nome_canonico }}</option>{% endfor %}</select>{% endcall %}
+            {% call m.field('Tipo de registro', 'ident.tipo') %}<select name="tipo_id">{% for tp in ['CPF','CNPJ','CRC','NIRE','IE','IM','OUTRO'] %}<option value="{{ tp }}">{{ tp }}</option>{% endfor %}</select>{% endcall %}
+            {% call m.field('Número', 'ident.valor') %}<input class="mono-in" type="text" name="valor" required>{% endcall %}
+            {% call m.field('Justificativa técnica', 'gov.justificativa') %}<input type="text" name="justificativa_contadora">{% endcall %}
+            <label class="check"><input type="checkbox" name="eh_ficticio" checked> Dado didático fictício{{ m.tip('ident.ficticio', 'Fictício') }}</label>
+          </div>
+          <div class="barra-acoes"><span class="acoes"><button class="btn btn-primary" type="submit">Incluir registro</button>{{ m.tip('acao.incluir', 'Incluir') }}</span></div>
+          </fieldset>
+        </form>
+      </div>
+    </details>
+  </div>
+</section>
+
+{# ---------------- Enquadramento ---------------- #}
+<section class="card" id="enquadramento" data-crud-bloco>
+  {{ m.titulo_tabela('1.5', 'Enquadramento tributário, CNAEs e responsável técnica (CRC-DF)', 'enq.rt', 'erp.enquadramento_historico') }}
+  {{ m.crud_ctrl() }}
+  {% for enq in enquadramentos %}
+    <p>{{ m.badge(enq.status_validacao) }} <span class="meta-tec">Vigente desde <span class="mono">{{ enq.vigente_de }}</span></span></p>
+    {{ m.governanca(enq) }}
+    <form method="post" action="{{ url_for('post_enq_salvar', enq_id=enq.id) }}">
+      {{ m.csrf() }}
+      <fieldset class="crud-fs" disabled>
+      <div class="form-grid">
+        {% call m.field('Porte inicial', 'enq.porte') %}{{ m.select_rotulos('porte', 'porte', enq.porte) }}{% endcall %}
+        {% call m.field('Regime tributário', 'enq.regime') %}{{ m.select_rotulos('regime_tributario', 'regime_tributario', enq.regime_tributario) }}{% endcall %}
+        {% call m.field('CNAE principal', 'enq.cnae_principal') %}<input class="mono-in" type="text" name="cnae_principal" value="{{ enq.cnae_principal }}">{% endcall %}
+        {% call m.field('CNAEs secundários', 'enq.cnaes_sec') %}<input class="mono-in" type="text" name="cnaes_secundarios" value="{{ (enq.cnaes_secundarios or [])|join(', ') }}">{% endcall %}
+        {% call m.field('Registro cadastral CRC-DF (PJ)', 'enq.registro_crc') %}<input class="mono-in" type="text" name="registro_crc" value="{{ enq.registro_crc or '' }}">{% endcall %}
+        {% call m.field('Responsável técnica', 'enq.rt') %}
+          <select name="responsavel_tecnico_pessoa_id"><option value="">— Selecionar —</option>{% for ps in pessoas if ps.tipo_pessoa == 'PF' %}<option value="{{ ps.id }}" {{ 'selected' if enq.responsavel_tecnico_pessoa_id == ps.id }}>{{ ps.nome_canonico }}</option>{% endfor %}</select>
+        {% endcall %}
+        {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(enq.status_validacao) }}{% endcall %}
+        {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ enq.justificativa_contadora or '' }}">{% endcall %}
+      </div>
+      <div class="barra-acoes">{{ m.acoes() }}</div>
+      </fieldset>
+    </form>
+  {% endfor %}
+</section>
+{% endblock %}

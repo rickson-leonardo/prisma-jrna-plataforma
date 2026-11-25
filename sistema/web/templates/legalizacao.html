@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Legalização DF{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div>
+    <div class="kicker">Estação 3 · Operação ERP</div>
+    <h2>Workflow Paralegal de legalização no Distrito Federal</h2>
+    <div class="subtitle">Viabilidade (Adm. Regional + JUCIS-DF) → DBE → NIRE → CNPJ + CF/DF → licenciamento RLE → CRC-DF, com exigências e prazos.</div>
+  </div>
+</div>
+{{ m.guia('legalizacao') }}
+<div class="progs">{{ m.progresso(etapas|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length, etapas|length, 'etapas homologadas') }}
+  {{ m.progresso(etapas|selectattr('status', 'equalto', 'concluida')|list|length, etapas|length, 'etapas concluídas no processo') }}</div>
+
+<div class="grid-2" style="grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: start;">
+  <section class="card">
+    {{ m.titulo_tabela('Figura 1', 'BPMN do processo de abertura (gerado do banco)', 'tab.bpmn', 'erp.processo_legalizacao_etapa') }}
+    <div class="bpmn-box">{{ bpmn_svg|safe }}</div>
+    <p class="fonte">Tarefa tracejada = desvio condicional de alto risco (não aplicável ao escritório). O mesmo SVG vai para o PDF 05 em uma única página.</p>
+  </section>
+
+  <section>
+    <div class="zona" style="margin-top: 0;"><span class="mundo mundo-erp">Operação ERP</span><h2>Etapas do fluxo</h2></div>
+    {{ m.filtros('lista-etapas', 'Buscar: JUCIS, CRC-DF, B1, NIRE…') }}
+    <div class="lista" id="lista-etapas">
+      {% for e in etapas %}
+        <details class="item" id="etapa-{{ e.id }}" data-item data-status="{{ e.status_validacao }}" style="--cols: 96px minmax(0,1fr) auto">
+          <summary>
+            <span class="it-cod">{{ e.ordem }} · {{ e.codigo }}</span>
+            <span class="it-tit">{{ e.nome_etapa }}<span class="it-sub">{{ e.raia_responsavel|rotulo('raia') }} · {{ e.classificacao_risco|rotulo('risco') }} · {{ e.status|rotulo('execucao') }}</span></span>
+            <span class="it-meta">{{ m.badge(e.status_validacao) }}</span>
+          </summary>
+          <div class="corpo crud-bloco" data-crud-bloco>
+            {{ m.governanca(e) }}
+            {{ m.crud_ctrl() }}
+            <form method="post" action="{{ url_for('post_etapa_salvar', etapa_id=e.id) }}">
+              {{ m.csrf() }}
+              <fieldset class="crud-fs" disabled>
+              <div class="form-grid">
+                {% call m.field('Ordem', 'et.ordem') %}<input type="text" data-fmt="int" name="ordem" value="{{ e.ordem }}">{% endcall %}
+                {% call m.field('Bloco', 'et.bloco') %}<input class="mono-in" type="text" name="bloco" value="{{ e.bloco }}">{% endcall %}
+                {% call m.field('Itens da matriz', 'et.codigo') %}<input class="mono-in" type="text" name="codigo" value="{{ e.codigo }}">{% endcall %}
+                {% call m.field('Raia responsável', 'et.raia') %}{{ m.select_rotulos('raia_responsavel', 'raia', e.raia_responsavel) }}{% endcall %}
+                {% call m.field('Nome da etapa', 'et.nome', 'span-all') %}<input type="text" name="nome_etapa" value="{{ e.nome_etapa }}">{% endcall %}
+                {% call m.field('Órgão / sistema e norma', 'et.orgao', 'span-all') %}<input type="text" name="orgao" value="{{ e.orgao }}">{% endcall %}
+                {% call m.field('Link oficial', 'et.portal', 'span-2') %}<input type="url" name="portal_url" value="{{ e.portal_url or '' }}">{% endcall %}
+                {% call m.field('Data da consulta', 'et.data') %}<input type="date" name="data_consulta" value="{{ e.data_consulta or '' }}">{% endcall %}
+                {% call m.field('Prazo legal', 'et.prazo') %}<input type="text" name="prazo_legal" value="{{ e.prazo_legal or '' }}">{% endcall %}
+                {% call m.field('Risco no RLE', 'et.risco') %}{{ m.select_rotulos('classificacao_risco', 'risco', e.classificacao_risco) }}{% endcall %}
+                {% call m.field('Situação da execução', 'et.status') %}{{ m.select_rotulos('status', 'execucao', e.status) }}{% endcall %}
+                {% call m.field('Protocolo', 'et.protocolo') %}<input class="mono-in" type="text" name="protocolo_simulado" value="{{ e.protocolo_simulado or '' }}">{% endcall %}
+                {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(e.status_validacao) }}{% endcall %}
+                {% call m.field('Documentos de entrada', 'et.entrada', 'span-all') %}<textarea name="entrada_docs">{{ e.entrada_docs }}</textarea>{% endcall %}
+                {% call m.field('Documento / evidência gerada', 'et.saida', 'span-all') %}<textarea name="saida_doc">{{ e.saida_doc }}</textarea>{% endcall %}
+                {% call m.field('Regra em exigência / retorno', 'et.exigencia', 'span-all') %}<textarea name="regra_retorno_exigencia">{{ e.regra_retorno_exigencia }}</textarea>{% endcall %}
+                {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ e.justificativa_contadora or '' }}">{% endcall %}
+              </div>
+              <div class="barra-acoes">{{ m.acoes() }}</div>
+              </fieldset>
+            </form>
+            <div class="barra-acoes">{{ m.excluir(url_for('post_etapa_excluir', etapa_id=e.id), 'a etapa ' ~ e.codigo) }}</div>
+          </div>
+        </details>
+      {% endfor %}
+      <details class="item">
+        <summary><span class="it-cod">+ Nova</span><span class="it-tit">Adicionar etapa ao workflow</span><span></span></summary>
+        <div class="corpo crud-bloco" data-crud-bloco>
+          {{ m.crud_ctrl('Habilitar inclusão', 'modo.incluir') }}
+          <form method="post" action="{{ url_for('post_etapa_nova') }}">
+            {{ m.csrf() }}
+            <input type="hidden" name="status_validacao" value="pendente_revisao">
+            <fieldset class="crud-fs" disabled>
+            <div class="form-grid">
+              {% call m.field('Ordem', 'et.ordem') %}<input type="text" data-fmt="int" name="ordem" value="{{ (etapas|length) + 1 }}">{% endcall %}
+              {% call m.field('Bloco', 'et.bloco') %}<input class="mono-in" type="text" name="bloco" value="G">{% endcall %}
+              {% call m.field('Itens da matriz', 'et.codigo') %}<input class="mono-in" type="text" name="codigo" value="G6">{% endcall %}
+              {% call m.field('Raia responsável', 'et.raia') %}{{ m.select_rotulos('raia_responsavel', 'raia', 'escritorio_contabil') }}{% endcall %}
+              {% call m.field('Nome da etapa', 'et.nome', 'span-all') %}<input type="text" name="nome_etapa" required>{% endcall %}
+              {% call m.field('Órgão / sistema e norma', 'et.orgao', 'span-all') %}<input type="text" name="orgao" required>{% endcall %}
+              {% call m.field('Link oficial', 'et.portal', 'span-2') %}<input type="url" name="portal_url" value="https://redesim.df.gov.br">{% endcall %}
+              {% call m.field('Data da consulta', 'et.data') %}<input type="date" name="data_consulta">{% endcall %}
+              {% call m.field('Prazo legal', 'et.prazo') %}<input type="text" name="prazo_legal">{% endcall %}
+              {% call m.field('Risco no RLE', 'et.risco') %}{{ m.select_rotulos('classificacao_risco', 'risco', 'baixo') }}{% endcall %}
+              {% call m.field('Situação da execução', 'et.status') %}{{ m.select_rotulos('status', 'execucao', 'pendente') }}{% endcall %}
+              {% call m.field('Protocolo', 'et.protocolo') %}<input class="mono-in" type="text" name="protocolo_simulado">{% endcall %}
+              {% call m.field('Documentos de entrada', 'et.entrada', 'span-all') %}<textarea name="entrada_docs" required></textarea>{% endcall %}
+              {% call m.field('Documento / evidência gerada', 'et.saida', 'span-all') %}<textarea name="saida_doc" required></textarea>{% endcall %}
+              {% call m.field('Regra em exigência / retorno', 'et.exigencia', 'span-all') %}<textarea name="regra_retorno_exigencia" required></textarea>{% endcall %}
+              {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora">{% endcall %}
+            </div>
+            <div class="barra-acoes"><span class="acoes"><button class="btn btn-primary" type="submit">Incluir etapa</button>{{ m.tip('acao.incluir', 'Incluir') }}</span></div>
+            </fieldset>
+          </form>
+        </div>
+      </details>
+    </div>
+  </section>
+</div>
+{% endblock %}

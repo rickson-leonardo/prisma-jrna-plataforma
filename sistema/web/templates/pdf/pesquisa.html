@@ -1,0 +1,34 @@
+{% extends "_base.html" %}
+{% import "_m.html" as m with context %}
+{% block capa %}
+{{ m.ficha([('Escopo', 'Registro profissional, organização contábil e Redesim no Distrito Federal (Aula 02)')]) }}
+<h2>Conteúdo</h2>
+<ol class="sumario">
+  {% for q in consultas %}<li>Q{{ q.numero_questao }} — {{ q.enunciado|truncate(70) }}</li>{% endfor %}
+  <li>Quadro de decisões preliminares</li><li>Uso de inteligência artificial</li>
+</ol>
+{% endblock %}
+{% block corpo %}
+<h1>1. Respostas às questões orientadas (Q1 a Q10)</h1>
+{% for q in consultas %}
+  <h2>Q{{ q.numero_questao }} — {{ q.enunciado }}{{ m.marca(q.status_validacao) }}</h2>
+  {{ md(q.resposta_autoral) }}
+  <p class="fonte">Fonte: {{ q.norma_citada }} — {{ q.link_oficial }} — acesso em <span class="mono">{{ q.data_acesso.strftime('%d/%m/%Y') if q.data_acesso else '—' }}</span>.{% if q.decisao_impactada %} Decisão impactada: {{ q.decisao_impactada }}.{% endif %}</p>
+{% endfor %}
+
+<h1>2. Quadro consolidado de decisões preliminares</h1>
+<p class="tt">Tabela 1 — Decisões preliminares da organização contábil</p>
+<table class="keep">
+  <thead><tr><th class="num">Nº</th><th>Elemento decisório</th><th>Opção adotada</th><th>Alternativas consideradas</th><th>Justificativa documental</th></tr></thead>
+  <tbody>{% for d in decisoes %}<tr><td class="num">{{ d.ordem }}</td><td>{{ d.elemento }}<br>{{ m.badge(d.status_validacao) }}</td><td>{{ d.opcao_adotada }}</td><td>{{ d.alternativas_consideradas or '—' }}</td><td>{{ d.justificativa_documental }}</td></tr>{% endfor %}</tbody>
+</table>
+<p class="fonte">Fonte: erp.empresa_decisao_preliminar.</p>
+
+{% set s = secao('pesquisa', 'ia_pesquisa') %}
+{% if s %}
+<div class="retrato">
+<h1>3. {{ s.titulo }}{{ m.marca(s.status_validacao) }}</h1>
+{{ md(s.conteudo_md) }}
+</div>
+{% endif %}
+{% endblock %}

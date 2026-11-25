@@ -1,0 +1,21 @@
+{% extends "_base.html" %}
+{% import "_m.html" as m with context %}
+{% block capa %}
+{% set homol = diario_ia|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length %}
+{{ m.ficha([('Registros de uso de IA', num(diario_ia|length, 0) ~ ' registro(s), ' ~ num(homol, 0) ~ ' homologado(s)'), ('Base', 'auditoria.diario_ia — Dossiê 1')]) }}
+<h2>Compromisso de transparência</h2>
+<p>Este documento compila, diretamente do sistema, cada uso de ferramenta de inteligência artificial declarado na elaboração do Dossiê 1, com a finalidade, a fonte oficial usada para conferir o resultado e a revisão humana efetuada. Registros ainda não homologados aparecem marcados e não devem ser lidos como declaração final.</p>
+{% endblock %}
+{% block corpo %}
+<h1>1. Registro de uso de IA por entregável</h1>
+<p class="tt">Tabela 1 — Diário de uso e revisão humana de IA</p>
+<table>
+  <thead><tr><th>Entregável</th><th>Ferramenta</th><th>Finalidade</th><th>Fonte oficial conferida</th><th>Revisão humana</th><th>Situação</th></tr></thead>
+  <tbody>{% for r in diario_ia %}<tr><td>{{ r.entregavel or '—' }}</td><td>{{ r.ferramenta or '—' }}</td><td>{{ r.finalidade }}</td><td>{{ r.fonte_oficial }}</td><td>{{ r.revisao_humana }}</td><td>{{ m.badge(r.status_validacao) }}</td></tr>{% endfor %}</tbody>
+</table>
+<p class="fonte">Fonte: auditoria.diario_ia (dossie = 'D1').</p>
+
+<h1>2. Declaração das sócias</h1>
+<p>As sócias declaram que os conteúdos produzidos com apoio de inteligência artificial listados acima foram conferidos contra as fontes oficiais indicadas e revisados por elas, assumindo integral responsabilidade técnica pelo conteúdo final, nos termos da NBC PG 01 (Código de Ética Profissional do Contador). Situação na emissão: {{ diario_ia|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length }} de {{ diario_ia|length }} registros homologados.</p>
+{{ m.assinaturas() }}
+{% endblock %}

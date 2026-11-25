@@ -1,0 +1,53 @@
+{% extends "_base.html" %}
+{% import "_m.html" as m with context %}
+{% block capa %}
+{{ m.ficha([('Capital social (QSA)', brl(capital_qsa_centavos) ~ ' — ' ~ num(quotas_total, 0) ~ ' quotas'), ('Registro', 'Arquivamento na JUCIS-DF e registro cadastral no CRC-DF')]) }}
+<h2>Conteúdo</h2>
+<ol class="sumario">
+  <li>Preâmbulo e qualificação das sócias</li>
+  {% for c in clausulas_contrato %}<li>{{ c.numero_clausula|replace('Contrato ', '') }} — {{ c.titulo|md_inline }}</li>{% endfor %}
+  <li>Quadro de quotas e assinaturas</li><li>Anexos I a IV</li>
+</ol>
+{% endblock %}
+{% block corpo %}
+{{ m.secao_txt('contrato_social', 'preambulo', 'h1') }}
+{% for c in clausulas_contrato %}
+  <div class="clausula">
+    <h3>{{ c.numero_clausula|replace('Contrato ', '')|upper|replace('CL.', 'CLÁUSULA') }} — {{ c.titulo|md_inline }}{{ m.marca(c.status_validacao) }}</h3>
+    {{ md(c.redacao_contrato or c.regra_texto) }}
+    {% if 'capital social' in (c.titulo|lower) and socios %}
+      <p class="tt">Quadro de quotas — distribuição do capital social</p>
+      <table class="keep">
+        <thead><tr><th>Sócia</th><th class="num">Quotas</th><th class="num">Capital (R$)</th><th class="num">Participação</th><th>Papel</th></tr></thead>
+        <tbody>
+          {% for s in socios %}<tr><td>{{ s.nome_canonico }}</td><td class="num">{{ num(s.quotas, 0) }}</td><td class="num">{{ brl_tab(s.valor_centavos) }}</td><td class="num">{{ pct(s.percentual_micro) }}</td><td>{{ s.papel }}{{ m.marca(s.status_validacao) }}</td></tr>{% endfor %}
+          <tr class="total"><td>Total</td><td class="num">{{ num(quotas_total, 0) }}</td><td class="num">{{ brl_tab(capital_qsa_centavos) }}</td><td class="num">{{ pct(socios|sum(attribute='percentual_micro')) }}</td><td></td></tr>
+        </tbody>
+      </table>
+      <p class="fonte">Fonte: erp.participacao_societaria.</p>
+    {% endif %}
+  </div>
+{% endfor %}
+{% set f = secao('contrato_social', 'encerramento') %}
+{% if f %}<div class="manter">{{ md(f.conteudo_md) }}{{ m.marca(f.status_validacao) }}{{ m.assinaturas() }}</div>{% else %}{{ m.assinaturas() }}{% endif %}
+
+<h1 class="quebra">Anexos integrantes do ato constitutivo</h1>
+{{ m.secao_txt('contrato_social', 'anexos', 'h2', 'Relação dos anexos I a IV') }}
+<h2>Anexo II — Quadro de subscrição e integralização de quotas</h2>
+<table class="keep">
+  <thead><tr><th>Sócia</th><th class="num">Quotas subscritas</th><th class="num">Valor subscrito (R$)</th><th class="num">Valor integralizado (R$)</th><th>Forma</th></tr></thead>
+  <tbody>
+    {% for s in socios %}<tr><td>{{ s.nome_canonico }}</td><td class="num">{{ num(s.quotas, 0) }}</td><td class="num">{{ brl_tab(s.valor_centavos) }}</td><td class="num">{{ brl_tab(s.valor_centavos) }}</td><td>Moeda corrente, à vista</td></tr>{% endfor %}
+    <tr class="total"><td>Total</td><td class="num">{{ num(quotas_total, 0) }}</td><td class="num">{{ brl_tab(capital_qsa_centavos) }}</td><td class="num">{{ brl_tab(capital_qsa_centavos) }}</td><td></td></tr>
+  </tbody>
+</table>
+<p class="fonte">Fonte: erp.participacao_societaria. Vinculado ao balanço de abertura (Doc. 05) e ao capital do cenário oficial (Doc. 02).</p>
+<h2>Anexo III — Identificação civil e profissional</h2>
+<table class="keep">
+  <thead><tr><th>Pessoa</th><th>Registro</th><th>Número</th><th>Natureza</th><th>Situação</th></tr></thead>
+  <tbody>{% for pi in identificadores %}<tr><td>{{ pi.nome_canonico }}</td><td>{{ pi.tipo_id }}</td><td><span class="mono">{{ pi.valor }}</span></td><td>{{ 'Dado didático fictício' if pi.eh_ficticio else 'Informado' }}</td><td>{{ m.badge(pi.status_validacao) }}</td></tr>{% endfor %}</tbody>
+</table>
+<p class="fonte">Fonte: erp.pessoa_identificador.</p>
+<h2>Anexo IV — Responsabilidade técnica e registro cadastral</h2>
+<p>Responsável técnica: <strong>{{ rt.nome or 'não definida' }}</strong>{% if rt.crc %}, <span class="mono">{{ rt.crc }}</span>{% endif %}. Registro cadastral da organização contábil: <span class="mono">{{ enquadramento.registro_crc or 'não cadastrado' }}</span>{{ m.marca(enquadramento.status_validacao) }} (Decreto-Lei nº 9.295/1946; Res. CFC nº 1.708/2023). CNAEs: <span class="mono">{{ enquadramento.cnae_principal }}</span>{% for c in (enquadramento.cnaes_secundarios or []) %}, <span class="mono">{{ c }}</span>{% endfor %}.</p>
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Painel da contadora{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div>
+    <div class="kicker">Estação 0</div>
+    <h2>Painel da Contadora — {{ empresa.nome_curto }}</h2>
+    <div class="subtitle">Operação do ERP contábil e sustentação técnica do Dossiê 1 em uma única visão.</div>
+  </div>
+  <form method="post" action="{{ url_for('post_revalidar') }}" class="acoes">
+    {{ m.csrf() }}<button class="btn btn-primary" type="submit">Reexecutar auditoria cruzada</button>{{ m.tip('acao.revalidar', 'Reexecutar auditoria cruzada') }}
+  </form>
+</div>
+{{ m.guia('painel') }}
+
+<div class="zona"><span class="mundo mundo-erp">Operação ERP</span><h2>Cenário financeiro oficial</h2></div>
+{% if cenario_oficial %}
+  {% set ind = cenario_oficial.indicadores_json or {} %}
+  <div class="grid-kpi">
+    <div class="kpi">
+      <div class="k-l">Cenário oficial ativo{{ m.tip('kpi.cenario_oficial', 'Cenário oficial') }}</div>
+      <div class="val txt"><a href="{{ url_for('planejamento', cenario_id=cenario_oficial.id) }}#cenario-{{ cenario_oficial.id }}">{{ cenario_oficial.regime_simulacao|rotulo('regime') }}</a></div>
+      <small>{{ m.badge(cenario_oficial.status_validacao) }}</small>
+    </div>
+    <div class="kpi"><div class="k-l">Receita bruta — ano 1 (R$){{ m.tip('kpi.receita_a1', 'Receita bruta ano 1') }}</div><div class="val">{{ cenario_oficial.receita_bruta_centavos|brl_tab }}</div></div>
+    <div class="kpi"><div class="k-l">DAS ano 1 (R$) · Fator R{{ m.tip('kpi.das_fator_r', 'DAS e Fator R') }}</div><div class="val">{{ cenario_oficial.das_centavos|brl_tab }}</div><small>Fator R <span class="mono">{{ cenario_oficial.fator_r_anual_micro|pct_micro }}</span></small></div>
+    <div class="kpi"><div class="k-l">Lucro líquido — ano 1 (R$){{ m.tip('kpi.lucro_a1', 'Lucro líquido') }}</div><div class="val">{{ cenario_oficial.lucro_liquido_centavos|brl_tab }}</div></div>
+    <div class="kpi"><div class="k-l">VPL (R$) · TIR — 3 anos{{ m.tip('kpi.vpl_tir', 'VPL e TIR') }}</div><div class="val">{{ ind.get('vpl_centavos', 0)|brl_tab }}</div><small>TIR <span class="mono">{{ ind.get('tir_pct')|num_br }}%</span></small></div>
+    <div class="kpi"><div class="k-l">Check do balanço (R$){{ m.tip('kpi.check_bp', 'Check do balanço') }}</div><div class="val">{{ cenario_oficial.bp_diferenca_centavos|brl }}</div><small>Ativo − (Passivo + PL)</small></div>
+  </div>
+{% else %}
+  <p class="vazio">Nenhum cenário oficial definido. Promova um cenário na <a href="{{ url_for('planejamento') }}">Estação 4</a>.</p>
+{% endif %}
+
+<div class="zona"><span class="mundo mundo-sus">Sustentação</span><h2>Radar de coerência e quarentena</h2></div>
+<div class="card">
+  {{ m.titulo_tabela('Quadro 1', 'Alertas de coerência anti-enviesamento (' ~ alertas|length ~ ')', 'tab.alertas', 'auditoria.alerta_coerencia') }}
+  {% for a in alertas %}
+    <div class="alerta {{ a.severidade }}">
+      {{ m.badge(a.severidade, 'severidade') }}
+      <div>
+        <strong>{{ a.titulo }}</strong> <span class="meta-tec">· {{ a.modulo_alvo|rotulo('modulo') }} · <span class="mono" title="Código da regra">{{ a.codigo_regra }}</span></span>
+        <div>{{ a.descricao }}</div>
+        <div class="rec">Ação recomendada: {{ a.recomendacao }}</div>
+      </div>
+      {% if a.ancora %}<span class="acoes"><a class="btn btn-sec btn-sm" href="{{ a.ancora }}">Ir ao registro</a>{{ m.tip('acao.ir_registro', 'Ir ao registro') }}</span>{% else %}<span></span>{% endif %}
+    </div>
+  {% else %}
+    <p class="vazio">Nenhum conflito aberto encontrado pela auditoria cruzada.</p>
+  {% endfor %}
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    {{ m.titulo_tabela('Tabela 1', 'Quarentena e homologação por módulo', 'tab.quarentena', 'auditoria.vw_pendencias_quarentena') }}
+    <table>
+      <thead><tr>{{ m.th('Módulo', 'col.modulo') }}{{ m.th('Total', 'col.total', 'num') }}{{ m.th('Homologados', 'col.homologados', 'num') }}{{ m.th('Inconsist.', 'col.inconsistencias', 'num') }}{{ m.th('Pendentes', 'col.pendentes', 'num') }}</tr></thead>
+      <tbody>
+        {% for q in quarentena_resumo %}
+          <tr>
+            <td><span title="{{ q.modulo }}">{{ q.modulo|rotulo('modulo') }}</span></td>
+            <td class="num">{{ q.total }}</td><td class="num">{{ q.homologados }}</td>
+            <td class="num">{{ q.inconsistencias }}</td><td class="num">{{ q.pendentes }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    {{ m.titulo_tabela('Tabela 2', 'Placar de conformidade — matrizes da disciplina (200 critérios)', 'tab.placar', 'auditoria.vw_placar_conformidade') }}
+    <table>
+      <thead><tr>{{ m.th('Matriz', 'col.modulo') }}{{ m.th('Critérios', 'col.criterios', 'num') }}{{ m.th('Avaliados', 'col.avaliados', 'num') }}{{ m.th('IABP', 'col.iabp', 'num') }}{{ m.th('Nota (0–10)', 'col.nota10', 'num') }}</tr></thead>
+      <tbody>
+        {% for p in placar_matrizes %}
+          <tr>
+            <td><a href="{{ url_for('sustentacao', matriz=p.matriz) }}">{{ p.matriz|rotulo('matriz') }}</a></td>
+            <td class="num">{{ p.total_itens_aplicaveis }}</td><td class="num">{{ p.total_itens_avaliados }}</td>
+            <td class="num">{{ p.iabp_total|num_br }}</td><td class="num"><strong>{{ p.nota_estimada_10|num_br }}</strong></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="fonte">A nota começa em zero e só sobe quando a contadora avalia e justifica cada critério na Estação 5 — sem nota artificial.</p>
+  </div>
+</div>
+{% endblock %}

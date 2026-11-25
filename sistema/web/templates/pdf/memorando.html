@@ -1,0 +1,44 @@
+{% extends "_base.html" %}
+{% import "_m.html" as m with context %}
+{% block capa %}
+{{ m.ficha([('Partes', socios|map(attribute='nome_canonico')|join(' e ')), ('Integração', 'Contrato Social (Doc. 03) e Plano de Negócios (Doc. 02)')]) }}
+<h2>Conteúdo</h2>
+<ol class="sumario">
+  <li>Preâmbulo e qualificação das partes</li>
+  {% for c in clausulas_mou %}<li>{{ c.numero_clausula|replace('MoU ', '') }} — {{ c.titulo|md_inline }}</li>{% endfor %}
+  <li>Quadro de coerência cruzada</li><li>Assinaturas e testemunhas</li>
+</ol>
+{% endblock %}
+{% block corpo %}
+{{ m.secao_txt('memorando', 'preambulo', 'h1') }}
+{% for c in clausulas_mou %}
+  <div class="clausula">
+    <h3>{{ c.numero_clausula|replace('MoU ', '')|upper|replace('CL.', 'CLÁUSULA') }} — {{ c.titulo|md_inline }}{{ m.marca(c.status_validacao) }}</h3>
+    {{ md(c.redacao_mou or c.regra_texto) }}
+  </div>
+{% endfor %}
+
+<h2>Quadro de coerência cruzada — MoU × Contrato Social × Plano</h2>
+<p class="tt">Tabela 1 — Parâmetros de governança comparados a partir do banco</p>
+<table>
+  <thead><tr><th>Eixo</th><th>Memorando (MoU)</th><th>Contrato Social</th><th>Plano / Cadastro</th><th>Situação</th></tr></thead>
+  <tbody>
+    {% for c in coerencia %}
+      <tr><td>{{ c.eixo }}</td><td>{{ c.mou }}</td><td>{{ c.contrato }}</td><td>{{ c.plano }}</td>
+      <td>{% if c.ok is none %}<span class="badge b-in">Conferir texto</span>{% elif c.ok %}<span class="badge b-ok">Conforme</span>{% else %}<span class="badge b-cr">Crítico</span>{% endif %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="fonte">Fonte: erp.instrumento_societario_clausula, erp.participacao_societaria, erp.enquadramento_historico e erp.orcamento_cenario.</p>
+
+{% set f = secao('memorando', 'encerramento') %}
+<div class="manter">
+{% if f %}{{ md(f.conteudo_md) }}{{ m.marca(f.status_validacao) }}{% endif %}
+{{ m.assinaturas() }}
+<h3>Testemunhas</h3>
+<div class="ass">
+  <div><strong>Testemunha 1</strong>Nome e CPF</div>
+  <div><strong>Testemunha 2</strong>Nome e CPF</div>
+</div>
+</div>
+{% endblock %}

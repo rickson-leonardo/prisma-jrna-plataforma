@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Emissão do Dossiê 1{% endblock %}
+{% block content %}
+{% set pend_total = quarentena|sum(attribute='pendentes') + quarentena|sum(attribute='inconsistencias') %}
+<div class="topbar">
+  <div>
+    <div class="kicker">Estação 6 · Sustentação do Dossiê 1</div>
+    <h2>Emissão dos documentos do Dossiê 1</h2>
+    <div class="subtitle">Pacote oficial em PDF (padrão DMA-PRISMA-2026-v3) e planilha XLSX gerados diretamente do PostgreSQL.</div>
+  </div>
+  {% if modo_cloud %}
+    <div class="acoes"><a class="btn btn-primary" href="{{ url_for('baixar_xlsx_online') }}">Baixar planilha (.xlsx)</a>{{ m.tip('acao.xlsx_online', 'Baixar planilha XLSX') }}</div>
+  {% else %}
+    <form method="post" action="{{ url_for('post_emitir') }}" class="acoes">
+      {{ m.csrf() }}<button class="btn btn-primary" type="submit">Emitir pacote completo</button>{{ m.tip('acao.emitir', 'Emitir pacote completo') }}
+    </form>
+  {% endif %}
+</div>
+{{ m.guia('emissao') }}
+
+<section class="card" id="quarentena">
+  {{ m.titulo_tabela('6.1', 'Governança: registros ainda em quarentena', 'tab.quarentena', 'auditoria.vw_pendencias_quarentena') }}
+  {% if pend_total %}
+    <div class="alerta"><span class="badge b-at">Atenção</span><div><strong>{{ pend_total }} registros não homologados.</strong> O pacote pode ser emitido como pré-visualização: cada PDF sai com aviso de governança na capa e os itens afetados marcados como rascunho.</div><span></span></div>
+  {% else %}
+    <div class="alerta info"><span class="badge b-ok">Conforme</span><div>Todos os registros do Dossiê 1 estão homologados.</div><span></span></div>
+  {% endif %}
+  <table>
+    <thead><tr>{{ m.th('Módulo', 'col.modulo') }}{{ m.th('Total', 'col.total', 'num') }}{{ m.th('Homologados', 'col.homologados', 'num') }}{{ m.th('Inconsist.', 'col.inconsistencias', 'num') }}{{ m.th('Pendentes', 'col.pendentes', 'num') }}<th>Onde revisar</th></tr></thead>
+    <tbody>
+      {% for q in quarentena %}
+        <tr><td>{{ q.modulo|rotulo('modulo') }}</td><td class="num">{{ q.total }}</td><td class="num">{{ q.homologados }}</td><td class="num">{{ q.inconsistencias }}</td><td class="num">{{ q.pendentes }}</td>
+        <td>{% set est = {'cadastro_empresa':'cadastro','cadastro_estabelecimento':'cadastro','cadastro_socios':'cadastro','cadastro_pessoas':'cadastro','cadastro_identificadores':'cadastro','cadastro_enquadramento':'cadastro','instrumentos_societarios':'instrumentos','legalizacao_df':'legalizacao','orcamento_tributario':'planejamento','consultas_normativas':'sustentacao','decisoes_preliminares':'sustentacao','conformidade_criterios':'sustentacao','diario_ia':'sustentacao','documentos_dossie1':'emissao'}.get(q.modulo) %}{% if est %}<a href="{{ url_for(est) }}{{ '#secoes' if est == 'emissao' }}">Abrir estação</a>{% endif %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card" id="pacote">
+  <div class="tt">
+    <h3><span class="tt-n">6.2</span>Pacote do Dossiê 1{{ m.tip('tab.pacote', 'Pacote') }}</h3>
+    <span class="acoes">
+      <a class="btn btn-sec" href="{{ url_for('baixar_xlsx_online') }}">Baixar planilha (.xlsx)</a>{{ m.tip('acao.xlsx_online', 'Baixar XLSX') }}
+      {% if not modo_cloud %}<a class="btn btn-sec" href="{{ url_for('baixar_zip') }}">Baixar pacote (.zip)</a>{{ m.tip('acao.zip', 'Baixar .zip') }}{% endif %}
+    </span>
+  </div>
+  <div class="tabela-wrap">
+  <table class="arquivos">
+    <thead><tr>{{ m.th('Arquivo', 'col.arquivo') }}<th>Última emissão</th>{{ m.th('Páginas', 'col.paginas') }}{{ m.th('Verificação editorial', 'col.verificacao') }}<th>Ações</th></tr></thead>
+    <tbody>
+      {% for p in pacote %}
+        <tr>
+          <td><strong>{{ p.curto }}</strong><div class="meta-tec mono">{{ p.arquivo }}</div></td>
+          <td class="mono">{{ p.emitido_em|replace('T', ' ') if p.emitido_em else '—' }}</td>
+          <td class="mono">{% if p.paginas %}{{ p.paginas }} p · {{ p.orientacao }}{% else %}—{% endif %}</td>
+          <td>{% if p.ok is none %}<span class="badge b-neutro">{{ 'Gerado no navegador' if modo_cloud else 'Não emitido' }}</span>
+              {% elif p.ok %}<span class="badge b-ok">Conforme</span>
+              {% else %}<span class="badge b-cr">Reprovado</span><div class="meta-tec">{% if p.esparsas %}Páginas esparsas: {{ p.esparsas|join(', ') }}. {% endif %}Fontes: {{ (p.fontes or [])|join(', ') }}</div>{% endif %}
+              {% if p.pendencias %}<div class="meta-tec">Emitido com {{ p.pendencias }} pendências</div>{% endif %}</td>
+          <td><div class="acoes">
+            {% if p.doc == 'xlsx' %}
+              <a class="btn btn-sec btn-sm" href="{{ url_for('baixar_xlsx_online') }}">Baixar XLSX</a>{{ m.tip('acao.xlsx_online', 'Baixar XLSX') }}
+            {% else %}
+              {% if p.existe and not modo_cloud %}<a class="btn btn-sec btn-sm" href="{{ url_for('baixar_arquivo', nome=p.arquivo) }}">Baixar</a>{{ m.tip('acao.baixar', 'Baixar') }}{% endif %}
+              <a class="btn btn-sec btn-sm" href="{{ url_for('previa', doc=p.doc) }}" target="_blank" rel="noopener">{{ 'Abrir / Salvar PDF' if modo_cloud else 'Prévia' }}</a>{{ m.tip('acao.imprimir_pdf' if modo_cloud else 'acao.previa', 'Abrir para PDF') }}
+              {% if not modo_cloud %}<form method="post" action="{{ url_for('post_emitir') }}">{{ m.csrf() }}<input type="hidden" name="doc" value="{{ p.doc }}"><button class="btn btn-sec btn-sm" type="submit">Emitir só este</button></form>{% endif %}
+            {% endif %}
+          </div></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="fonte">{% if modo_cloud %}Versão online: abra cada documento e use “Imprimir / Salvar em PDF” pelo navegador (A4).{% else %}Destino: <span class="mono">plataforma/exportacoes/dossie1/</span>. Renderização Playwright + Microsoft Edge; conferência com PyMuPDF.{% endif %}</p>
+</section>
+
+<section class="card" id="secoes">
+  {{ m.titulo_tabela('6.3', 'Textos narrativos dos documentos (' ~ secoes|length ~ ')', 'tab.secoes', 'erp.documento_secao') }}
+  <div class="progs">{{ m.progresso(secoes|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length, secoes|length, 'seções homologadas') }}</div>
+  {{ m.filtros('lista-secoes', 'Buscar: Canvas, TAM, PESTEL, riscos, preâmbulo…') }}
+  <div class="lista" id="lista-secoes">
+    {% for s in secoes %}
+      <details class="item" id="secao-{{ s.id }}" data-item data-status="{{ s.status_validacao }}" style="--cols: 170px minmax(0,1fr) auto">
+        <summary><span class="it-cod">{{ s.documento|rotulo('documento') }}</span><span class="it-tit">{{ s.titulo|md_inline }}<span class="it-sub mono">{{ s.codigo_secao }} · ordem {{ s.ordem }}</span></span><span class="it-meta">{{ m.badge(s.status_validacao) }}</span></summary>
+        <div class="corpo crud-bloco" data-crud-bloco>
+          {{ m.governanca(s) }}
+          {{ m.crud_ctrl() }}
+          <form method="post" action="{{ url_for('post_secao_salvar', sec_id=s.id) }}">
+            {{ m.csrf() }}
+            <fieldset class="crud-fs" disabled>
+            <div class="form-grid">
+              {% call m.field('Documento', 'doc.documento') %}<input type="text" value="{{ s.documento|rotulo('documento') }}" disabled>{% endcall %}
+              {% call m.field('Ordem', 'doc.ordem') %}<input type="text" data-fmt="int" name="ordem" value="{{ s.ordem }}">{% endcall %}
+              {% call m.field('Título', 'doc.titulo', 'span-2') %}<input type="text" name="titulo" value="{{ s.titulo }}" required>{% endcall %}
+              {% call m.field('Texto da seção', 'doc.conteudo', 'span-all') %}<textarea class="longo" name="conteudo_md">{{ s.conteudo_md }}</textarea>{% endcall %}
+              {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(s.status_validacao) }}{% endcall %}
+              {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-2') %}<input type="text" name="justificativa_contadora" value="{{ s.justificativa_contadora or '' }}">{% endcall %}
+            </div>
+            <div class="barra-acoes">{{ m.acoes() }}</div>
+            </fieldset>
+          </form>
+          <div class="barra-acoes">{{ m.excluir(url_for('post_secao_excluir', sec_id=s.id), 'a seção ' ~ s.codigo_secao) }}</div>
+        </div>
+      </details>
+    {% endfor %}
+    <details class="item">
+      <summary><span class="it-cod">+ Nova</span><span class="it-tit">Adicionar seção a um documento</span><span></span></summary>
+      <div class="corpo crud-bloco" data-crud-bloco>
+        {{ m.crud_ctrl('Habilitar inclusão', 'modo.incluir') }}
+        <form method="post" action="{{ url_for('post_secao_nova') }}">
+          {{ m.csrf() }}
+          <input type="hidden" name="status_validacao" value="pendente_revisao">
+          <fieldset class="crud-fs" disabled>
+          <div class="form-grid">
+            {% call m.field('Documento', 'doc.documento') %}{{ m.select_rotulos('documento', 'documento', 'plano_negocios') }}{% endcall %}
+            {% call m.field('Código da seção', 'doc.codigo') %}<input class="mono-in" type="text" name="codigo_secao" placeholder="S11">{% endcall %}
+            {% call m.field('Ordem', 'doc.ordem') %}<input type="text" data-fmt="int" name="ordem">{% endcall %}
+            {% call m.field('Título', 'doc.titulo', 'span-2') %}<input type="text" name="titulo" required>{% endcall %}
+            {% call m.field('Texto da seção', 'doc.conteudo', 'span-all') %}<textarea class="longo" name="conteudo_md"></textarea>{% endcall %}
+          </div>
+          <div class="barra-acoes"><span class="acoes"><button class="btn btn-primary" type="submit">Adicionar seção</button>{{ m.tip('acao.incluir', 'Adicionar') }}</span></div>
+          </fieldset>
+        </form>
+      </div>
+    </details>
+  </div>
+</section>
+{% endblock %}

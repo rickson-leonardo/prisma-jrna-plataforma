@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Contrato Social e MoU{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div>
+    <div class="kicker">Estação 2 · Operação ERP</div>
+    <h2>Instrumentos Societários — Contrato Social e Acordo de Sócias (MoU)</h2>
+    <div class="subtitle">Comparador v1 × apontamento da banca × redação atual, com detecção automática de conflitos entre os instrumentos.</div>
+  </div>
+</div>
+{{ m.guia('instrumentos') }}
+<div class="progs">
+  {{ m.progresso(totais.cs_homol, totais.cs_total, 'cláusulas do Contrato Social homologadas') }}
+  {{ m.progresso(totais.mou_homol, totais.mou_total, 'cláusulas do MoU homologadas') }}
+</div>
+
+{% if alertas %}
+<div class="zona"><span class="mundo mundo-sus">Sustentação</span><h2>Conflitos entre instrumentos</h2></div>
+{% for a in alertas %}
+  <div class="alerta {{ a.severidade }}">
+    {{ m.badge(a.severidade, 'severidade') }}
+    <div><strong>{{ a.titulo }}</strong><div>{{ a.descricao }}</div><div class="rec">{{ a.recomendacao }}</div></div>
+    {% if a.ancora %}<a class="btn btn-sec btn-sm" href="{{ a.ancora }}">Ir ao registro</a>{% else %}<span></span>{% endif %}
+  </div>
+{% endfor %}
+{% endif %}
+
+<div class="zona"><span class="mundo mundo-erp">Operação ERP</span><h2>Cláusulas</h2></div>
+<div class="tabs" role="navigation" aria-label="Instrumento">
+  <a href="{{ url_for('instrumentos', filtro='todos') }}" class="{{ 'active' if filtro == 'todos' }}">Todos os instrumentos</a>
+  <a href="{{ url_for('instrumentos', filtro='contrato') }}" class="{{ 'active' if filtro == 'contrato' }}">Contrato Social</a>
+  <a href="{{ url_for('instrumentos', filtro='mou') }}" class="{{ 'active' if filtro == 'mou' }}">Acordo / MoU</a>
+  <a href="{{ url_for('instrumentos', filtro='pendentes') }}" class="{{ 'active' if filtro == 'pendentes' }}">Ainda não homologadas</a>
+</div>
+{{ m.filtros('lista-clausulas', 'Buscar: haveres, quórum, Cl. 18, MOU-H…') }}
+
+<div class="lista" id="lista-clausulas">
+  {% for c in clausulas %}
+    <details class="item" id="clausula-{{ c.id }}" data-item data-status="{{ c.status_validacao }}" style="--cols: 128px minmax(0,1fr) auto">
+      <summary>
+        <span class="it-cod">{{ c.numero_clausula }}</span>
+        <span class="it-tit">{{ c.titulo|md_inline }}
+          <span class="it-sub">{% if c.aplica_contrato %}Contrato Social{% endif %}{% if c.aplica_contrato and c.aplica_mou %} + {% endif %}{% if c.aplica_mou %}MoU{% endif %}
+            {% if c.metodo_haveres != 'nao_aplicavel' %} · Haveres: {{ c.metodo_haveres|rotulo('haveres') }}{% endif %}
+            {% if c.quorum_tipo != 'nao_aplicavel' %} · Quórum: {{ c.quorum_tipo|rotulo('quorum') }}{% endif %}
+            {% if c.alcada_centavos %} · Alçada {{ c.alcada_centavos|brl }}{% endif %}
+            · <span class="mono">{{ c.codigo_criterio }}</span> · v{{ c.versao }}</span></span>
+        <span class="it-meta">{{ m.badge(c.status_validacao) }}</span>
+      </summary>
+      <div class="corpo crud-bloco" data-crud-bloco>
+        {{ m.governanca(c) }}
+        {{ m.crud_ctrl() }}
+        <form method="post" action="{{ url_for('post_clausula_salvar', cl_id=c.id) }}">
+          {{ m.csrf() }}<input type="hidden" name="filtro_atual" value="{{ filtro }}">
+          <fieldset class="crud-fs" disabled>
+          <div class="form-grid">
+            {% call m.field('Ordem', 'cl.ordem') %}<input type="text" data-fmt="int" name="ordem" value="{{ c.ordem }}">{% endcall %}
+            {% call m.field('Bloco da matriz', 'cl.bloco') %}<input class="mono-in" type="text" name="bloco" value="{{ c.bloco }}">{% endcall %}
+            {% call m.field('Critério da matriz', 'cl.codigo_criterio') %}<input class="mono-in" type="text" name="codigo_criterio" value="{{ c.codigo_criterio }}">{% endcall %}
+            {% call m.field('Número da cláusula', 'cl.numero') %}<input type="text" name="numero_clausula" value="{{ c.numero_clausula }}">{% endcall %}
+            {% call m.field('Título', 'cl.titulo', 'span-all') %}<input type="text" name="titulo" value="{{ c.titulo }}">{% endcall %}
+            {% call m.field('Apuração de haveres', 'cl.haveres') %}{{ m.select_rotulos('metodo_haveres', 'haveres', c.metodo_haveres) }}{% endcall %}
+            {% call m.field('Quórum', 'cl.quorum') %}{{ m.select_rotulos('quorum_tipo', 'quorum', c.quorum_tipo) }}{% endcall %}
+            {% call m.field('Alçada isolada (R$)', 'cl.alcada') %}<input type="text" data-fmt="brl" name="alcada_reais" value="{{ c.alcada_centavos|reais_in if c.alcada_centavos else '' }}">{% endcall %}
+            {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(c.status_validacao) }}{% endcall %}
+          </div>
+          <div style="margin: 10px 0 6px;">
+            <span class="lbl">Instrumento{{ m.tip('cl.aplica', 'Instrumento') }}</span>
+            <label class="check"><input type="checkbox" name="aplica_contrato" {{ 'checked' if c.aplica_contrato }}> Contrato Social{{ m.tip('cl.aplica', 'Contrato Social') }}</label>
+            <label class="check"><input type="checkbox" name="aplica_mou" {{ 'checked' if c.aplica_mou }}> Acordo / MoU{{ m.tip('cl.aplica', 'MoU') }}</label>
+          </div>
+          {% call m.field('Redação da cláusula (versão ' ~ c.versao ~ ')', 'cl.texto') %}<textarea class="longo" name="regra_texto">{{ c.regra_texto }}</textarea>{% endcall %}
+          <div class="form-grid" style="margin-top: 10px;">
+            {% call m.field('Justificativa técnica da contadora (para a defesa)', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ c.justificativa_contadora or '' }}" placeholder="Ex.: unificado em balanço de determinação (CC art. 1.031; CPC arts. 604 e 606).">{% endcall %}
+          </div>
+          <div class="barra-acoes">{{ m.acoes() }}</div>
+          </fieldset>
+        </form>
+        <div class="barra-acoes">{{ m.excluir(url_for('post_clausula_excluir', cl_id=c.id), 'a ' ~ c.numero_clausula) }}</div>
+      </div>
+    </details>
+  {% else %}<p class="vazio">Nenhuma cláusula neste filtro.</p>{% endfor %}
+  <details class="item">
+    <summary><span class="it-cod">+ Nova</span><span class="it-tit">Inserir nova cláusula societária</span><span></span></summary>
+    <div class="corpo crud-bloco" data-crud-bloco>
+      {{ m.crud_ctrl('Habilitar inclusão', 'modo.incluir') }}
+      <form method="post" action="{{ url_for('post_clausula_nova') }}">
+        {{ m.csrf() }}
+        <input type="hidden" name="status_validacao" value="pendente_revisao">
+        <fieldset class="crud-fs" disabled>
+        <div class="form-grid">
+          {% call m.field('Ordem', 'cl.ordem') %}<input type="text" data-fmt="int" name="ordem" value="200">{% endcall %}
+          {% call m.field('Bloco da matriz', 'cl.bloco') %}<input class="mono-in" type="text" name="bloco" value="E">{% endcall %}
+          {% call m.field('Critério da matriz', 'cl.codigo_criterio') %}<input class="mono-in" type="text" name="codigo_criterio" value="E2">{% endcall %}
+          {% call m.field('Número da cláusula', 'cl.numero') %}<input type="text" name="numero_clausula" placeholder="Contrato Cl. 24ª" required>{% endcall %}
+          {% call m.field('Título', 'cl.titulo', 'span-all') %}<input type="text" name="titulo" required>{% endcall %}
+          {% call m.field('Apuração de haveres', 'cl.haveres') %}{{ m.select_rotulos('metodo_haveres', 'haveres', 'nao_aplicavel') }}{% endcall %}
+          {% call m.field('Quórum', 'cl.quorum') %}{{ m.select_rotulos('quorum_tipo', 'quorum', 'nao_aplicavel') }}{% endcall %}
+          {% call m.field('Alçada isolada (R$)', 'cl.alcada') %}<input type="text" data-fmt="brl" name="alcada_reais" placeholder="15.000,00">{% endcall %}
+        </div>
+        <div style="margin: 10px 0 6px;">
+          <label class="check"><input type="checkbox" name="aplica_contrato" checked> Contrato Social{{ m.tip('cl.aplica', 'Contrato Social') }}</label>
+          <label class="check"><input type="checkbox" name="aplica_mou"> Acordo / MoU{{ m.tip('cl.aplica', 'MoU') }}</label>
+        </div>
+        {% call m.field('Redação da cláusula', 'cl.texto') %}<textarea class="longo" name="regra_texto" required></textarea>{% endcall %}
+        <div class="form-grid" style="margin-top: 10px;">{% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora">{% endcall %}</div>
+        <div class="barra-acoes"><span class="acoes"><button class="btn btn-primary" type="submit">Criar cláusula</button>{{ m.tip('acao.incluir', 'Criar') }}</span></div>
+        </fieldset>
+      </form>
+    </div>
+  </details>
+</div>
+{% endblock %}

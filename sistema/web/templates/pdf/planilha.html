@@ -1,0 +1,28 @@
+{% extends "_base.html" %}
+{% import "_m.html" as m with context %}
+{% block capa %}
+{{ m.ficha([('Cenário', (cenario.nome ~ ' (' ~ cenario.codigo_cenario ~ ')') if cenario else 'Não definido'), ('Arquivo editável', '02_Plano_Financeiro_PRISMA_JRNA.xlsx')]) }}
+<h2>Leia-me</h2>
+<table class="keep">
+  <thead><tr><th>Legenda de células</th><th>Significado</th></tr></thead>
+  <tbody>
+    <tr><td style="color:#1D4ED8;background:#EFF6FF" class="num">1.234,56</td><td>Premissa digitada pela contadora (azul)</td></tr>
+    <tr><td class="num">1.234,56</td><td>Calculado pelo motor contábil — preto</td></tr>
+    <tr><td style="color:#15803D" class="num">1.234,56</td><td>Vínculo com outro módulo, por exemplo o capital do QSA (verde)</td></tr>
+    <tr><td class="num">(1.234,56) / –</td><td>Negativo entre parênteses; zero exibido como traço</td></tr>
+  </tbody>
+</table>
+<p class="fonte">Abas: {% for a in abas %}<span class="mono">{{ a.nome }}</span>{{ ', ' if not loop.last }}{% endfor %}. Valores em R$.</p>
+{% endblock %}
+{% block corpo %}
+{% if not abas %}
+<div class="caixa at"><span class="rot">Atenção</span><p>Nenhum cenário oficial definido: a planilha não pode ser emitida.</p></div>
+{% endif %}
+{% for a in abas %}
+<section class="land">
+  <h2>{{ a.titulo }}</h2>
+  <p class="sheet-leg">Aba <span class="mono">{{ a.nome }}</span> · {{ a.subtitulo }}</p>
+  {% for bl in a.blocos %}{{ m.tabela_xl(bl) }}{% endfor %}
+</section>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "_base.html" %}
+{% import "_m.html" as m with context %}
+{% set secs = secoes.get('plano_negocios', []) %}
+{% block capa %}
+{{ m.ficha([('Cenário financeiro oficial', (cenario.nome ~ ' — ' ~ rot(cenario.regime_simulacao, 'regime')) if cenario else 'Não definido'), ('Situação do cenário', m.badge(cenario.status_validacao) if cenario else '—')]) }}
+<h2>Conteúdo</h2>
+<ol class="sumario">
+  {% for s in secs if s.ordem < 8 %}<li value="{{ s.ordem }}">{{ s.titulo|md_inline }}</li>{% endfor %}
+  <li value="8">Plano financeiro (calculado pelo motor contábil)</li>
+  {% for s in secs if s.ordem > 8 %}<li value="{{ s.ordem }}">{{ s.titulo|md_inline }}</li>{% endfor %}
+</ol>
+{% endblock %}
+
+{% macro sintese() %}
+{% if cenario %}
+{% set a1, a2, a3 = anos.get(1), anos.get(2), anos.get(3) %}
+<p class="tt">Quadro-síntese — indicadores vivos do cenário oficial (valores em R$)</p>
+<table class="keep">
+  <thead><tr><th>Indicador</th><th class="num">Ano 1</th><th class="num">Ano 2</th><th class="num">Ano 3</th></tr></thead>
+  <tbody>
+    <tr><td>Porte estimado</td>{% for a in (a1, a2, a3) %}<td class="num">{{ a.porte_estimado }}</td>{% endfor %}</tr>
+    <tr><td>Receita bruta</td>{% for a in (a1, a2, a3) %}<td class="num">{{ brl_tab(a.receita_bruta_centavos) }}</td>{% endfor %}</tr>
+    <tr><td>DAS (Simples Nacional)</td>{% for a in (a1, a2, a3) %}<td class="num">{{ brl_tab(a.das_centavos) }}</td>{% endfor %}</tr>
+    <tr><td>Lucro líquido</td>{% for a in (a1, a2, a3) %}<td class="num">{{ brl_tab(a.lucro_liquido_centavos) }}</td>{% endfor %}</tr>
+    <tr><td>Fator R anual</td>{% for a in (a1, a2, a3) %}<td class="num">{{ pct(a.fator_r_anual_micro) }}</td>{% endfor %}</tr>
+  </tbody>
+</table>
+<p class="fonte">VPL {{ brl(indicadores.vpl_centavos) }} · TIR {{ num(indicadores.tir_pct) }}% · payback descontado {{ num(indicadores.payback_descontado_meses, 1) }} meses · LTV/CAC {{ num(indicadores.ltv_cac) }}×. Fonte: motor_contabil.py (cenário <span class="mono">{{ cenario.codigo_cenario }}</span>).</p>
+{% endif %}
+{% endmacro %}
+
+{% macro financeiro() %}
+<h1>8. Plano financeiro (calculado pelo motor contábil){{ m.marca(cenario.status_validacao if cenario else 'pendente_revisao') }}</h1>
+{% if not cenario %}
+<div class="caixa at"><span class="rot">Atenção</span><p>Nenhum cenário oficial definido na Estação 4. A seção financeira não pode ser emitida.</p></div>
+{% else %}
+{% set a0 = anos.get(0) %}
+<p>Todos os quadros desta seção são lidos do PostgreSQL a partir do cenário oficial <strong>{{ cenario.nome }}</strong> (tese: {{ rot(cenario.regime_simulacao, 'regime') }}), recalculado pelo motor contábil: Simples Nacional progressivo por faixa de RBT12, Fator R, DRE, fluxo de caixa, balanço fechado por partidas dobradas e análise de investimento. Nenhum número foi digitado no documento.</p>
+
+<h2>8.1 Usos, fontes e tributação</h2>
+<p class="tt">Tabela 8.1 — Usos e fontes na abertura (M0, valores em R$)</p>
+<table class="keep">
+  <thead><tr><th>Fontes</th><th class="num">Valor</th><th>Usos</th><th class="num">Valor</th></tr></thead>
+  <tbody>
+    <tr><td>Capital social integralizado</td><td class="num">{{ brl_tab(a0.bp_capital_social_centavos) }}</td><td>Imobilizado (CAPEX M0)</td><td class="num">{{ brl_tab(a0.bp_imobilizado_bruto_centavos) }}</td></tr>
+    <tr><td></td><td class="num"></td><td>Capital de giro (caixa)</td><td class="num">{{ brl_tab(a0.bp_caixa_centavos) }}</td></tr>
+    <tr class="total"><td>Total das fontes</td><td class="num">{{ brl_tab(a0.bp_capital_social_centavos) }}</td><td>Total dos usos</td><td class="num">{{ brl_tab(a0.bp_ativo_total_centavos) }}</td></tr>
+  </tbody>
+</table>
+<p class="fonte">Fonte: erp.orcamento_demonstrativo_anual (Abertura M0). Capital vinculado ao QSA: {{ brl(capital_qsa_centavos) }}.</p>
+<p>Receita segregada em {{ pct(cenario.pct_cnae_principal_micro, 1) }} no CNAE 6920-6/01 (Anexo III) e o restante no 6920-6/02, sujeito ao Fator R (LC 123/2006, art. 18, §§ 5º-J e 5º-M).
+{% for y in (1, 2, 3) %}{% set a = anos.get(y) %}No ano {{ y }} ({{ a.porte_estimado }}), o Fator R anual é de {{ pct(a.fator_r_anual_micro) }} ({{ 'abaixo' if a.fator_r_anual_micro < 280000 else 'acima' }} de 28%) e a alíquota efetiva média do DAS é de {{ pct(a.aliquota_efetiva_anual_micro) }}. {% endfor %}
+{% if indicadores.mes_transicao_epp %}A receita acumulada ultrapassa o limite de R$ 360 mil da microempresa no mês {{ indicadores.mes_transicao_epp }} da projeção (LC 123/2006, art. 3º, § 9º).{% endif %}</p>
+
+<section class="land">
+<h2>8.2 Fluxo de caixa mensal do ano 1 e ponto de equilíbrio</h2>
+<p class="tt">Tabela 8.2 — Fluxo de caixa M0–M12 (valores em R$)</p>
+<table class="keep">
+  <thead><tr><th>Mês</th><th class="num">Clientes</th><th class="num">Receita</th><th class="num">Recebimentos</th><th class="num">DAS pago</th><th class="num">Pró-labore</th><th class="num">Folha CLT</th><th class="num">OPEX</th><th class="num">CAC</th><th class="num">FCO</th><th class="num">CAPEX</th><th class="num">Saldo caixa</th></tr></thead>
+  <tbody>
+    {% for x in mensal if x.mes_ordem <= 12 %}
+      <tr><td class="num">{{ x.competencia_ym }}</td><td class="num">{{ x.clientes_ativos }}</td><td class="num">{{ brl_tab(x.receita_bruta_centavos) }}</td><td class="num">{{ brl_tab(x.recebimentos_centavos) }}</td>
+      <td class="num">{{ brl_tab(-x.das_pago_caixa_centavos) }}</td><td class="num">{{ brl_tab(-x.prolabore_centavos) }}</td><td class="num">{{ brl_tab(-x.folha_clt_encargos_centavos) }}</td>
+      <td class="num">{{ brl_tab(-x.opex_fixo_centavos) }}</td><td class="num">{{ brl_tab(-x.cac_despesa_centavos) }}</td><td class="num">{{ brl_tab(x.fco_centavos) }}</td>
+      <td class="num">{{ brl_tab(-x.capex_saida_centavos) }}</td><td class="num"><strong>{{ brl_tab(x.saldo_caixa_centavos) }}</strong></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="fonte">Fonte: erp.orcamento_projecao_mensal. Meses 13 a 36: planilha 02 (aba Projecao_Mensal_M0_M36).</p>
+<p class="tt">Tabela 8.3 — Ponto de equilíbrio em duas fases</p>
+<table class="keep">
+  <thead><tr><th>Fase</th><th class="num">Clientes de equilíbrio</th><th class="num">Receita mensal de equilíbrio (R$)</th><th>Critério</th></tr></thead>
+  <tbody>
+    <tr><td>Fase 1 — M1 a M3 (pró-labore {{ brl(cenario.prolabore_m1_3_mensal_centavos) }})</td><td class="num">{{ num(indicadores.break_even_fase1_clientes) }}</td><td class="num">{{ brl_tab(indicadores.break_even_fase1_receita_centavos) }}</td><td>Custos fixos ÷ margem de contribuição unitária</td></tr>
+    <tr><td>Fase 2 — M4 a M12 (pró-labore {{ brl(cenario.prolabore_m4_12_mensal_centavos) }})</td><td class="num">{{ num(indicadores.break_even_fase2_clientes) }}</td><td class="num">{{ brl_tab(indicadores.break_even_fase2_receita_centavos) }}</td><td>Inclui pró-labore nos custos fixos</td></tr>
+  </tbody>
+</table>
+</section>
+
+<h2>8.3 DRE e balanço patrimonial — 3 anos</h2>
+{% set aba_dre = abas|selectattr('nome', 'equalto', 'DRE_e_BP_3_Anos')|first %}
+{% for bl in aba_dre.blocos %}{{ m.tabela_xl(bl, 'keep') }}{% endfor %}
+
+<h2>8.4 Viabilidade, unit economics, cenários e sensibilidade</h2>
+{% set aba_v = abas|selectattr('nome', 'equalto', 'Viabilidade')|first %}
+{{ m.tabela_xl(aba_v.blocos[0], 'keep') }}
+{% set aba_c = abas|selectattr('nome', 'equalto', 'Cenarios_Sensibilidade')|first %}
+{{ m.tabela_xl(aba_c.blocos[0], 'keep') }}
+{{ m.tabela_xl(aba_c.blocos[1], 'keep') }}
+{% endif %}
+{% endmacro %}
+
+{% block corpo %}
+{% set ns = namespace(fin=False) %}
+{% for s in secs %}
+  {% if s.ordem > 8 and not ns.fin %}{{ financeiro() }}{% set ns.fin = True %}{% endif %}
+  <h1>{{ s.ordem }}. {{ s.titulo|md_inline }}{{ m.marca(s.status_validacao) }}</h1>
+  {{ md(s.conteudo_md) }}
+  {% if s.codigo_secao == 'S01' %}{{ sintese() }}{% endif %}
+{% endfor %}
+{% if not ns.fin %}{{ financeiro() }}{% endif %}
+{% endblock %}

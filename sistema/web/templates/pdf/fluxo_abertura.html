@@ -1,0 +1,85 @@
+{% extends "_base.html" %}
+{% import "_m.html" as m with context %}
+{% block capa %}
+{{ m.ficha([('Etapas no workflow', num(etapas|length, 0) ~ ' etapas em 3 raias'), ('Abrangência', 'Blocos A a H da matriz do Fluxo de Abertura no DF')]) }}
+<h2>Conteúdo</h2>
+<ol class="sumario">
+  {% for k, nome in blocos_fluxo.items() %}<li>Bloco {{ k }} — {{ nome }}</li>{% endfor %}
+  <li>Órgãos licenciadores e risco</li><li>Balanço de abertura (M0)</li><li>Figura 1 — BPMN</li><li>Cadeia de evidências e referências</li>
+</ol>
+{% endblock %}
+{% block corpo %}
+{% set ap = secao('fluxo_abertura', 'apresentacao') %}
+{% if ap %}<div class="caixa in"><span class="rot">Escopo{{ m.marca(ap.status_validacao) }}</span>{{ md(ap.conteudo_md) }}</div>{% endif %}
+
+{% for k, nome in blocos_fluxo.items() %}
+  {% set lista = etapas_por_bloco.get(k, []) %}
+  {% if lista %}
+  <h1>Bloco {{ k }} — {{ nome }}</h1>
+  {% for e in lista %}
+    <div class="etapa">
+      <h3><span class="mono">{{ e.ordem }} · {{ e.codigo }}</span> — {{ e.nome_etapa }}{{ m.marca(e.status_validacao) }}</h3>
+      <dl>
+        <dt>Responsável</dt><dd>{{ rot(e.raia_responsavel, 'raia') }}</dd>
+        <dt>Órgão / norma</dt><dd>{{ e.orgao }}</dd>
+        <dt>Portal oficial</dt><dd>{{ e.portal_url or '—' }}{% if e.data_consulta %} (consulta em <span class="mono">{{ e.data_consulta.strftime('%d/%m/%Y') }}</span>){% endif %}</dd>
+        <dt>Entrada</dt><dd>{{ e.entrada_docs }}</dd>
+        <dt>Saída / evidência</dt><dd>{{ e.saida_doc }}</dd>
+        <dt>Prazo legal</dt><dd>{{ e.prazo_legal or '—' }}</dd>
+        <dt>Risco RLE</dt><dd>{{ rot(e.classificacao_risco, 'risco') }}</dd>
+        <dt>Em exigência</dt><dd>{{ e.regra_retorno_exigencia }}</dd>
+      </dl>
+    </div>
+  {% endfor %}
+  {% endif %}
+  {% if k == 'F' %}
+    {{ m.secao_txt('fluxo_abertura', 'F_orgaos', 'h2') }}
+    {{ m.secao_txt('fluxo_abertura', 'F_risco', 'h2') }}
+  {% endif %}
+{% endfor %}
+
+<section class="figura">
+  <h2>Figura 1 — BPMN do processo de abertura no Distrito Federal</h2>
+  {{ bpmn_svg }}
+  <p class="legenda">Gerado do banco (erp.processo_legalizacao_etapa) em SVG vetorial, sem dependência de internet. Raias por responsável; gateway exclusivo de risco RLE; tarefa tracejada = desvio de alto risco não aplicável ao escritório. Notação OMG BPMN 2.0.</p>
+</section>
+
+<section class="land">
+  <h2>Cadeia de evidências documentais e prazos</h2>
+  <p class="tt">Tabela — Evidência gerada por etapa (insumo obrigatório da etapa seguinte)</p>
+  <table class="keep">
+    <thead><tr><th>Etapa</th><th>Evidência gerada</th><th>Órgão / sistema</th><th>Prazo</th><th>Protocolo</th><th>Execução</th><th>Situação</th></tr></thead>
+    <tbody>
+      {% for e in etapas %}
+        <tr><td><span class="mono">{{ e.ordem }} · {{ e.codigo }}</span></td><td>{{ e.saida_doc }}</td><td>{{ e.orgao|truncate(70) }}</td><td>{{ e.prazo_legal or '—' }}</td><td><span class="mono">{{ e.protocolo_simulado or '—' }}</span></td><td>{{ rot(e.status, 'execucao') }}</td><td>{{ m.badge(e.status_validacao) }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="fonte">Fonte: erp.processo_legalizacao_etapa. Protocolos são simulados para fins didáticos.</p>
+</section>
+<div class="manter">
+  {% if anos.get(0) %}
+    {% set a0 = anos.get(0) %}
+    <h1>Bloco G — Balanço de abertura (M0) e lançamentos de constituição</h1>
+    <p class="tt">Tabela — Balanço patrimonial de abertura (valores em R$)</p>
+    <table class="keep">
+      <thead><tr><th>Ativo</th><th class="num">Valor</th><th>Passivo + patrimônio líquido</th><th class="num">Valor</th></tr></thead>
+      <tbody>
+        <tr><td>Caixa e equivalentes</td><td class="num">{{ brl_tab(a0.bp_caixa_centavos) }}</td><td>Passivo</td><td class="num">{{ brl_tab(a0.bp_passivo_total_centavos) }}</td></tr>
+        <tr><td>Imobilizado</td><td class="num">{{ brl_tab(a0.bp_imobilizado_bruto_centavos) }}</td><td>Capital social</td><td class="num">{{ brl_tab(a0.bp_capital_social_centavos) }}</td></tr>
+        <tr class="total"><td>Ativo total</td><td class="num">{{ brl_tab(a0.bp_ativo_total_centavos) }}</td><td>Passivo + PL</td><td class="num">{{ brl_tab(a0.bp_passivo_total_centavos + a0.bp_pl_total_centavos) }}</td></tr>
+      </tbody>
+    </table>
+    <p class="fonte">Check Ativo − Passivo − PL = {{ brl(a0.bp_diferenca_centavos) }} {{ '(Conforme)' if a0.bp_diferenca_centavos == 0 else '(Crítico)' }}. Fonte: erp.orcamento_demonstrativo_anual (M0), cenário oficial.</p>
+    <p class="tt">Tabela — Lançamentos de constituição (partidas dobradas)</p>
+    <table class="keep">
+      <thead><tr><th>Lançamento</th><th>Débito</th><th>Crédito</th><th class="num">Valor (R$)</th></tr></thead>
+      <tbody>
+        <tr><td>Subscrição e integralização do capital</td><td>Caixa e equivalentes</td><td>Capital social</td><td class="num">{{ brl_tab(a0.bp_capital_social_centavos) }}</td></tr>
+        <tr><td>Aquisição do imobilizado inicial</td><td>Imobilizado</td><td>Caixa e equivalentes</td><td class="num">{{ brl_tab(a0.bp_imobilizado_bruto_centavos) }}</td></tr>
+      </tbody>
+    </table>
+  {% endif %}
+</div>
+{{ m.secao_txt('fluxo_abertura', 'referencias', 'h1') }}
+{% endblock %}

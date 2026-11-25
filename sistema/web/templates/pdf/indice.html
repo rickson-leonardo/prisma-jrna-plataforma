@@ -1,0 +1,90 @@
+{% extends "_base.html" %}
+{% import "_m.html" as m with context %}
+{% block capa %}
+{{ m.ficha([('Cenário financeiro oficial', (cenario.nome if cenario else 'Não definido')), ('Sócias', socios|map(attribute='nome_canonico')|join(' e '))]) }}
+<h2>Sumário do pacote</h2>
+<ol class="sumario">
+  {% for k, v in documentos.items() %}<li><span class="mono">{{ v.arquivo }}</span></li>{% endfor %}
+</ol>
+{% endblock %}
+{% block corpo %}
+<h1>1. Inventário dos documentos do Dossiê 1</h1>
+<p class="tt">Tabela 1 — Documentos emitidos do banco e situação de homologação</p>
+<table>
+  <thead><tr><th>Doc.</th><th>Arquivo</th><th>Conteúdo</th><th>Situação</th></tr></thead>
+  <tbody>
+    {% set desc = {
+      'indice': 'Capa executiva, evolução frente à v1, coerência cruzada, rastreabilidade e quarentena.',
+      'pesquisa': 'Q1–Q10 com norma, link e data de acesso; decisões preliminares; uso de IA na pesquisa.',
+      'plano_negocios': 'Plano completo com a seção financeira sincronizada ao motor contábil.',
+      'planilha': 'Premissas, fluxo M0–M36, DRE, balanço, viabilidade, cenários e sensibilidade.',
+      'contrato_social': 'Preâmbulo, cláusulas, quadro de quotas e anexos I a IV.',
+      'memorando': 'Preâmbulo, cláusulas, quadro de coerência MoU × Contrato × Plano e testemunhas.',
+      'fluxo_abertura': 'Blocos A–H, oito órgãos licenciadores, balanço de abertura, BPMN e evidências.',
+      'ia': 'Compilação do diário de uso de IA com revisão humana.'} %}
+    {% for k, v in documentos.items() %}
+      <tr><td class="num">{{ v.nn }}</td><td><span class="mono">{{ v.arquivo }}</span></td><td>{{ desc[k] }}</td><td>{% if k == 'indice' %}{{ m.badge('pendente_revisao' if pendencias_total else 'homologado_contadora') }}{% else %}{{ m.badge('homologado_contadora') if not doc_pend(k) else m.badge('pendente_revisao') }}{% endif %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="fonte">Fonte: auditoria.vw_pendencias_quarentena na data de emissão. Planilha editável: <span class="mono">02_Plano_Financeiro_PRISMA_JRNA.xlsx</span>.</p>
+
+<h1>2. Quadro de evolução: v1 × situação atual</h1>
+<p>A situação atual vem do placar IABP calculado pelo banco. Critérios ainda não avaliados pela contadora contam como zero: a nota não é inflada.</p>
+<p class="tt">Tabela 2 — Placar de conformidade por matriz (valores atuais)</p>
+<table>
+  <thead><tr><th>Matriz</th><th class="num">Critérios aplicáveis</th><th class="num">Apontados na v1</th><th class="num">Avaliados agora</th><th class="num">IABP atual</th><th class="num">Nota atual (0–10)</th></tr></thead>
+  <tbody>
+    {% for p in placar %}
+      <tr><td>{{ rot(p.matriz, 'matriz') }}</td><td class="num">{{ p.total_itens_aplicaveis }}</td><td class="num">{{ p.total_itens_v1_apontados }}</td>
+      <td class="num">{{ p.total_itens_avaliados }}</td><td class="num">{{ num(p.iabp_total) }}</td><td class="num">{{ num(p.nota_estimada_10) }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="fonte">Fonte: auditoria.vw_placar_conformidade. IABP = [Σ (média do bloco ÷ 4 × peso) ÷ Σ pesos] × 100.</p>
+{{ m.secao_txt('indice', 'evolucao_v1', 'h2') }}
+
+<h1>3. Matriz de coerência cruzada (MoU × Contrato × Plano)</h1>
+<p class="tt">Tabela 3 — Parâmetros-mestre comparados a partir do banco</p>
+<table>
+  <thead><tr><th>Eixo</th><th>MoU</th><th>Contrato Social</th><th>Plano / Cadastro</th><th>Situação</th></tr></thead>
+  <tbody>
+    {% for c in coerencia %}
+      <tr><td>{{ c.eixo }}</td><td>{{ c.mou }}</td><td>{{ c.contrato }}</td><td>{{ c.plano }}</td>
+      <td>{% if c.ok is none %}<span class="badge b-in">Conferir texto</span>{% elif c.ok %}<span class="badge b-ok">Conforme</span>{% else %}<span class="badge b-cr">Crítico</span>{% endif %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="fonte">Fonte: erp.instrumento_societario_clausula (haveres e alçada parametrizados), erp.participacao_societaria, erp.enquadramento_historico e erp.orcamento_cenario (cenário oficial).</p>
+
+<h2>Alertas ativos do motor de coerência</h2>
+{% if alertas %}
+<table>
+  <thead><tr><th>Severidade</th><th>Regra</th><th>Descrição</th><th>Ação recomendada</th></tr></thead>
+  <tbody>{% for a in alertas %}<tr><td>{{ m.badge(a.severidade, 'severidade') }}</td><td><span class="mono">{{ a.codigo_regra }}</span></td><td>{{ a.titulo }}. {{ a.descricao }}</td><td>{{ a.recomendacao }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p>Nenhum alerta ativo na data de emissão.</p>{% endif %}
+<p class="fonte">Fonte: auditoria.alerta_coerencia.</p>
+
+<h1>4. Rastreabilidade dos critérios avaliados</h1>
+{% if rastreabilidade %}
+<table>
+  <thead><tr><th>Matriz</th><th>Código</th><th>Critério</th><th class="num">Nota</th><th>Onde está atendido</th><th>Situação</th></tr></thead>
+  <tbody>{% for r in rastreabilidade %}<tr><td>{{ rot(r.matriz, 'matriz') }}</td><td><span class="mono">{{ r.codigo }}</span></td><td>{{ r.descricao }}</td><td class="num">{{ 'NA' if r.nao_aplicavel else (r.nota if r.nota is not none else '–') }}</td><td>{{ r.referencia_localizacao or '—' }}</td><td>{{ m.badge(r.status_validacao) }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}
+<div class="caixa at"><span class="rot">Atenção</span><p>Nenhum critério das matrizes foi avaliado pela contadora até a data de emissão. A rastreabilidade critério × documento será preenchida na Estação 5 do sistema.</p></div>
+{% endif %}
+
+<h1>5. Declaração do status de quarentena e homologação</h1>
+<p>Registros importados da 1ª entrega (v1) e do rascunho v2 entram em quarentena e só são considerados válidos após revisão e homologação expressa da contadora responsável. Situação real na data de emissão:</p>
+<p class="tt">Tabela 4 — Quarentena por módulo</p>
+<table>
+  <thead><tr><th>Módulo</th><th class="num">Total</th><th class="num">Homologados</th><th class="num">Inconsistências</th><th class="num">Pendentes</th></tr></thead>
+  <tbody>
+    {% for q in quarentena %}<tr><td>{{ rot(q.modulo, 'modulo') }}</td><td class="num">{{ q.total }}</td><td class="num">{{ q.homologados }}</td><td class="num">{{ q.inconsistencias }}</td><td class="num">{{ q.pendentes }}</td></tr>{% endfor %}
+    <tr class="total"><td>Total</td><td class="num">{{ quarentena|sum(attribute='total') }}</td><td class="num">{{ quarentena|sum(attribute='homologados') }}</td><td class="num">{{ quarentena|sum(attribute='inconsistencias') }}</td><td class="num">{{ quarentena|sum(attribute='pendentes') }}</td></tr>
+  </tbody>
+</table>
+<p class="fonte">Fonte: auditoria.vw_pendencias_quarentena.</p>
+{% endblock %}

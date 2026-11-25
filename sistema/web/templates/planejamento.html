@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Planejamento financeiro e tributário{% endblock %}
+{% macro premissa(rotulo, chave, nome, valor, fmt='brl', cls='') -%}
+  {% call m.field(rotulo, chave, cls) %}<input class="in-premissa" type="text" data-fmt="{{ fmt }}" name="{{ nome }}" value="{{ valor }}">{% endcall %}
+{%- endmacro %}
+{% block content %}
+<div class="topbar">
+  <div>
+    <div class="kicker">Estação 4 · Operação ERP</div>
+    <h2>Planejamento financeiro, tributário e viabilidade (36 meses)</h2>
+    <div class="subtitle">Simples Nacional progressivo com Fator R, DRE, fluxo de caixa, balanço fechado a R$ 0,00 e VPL/TIR — tudo calculado pelo motor contábil.</div>
+  </div>
+</div>
+{{ m.guia('planejamento') }}
+<div class="progs">{{ m.progresso(cenarios|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length, cenarios|length, 'cenários homologados') }}</div>
+
+{% for a in alertas %}
+  <div class="alerta {{ a.severidade }}">
+    {{ m.badge(a.severidade, 'severidade') }}
+    <div><strong>{{ a.titulo }}</strong><div>{{ a.descricao }}</div><div class="rec">{{ a.recomendacao }}</div></div><span></span>
+  </div>
+{% endfor %}
+
+<section class="card">
+  {{ m.titulo_tabela('Tabela 4.1', 'Comparativo de Teses Tributárias (valores em R$)', 'tab.teses', 'erp.orcamento_cenario') }}
+  <div class="tabela-wrap">
+  <table>
+    <thead><tr>
+      {{ m.th('Cenário', 'col.cenario') }}{{ m.th('Tese tributária', 'col.regime') }}{{ m.th('DAS ano 1', 'col.das', 'num') }}{{ m.th('Fator R A1', 'col.fator_r', 'num') }}
+      {{ m.th('Lucro A1', 'col.lucro', 'num') }}{{ m.th('DAS 3 anos', 'col.das', 'num') }}{{ m.th('VPL', 'col.vpl', 'num') }}{{ m.th('TIR', 'col.tir', 'num') }}{{ m.th('Situação', 'col.status') }}
+    </tr></thead>
+    <tbody>
+      {% for c in cenarios %}
+        {% set ind = c.indicadores_json or {} %}
+        <tr id="cenario-{{ c.id }}" class="{{ 'sel' if selecionado and c.id == selecionado.id }}">
+          <td><a href="{{ url_for('planejamento', cenario_id=c.id) }}#premissas"><strong>{{ c.nome }}</strong></a><div class="meta-tec mono">{{ c.codigo_cenario }}</div>{% if c.eh_oficial %}<span class="badge b-ok">Oficial</span>{% endif %}</td>
+          <td><span title="{{ c.regime_simulacao }}">{{ c.regime_simulacao|rotulo('regime') }}</span></td>
+          <td class="num calc">{{ c.a1_das|brl_tab }}</td>
+          <td class="num calc">{{ c.a1_fator_r|pct_micro }}</td>
+          <td class="num calc">{{ c.a1_lucro|brl_tab }}</td>
+          <td class="num calc">{{ ind.get('das_3_anos_centavos', 0)|brl_tab }}</td>
+          <td class="num calc">{{ ind.get('vpl_centavos', 0)|brl_tab }}</td>
+          <td class="num calc">{{ ind.get('tir_pct')|num_br }}%</td>
+          <td>{{ m.badge(c.status_validacao) }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <details class="item" style="margin-top: 10px; border: 1px solid var(--l200); border-radius: 8px;">
+    <summary><span class="it-cod">+ Novo</span><span class="it-tit">Criar cenário personalizado</span><span></span><span></span></summary>
+    <div class="corpo crud-bloco" data-crud-bloco>
+      {{ m.crud_ctrl('Habilitar criação', 'modo.incluir') }}
+      <form method="post" action="{{ url_for('post_cenario_novo') }}">
+        {{ m.csrf() }}
+        <input type="hidden" name="status_validacao" value="pendente_revisao">
+        <fieldset class="crud-fs" disabled>
+        <div class="form-grid">
+          {% call m.field('Código do cenário', 'cen.codigo') %}<input class="mono-in" type="text" name="codigo_cenario" value="novo_teste" required>{% endcall %}
+          {% call m.field('Nome do cenário', 'cen.nome', 'span-2') %}<input type="text" name="nome" value="Novo cenário simulado" required>{% endcall %}
+          {% call m.field('Tese tributária', 'cen.regime') %}{{ m.select_rotulos('regime_simulacao', 'regime', 'simples_segregado') }}{% endcall %}
+          {{ premissa('Ticket médio mensal (R$)', 'cen.ticket', 'ticket_medio_reais', '1.500,00') }}
+          {{ premissa('Novos clientes / mês', 'cen.novos', 'novos_clientes_mes', '2', 'int') }}
+          {{ premissa('Receita no CNAE 6920-6/01 (%)', 'cen.pct_cnae', 'pct_cnae_principal', '85,00', 'pct') }}
+          {{ premissa('Pró-labore M1–M3 (R$)', 'cen.pl13', 'prolabore_m1_3_reais', '0,00') }}
+          {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora">{% endcall %}
+        </div>
+        <div class="barra-acoes"><span class="acoes"><button class="btn btn-primary" type="submit">Criar e calcular</button>{{ m.tip('acao.criar_cenario', 'Criar e calcular') }}</span></div>
+        </fieldset>
+      </form>
+    </div>
+  </details>
+</section>
+
+{% if selecionado %}
+{% set s = selecionado %}
+<section class="card" id="premissas" data-crud-bloco>
+  <div class="tt">
+    <h3>Premissas do cenário — {{ s.nome }}{{ m.tip('tab.teses', 'Premissas') }}</h3>
+    <div class="legenda">
+      <span><span class="sw" style="background: var(--premissa-bg); border-color: var(--premissa);"></span>Premissa digitada{{ m.tip('leg.premissa', 'Premissa') }}</span>
+      <span><span class="sw" style="background: var(--g900); border-color: var(--g900);"></span>Calculado pelo motor{{ m.tip('leg.calculado', 'Calculado') }}</span>
+      <span><span class="sw" style="background: var(--vinculo); border-color: var(--vinculo);"></span>Vinculado a outro módulo{{ m.tip('leg.vinculado', 'Vinculado') }}</span>
+    </div>
+  </div>
+  <p>{{ m.badge(s.status_validacao) }} {% if s.eh_oficial %}<span class="badge b-ok">Cenário oficial</span>{% endif %} <span class="meta-tec">Origem: {{ s.origem_registro|rotulo('origem') }}{{ m.tip('gov.origem', 'Origem') }}</span></p>
+  {{ m.governanca(s) }}
+  {{ m.crud_ctrl('Habilitar edição das premissas') }}
+  <form method="post" action="{{ url_for('post_cenario_salvar', cen_id=s.id) }}">
+    {{ m.csrf() }}
+    <fieldset class="crud-fs" disabled>
+    <div class="form-grid">
+      {% call m.field('Nome do cenário', 'cen.nome', 'span-2') %}<input type="text" name="nome" value="{{ s.nome }}">{% endcall %}
+      {% call m.field('Tese tributária', 'cen.regime', 'span-2') %}{{ m.select_rotulos('regime_simulacao', 'regime', s.regime_simulacao) }}{% endcall %}
+    </div>
+    <h4>Receita e clientes</h4>
+    <div class="form-grid">
+      {{ premissa('Ticket médio mensal (R$)', 'cen.ticket', 'ticket_medio_reais', s.ticket_medio_centavos|reais_in) }}
+      {{ premissa('Novos clientes / mês', 'cen.novos', 'novos_clientes_mes', s.novos_clientes_mes, 'int') }}
+      {{ premissa('Inadimplência / PDD (%)', 'cen.inad', 'inadimplencia_pct', s.inadimplencia_micro|pct_in, 'pct') }}
+      {{ premissa('Retenção do cliente (meses)', 'cen.retencao', 'retencao_meses', s.retencao_meses, 'int') }}
+      {{ premissa('CAC unitário (R$)', 'cen.cac', 'cac_reais', s.cac_centavos|reais_in) }}
+      {{ premissa('Custo variável (%)', 'cen.cvar', 'custo_variavel_pct', s.custo_variavel_micro|pct_in, 'pct') }}
+    </div>
+    <h4>Tributação (Simples Nacional)</h4>
+    <div class="form-grid">
+      {{ premissa('Receita no CNAE 6920-6/01 — Anexo III (%)', 'cen.pct_cnae', 'pct_cnae_principal', s.pct_cnae_principal_micro|pct_in, 'pct') }}
+      {{ premissa('Encargos e provisões CLT (%)', 'cen.encargos', 'encargos_clt_pct', s.encargos_clt_micro|pct_in, 'pct') }}
+    </div>
+    <h4>Pessoal (folha do Fator R)</h4>
+    <div class="form-grid">
+      {{ premissa('Pró-labore M1–M3 (R$/mês)', 'cen.pl13', 'prolabore_m1_3_reais', s.prolabore_m1_3_mensal_centavos|reais_in) }}
+      {{ premissa('Pró-labore M4–M12 (R$/mês)', 'cen.pl412', 'prolabore_m4_12_reais', s.prolabore_m4_12_mensal_centavos|reais_in) }}
+      {{ premissa('Pró-labore ano 2 (R$/mês)', 'cen.pla2', 'prolabore_ano2_reais', s.prolabore_ano2_mensal_centavos|reais_in) }}
+      {{ premissa('Pró-labore ano 3 (R$/mês)', 'cen.pla3', 'prolabore_ano3_reais', s.prolabore_ano3_mensal_centavos|reais_in) }}
+      {{ premissa('Folha CLT bruta ano 2 (R$/mês)', 'cen.clt2', 'folha_clt_ano2_reais', s.folha_clt_ano2_mensal_centavos|reais_in) }}
+      {{ premissa('Folha CLT bruta ano 3 (R$/mês)', 'cen.clt3', 'folha_clt_ano3_reais', s.folha_clt_ano3_mensal_centavos|reais_in) }}
+    </div>
+    <h4>Custos fixos e investimento</h4>
+    <div class="form-grid">
+      {{ premissa('OPEX fixo ano 1 (R$/mês)', 'cen.opex1', 'opex_ano1_reais', s.opex_fixo_ano1_mensal_centavos|reais_in) }}
+      {{ premissa('OPEX fixo ano 2 (R$/mês)', 'cen.opex2', 'opex_ano2_reais', s.opex_fixo_ano2_mensal_centavos|reais_in) }}
+      {{ premissa('OPEX fixo ano 3 (R$/mês)', 'cen.opex3', 'opex_ano3_reais', s.opex_fixo_ano3_mensal_centavos|reais_in) }}
+      {{ premissa('CAPEX M0 (R$)', 'cen.capex_m0', 'capex_m0_reais', s.capex_m0_centavos|reais_in) }}
+      {{ premissa('CAPEX ano 2 (R$)', 'cen.capex_a2', 'capex_ano2_reais', s.capex_ano2_centavos|reais_in) }}
+      {{ premissa('CAPEX ano 3 (R$)', 'cen.capex_a3', 'capex_ano3_reais', s.capex_ano3_centavos|reais_in) }}
+    </div>
+    <h4>Capital e retorno</h4>
+    <div class="form-grid">
+      {% call m.field('Capital social (R$)', 'cen.capital') %}
+        <input class="in-premissa" type="text" data-fmt="brl" name="capital_social_reais" value="{{ s.capital_social_centavos|reais_in }}">
+        {% if capital_qsa_centavos == s.capital_social_centavos %}<span class="vinc" title="Vinculado ao QSA (erp.participacao_societaria)">Confere com o QSA: {{ capital_qsa_centavos|brl }}</span>
+        {% else %}<span class="vinc div" title="Vinculado ao QSA (erp.participacao_societaria)">Diverge do QSA: {{ capital_qsa_centavos|brl }}</span>{% endif %}
+      {% endcall %}
+      {{ premissa('TMA anual (%)', 'cen.tma', 'tma_pct', s.tma_anual_micro|pct_in, 'pct') }}
+      {{ premissa('Reserva de lucros (%)', 'cen.reserva', 'taxa_reserva_pct', s.taxa_reserva_lucros_micro|pct_in, 'pct') }}
+    </div>
+    <div class="form-grid" style="margin-top: 12px;">
+      {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(s.status_validacao) }}{% endcall %}
+      {% call m.field('Justificativa técnica da contadora', 'gov.justificativa', 'span-2') %}<input type="text" name="justificativa_contadora" value="{{ s.justificativa_contadora or '' }}">{% endcall %}
+    </div>
+    <div class="barra-acoes">
+      <span class="acoes">
+        <button class="btn btn-sec" type="submit" name="acao" value="rascunho">Salvar e recalcular</button>{{ m.tip('acao.recalcular', 'Salvar e recalcular') }}
+        <button class="btn btn-primary" type="submit" name="acao" value="homologar" data-exige="justificativa_contadora">Homologar cenário</button>{{ m.tip('acao.homologar', 'Homologar') }}
+      </span>
+    </div>
+    </fieldset>
+  </form>
+  <div class="barra-acoes">
+    <form method="post" action="{{ url_for('post_cenario_clonar', cen_id=s.id) }}">{{ m.csrf() }}<fieldset class="crud-fs crud-fs-inline" disabled><button class="btn btn-sec" type="submit">Clonar cenário</button></fieldset>{{ m.tip('acao.clonar', 'Clonar') }}</form>
+    {% if not s.eh_oficial %}
+      <form method="post" action="{{ url_for('post_cenario_oficial', cen_id=s.id) }}">{{ m.csrf() }}<fieldset class="crud-fs crud-fs-inline" disabled><button class="btn btn-sec" type="submit">Tornar oficial</button></fieldset>{{ m.tip('acao.oficial', 'Tornar oficial') }}</form>
+      {{ m.excluir(url_for('post_cenario_excluir', cen_id=s.id), 'o cenário ' ~ s.codigo_cenario) }}
+    {% endif %}
+  </div>
+</section>
+
+<div class="zona"><span class="mundo mundo-erp">Calculado pelo motor</span><h2>Resultados de {{ s.codigo_cenario }}</h2></div>
+<div class="grid-kpi">
+  <div class="kpi"><div class="k-l">Ponto de equilíbrio — fase 1 (M1–M3){{ m.tip('kpi.be1', 'Ponto de equilíbrio fase 1') }}</div><div class="val">{{ indicadores.get('break_even_fase1_clientes')|num_br }} cli.</div><small>{{ indicadores.get('break_even_fase1_receita_centavos', 0)|brl }} / mês</small></div>
+  <div class="kpi"><div class="k-l">Ponto de equilíbrio — fase 2 (M4–M12){{ m.tip('kpi.be2', 'Ponto de equilíbrio fase 2') }}</div><div class="val">{{ indicadores.get('break_even_fase2_clientes')|num_br }} cli.</div><small>{{ indicadores.get('break_even_fase2_receita_centavos', 0)|brl }} / mês</small></div>
+  <div class="kpi"><div class="k-l">LTV (margem de contribuição) / CAC{{ m.tip('kpi.ltv', 'LTV/CAC') }}</div><div class="val">{{ indicadores.get('ltv_cac')|num_br }}×</div><small>LTV {{ indicadores.get('ltv_centavos', 0)|brl }}</small></div>
+  <div class="kpi"><div class="k-l">Payback descontado · CAC{{ m.tip('kpi.payback', 'Payback') }}</div><div class="val">{{ indicadores.get('payback_descontado_meses')|num_br(1) }} m</div><small>Payback do CAC {{ indicadores.get('payback_cac_meses')|num_br(1) }} m</small></div>
+  <div class="kpi"><div class="k-l">VPL · TIR{{ m.tip('kpi.vpl_tir', 'VPL e TIR') }}</div><div class="val">{{ indicadores.get('vpl_centavos', 0)|brl_tab }}</div><small>TIR {{ indicadores.get('tir_pct')|num_br }}%</small></div>
+  <div class="kpi"><div class="k-l">Transição ME → EPP{{ m.tip('kpi.epp', 'Transição ME para EPP') }}</div><div class="val txt">{% if indicadores.get('mes_transicao_epp') %}Mês <span class="mono">{{ indicadores.get('mes_transicao_epp') }}</span>{% else %}Não ocorre{% endif %}</div></div>
+</div>
+
+<div class="grid-2">
+  <section class="card">
+    {{ m.titulo_tabela('Tabela 4.2', 'DRE projetada — 3 anos (valores em R$)', 'tab.dre', 'erp.orcamento_demonstrativo_anual') }}
+    <table>
+      <thead><tr><th>Indicador</th>{% for d in demonstrativos if d.ano_ordem >= 1 %}<th class="num">{{ d.rotulo_periodo }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        <tr><td>Clientes no fim do ano</td>{% for d in demonstrativos if d.ano_ordem >= 1 %}<td class="num">{{ d.clientes_fim }}</td>{% endfor %}</tr>
+        <tr><td><strong>Receita bruta</strong></td>{% for d in demonstrativos if d.ano_ordem >= 1 %}<td class="num"><strong>{{ d.receita_bruta_centavos|brl_tab }}</strong></td>{% endfor %}</tr>
+        <tr><td>(−) Simples Nacional (DAS){{ m.tip('col.das', 'DAS') }}</td>{% for d in demonstrativos if d.ano_ordem >= 1 %}<td class="num">{{ (-d.das_centavos)|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>(−) Inadimplência / PDD{{ m.tip('cen.inad', 'PDD') }}</td>{% for d in demonstrativos if d.ano_ordem >= 1 %}<td class="num">{{ (-d.inadimplencia_centavos)|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>(=) Receita líquida</td>{% for d in demonstrativos if d.ano_ordem >= 1 %}<td class="num">{{ d.receita_liquida_centavos|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>(−) Custos variáveis</td>{% for d in demonstrativos if d.ano_ordem >= 1 %}<td class="num">{{ (-d.custos_variaveis_centavos)|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>(=) Margem de contribuição</td>{% for d in demonstrativos if d.ano_ordem >= 1 %}<td class="num">{{ d.margem_contribuicao_centavos|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>(−) Despesas comerciais (CAC)</td>{% for d in demonstrativos if d.ano_ordem >= 1 %}<td class="num">{{ (-d.cac_centavos)|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>(−) Pró-labore das sócias</td>{% for d in demonstrativos if d.ano_ordem >= 1 %}<td class="num">{{ (-d.prolabore_centavos)|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>(−) Folha CLT + encargos</td>{% for d in demonstrativos if d.ano_ordem >= 1 %}<td class="num">{{ (-d.folha_clt_centavos)|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>(−) OPEX fixo</td>{% for d in demonstrativos if d.ano_ordem >= 1 %}<td class="num">{{ (-d.opex_fixo_centavos)|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>(−) Depreciação</td>{% for d in demonstrativos if d.ano_ordem >= 1 %}<td class="num">{{ (-d.depreciacao_centavos)|brl_tab }}</td>{% endfor %}</tr>
+        <tr class="total"><td>(=) Lucro líquido</td>{% for d in demonstrativos if d.ano_ordem >= 1 %}<td class="num">{{ d.lucro_liquido_centavos|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>Fator R / alíquota efetiva{{ m.tip('col.fator_r', 'Fator R') }}</td>{% for d in demonstrativos if d.ano_ordem >= 1 %}<td class="num">{{ d.fator_r_anual_micro|pct_micro }} / {{ d.aliquota_efetiva_anual_micro|pct_micro }}</td>{% endfor %}</tr>
+      </tbody>
+    </table>
+  </section>
+  <section class="card">
+    {{ m.titulo_tabela('Tabela 4.3', 'Balanço patrimonial (valores em R$)', 'tab.bp', 'erp.orcamento_demonstrativo_anual') }}
+    <table>
+      <thead><tr><th>Conta</th>{% for d in demonstrativos %}<th class="num">{{ d.rotulo_periodo }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        <tr><td>Caixa e equivalentes</td>{% for d in demonstrativos %}<td class="num">{{ d.bp_caixa_centavos|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>Imobilizado líquido</td>{% for d in demonstrativos %}<td class="num">{{ (d.bp_imobilizado_bruto_centavos + d.bp_depreciacao_acumulada_centavos)|brl_tab }}</td>{% endfor %}</tr>
+        <tr class="total"><td>Ativo total</td>{% for d in demonstrativos %}<td class="num">{{ d.bp_ativo_total_centavos|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>DAS a recolher (dez.)</td>{% for d in demonstrativos %}<td class="num">{{ d.bp_das_a_recolher_centavos|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>Obrigações trabalhistas</td>{% for d in demonstrativos %}<td class="num">{{ d.bp_obrigacoes_trabalhistas_centavos|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>Passivo total</td>{% for d in demonstrativos %}<td class="num">{{ d.bp_passivo_total_centavos|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>Capital social <span class="vinc" title="Vinculado ao QSA">QSA</span></td>{% for d in demonstrativos %}<td class="num">{{ d.bp_capital_social_centavos|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>Reservas de lucros</td>{% for d in demonstrativos %}<td class="num">{{ d.bp_reservas_lucros_centavos|brl_tab }}</td>{% endfor %}</tr>
+        <tr class="total"><td>Passivo + PL</td>{% for d in demonstrativos %}<td class="num">{{ (d.bp_passivo_total_centavos + d.bp_pl_total_centavos)|brl_tab }}</td>{% endfor %}</tr>
+        <tr><td>Check (A − P − PL){{ m.tip('kpi.check_bp', 'Check') }}</td>{% for d in demonstrativos %}<td class="num">{% if d.bp_diferenca_centavos == 0 %}<span class="badge b-ok">Conforme 0,00</span>{% else %}<span class="badge b-cr">Crítico {{ d.bp_diferenca_centavos|brl_tab }}</span>{% endif %}</td>{% endfor %}</tr>
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<div class="grid-2">
+  <section class="card">
+    {{ m.titulo_tabela('Tabela 4.4', 'Cenários estratégicos — 3 anos (valores em R$)', 'tab.cenarios', 'motor_contabil.simular_cenario') }}
+    <table>
+      <thead><tr>{{ m.th('Cenário', 'col.cenario') }}{{ m.th('Receita 3 anos', 'col.receita', 'num') }}{{ m.th('DAS médio', 'col.aliq', 'num') }}{{ m.th('Lucro 3 anos', 'col.lucro', 'num') }}{{ m.th('VPL', 'col.vpl', 'num') }}{{ m.th('TIR', 'col.tir', 'num') }}</tr></thead>
+      <tbody>
+        {% for sc in indicadores.get('cenarios_estrategicos', []) %}
+          <tr><td>{{ sc.nome }}</td><td class="num">{{ sc.receita_3_anos_centavos|brl_tab }}</td><td class="num">{{ sc.das_medio_pct|num_br }}%</td>
+          <td class="num">{{ sc.lucro_3_anos_centavos|brl_tab }}</td><td class="num">{{ sc.vpl_centavos|brl_tab }}</td><td class="num">{{ sc.tir_pct|num_br }}%</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  <section class="card">
+    {% set sens = indicadores.get('matriz_sensibilidade', {}) %}
+    {{ m.titulo_tabela('Tabela 4.5', 'Sensibilidade do VPL: ticket × inadimplência (R$)', 'tab.sens', 'motor_contabil.simular_cenario') }}
+    <table>
+      <thead><tr><th>Ticket \ Inad.</th>{% for inp in sens.get('inadimplencias_pct', []) %}<th class="num">{{ inp|num_br(1) }}%</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for ln in sens.get('linhas', []) %}
+          <tr><td class="num"><strong>{{ ln.ticket_centavos|brl_tab }}</strong></td>{% for v in ln.valores_vpl_centavos %}<td class="num">{{ v|brl_tab }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<section class="card">
+  <div class="tt">
+    <h3>Apuração mensal PGDAS-D e fluxo de caixa (valores em R$){{ m.tip('tab.mensal', 'Apuração mensal') }}</h3>
+    <div class="tabs" style="margin: 0;">{% for y in (1, 2, 3) %}<a href="{{ url_for('planejamento', cenario_id=s.id, ano=y) }}#mensal" class="{{ 'active' if ano_mensal == y }}">Ano {{ y }}</a>{% endfor %}</div>
+  </div>
+  <div class="tabela-wrap" id="mensal">
+  <table>
+    <thead><tr>{{ m.th('Comp.', 'col.competencia') }}{{ m.th('Clientes', 'col.clientes', 'num') }}{{ m.th('Receita', 'col.receita', 'num') }}{{ m.th('RBT12', 'col.rbt12', 'num') }}{{ m.th('Fator R', 'col.fator_r', 'num') }}{{ m.th('Anexo 6920-6/02', 'col.anexo') }}{{ m.th('Alíq. efetiva', 'col.aliq', 'num') }}{{ m.th('DAS apurado', 'col.das', 'num') }}{{ m.th('Pró-labore', 'col.prolabore', 'num') }}{{ m.th('Saldo de caixa', 'col.caixa', 'num') }}</tr></thead>
+    <tbody>
+      {% for mm in mensais %}
+        <tr>
+          <td class="mono">{{ mm.competencia_ym }}{% if mm.alerta_porte %} <span class="badge b-at">Passa a EPP</span>{% endif %}</td>
+          <td class="num">{{ mm.clientes_ativos }}</td><td class="num">{{ mm.receita_bruta_centavos|brl_tab }}</td>
+          <td class="num">{{ mm.rbt12_proporcional_centavos|brl_tab }}</td><td class="num">{{ mm.fator_r_micro|pct_micro }}</td>
+          <td>{{ mm.anexo_cnae_secundario|rotulo('anexo') }}</td><td class="num">{{ mm.aliquota_efetiva_micro|pct_micro }}</td>
+          <td class="num">{{ mm.das_apurado_centavos|brl_tab }}</td><td class="num">{{ mm.prolabore_centavos|brl_tab }}</td>
+          <td class="num"><strong>{{ mm.saldo_caixa_centavos|brl_tab }}</strong></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

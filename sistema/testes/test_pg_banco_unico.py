@@ -86,10 +86,10 @@ def test_pg_banco_unico_integridade_completa() -> None:
                 cnt_pg = int(cur.fetchone()["c"])
                 assert cnt_pg == cnt_sl, f"Divergencia {tab_sl} ({cnt_sl}) vs {tab_pg} ({cnt_pg})"
 
-            # 3. Catalogo D1 e placar IABP ativos
-            cur.execute("SELECT COUNT(*) AS c FROM erp.d1_matriz_criterio")
+            # 3. Catalogo de conformidade e placar ativos
+            cur.execute("SELECT COUNT(*) AS c FROM auditoria.criterio_conformidade")
             assert int(cur.fetchone()["c"]) == 200
-            cur.execute("SELECT empresa_chave, matriz FROM auditoria.vw_d1_placar_iabp")
+            cur.execute("SELECT empresa_chave, matriz FROM auditoria.vw_placar_conformidade")
             assert len(cur.fetchall()) == 4
 
             # 4. Protecao de dados humanos (origem_registro = 'usuario') no re-import

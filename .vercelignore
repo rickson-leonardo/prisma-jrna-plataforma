@@ -1,0 +1,11 @@
+banco/
+exportacoes/
+docs/
+sistema/video/
+sistema/testes/
+sistema/bruto/
+sistema/extracao/
+.env
+.pytest_cache/
+**/__pycache__/
+*.pyc

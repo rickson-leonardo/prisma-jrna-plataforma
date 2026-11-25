@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="110 60 360 305" width="420" height="355">
+  <g opacity="0.04" fill="none" stroke="#111827" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="288,78 207,214 289,254 371,214" stroke-width="3.0" fill="none"/>
+    <line x1="288.5" y1="78" x2="288.5" y2="152" stroke-width="2.4"/>
+    <line x1="288.5" y1="168" x2="289" y2="254" stroke-width="2.4"/>
+    <line x1="207" y1="214" x2="268" y2="196" stroke-width="2.2"/>
+    <line x1="282" y1="192.5" x2="289" y2="191" stroke-width="2.2"/>
+    <line x1="289" y1="191" x2="303" y2="194.5" stroke-width="2.2"/>
+    <line x1="333" y1="202.5" x2="371" y2="214" stroke-width="2.2"/>
+    <path d="M 276,149 L 276,202 C 276,221 251,227 239,215" stroke-width="3.0"/>
+    <line x1="327" y1="147" x2="327" y2="216" stroke-width="2.8"/>
+    <path d="M 258,137 C 268,134 278,138 286,148 L 327,201" stroke-width="2.8"/>
+    <path d="M 258,137 C 266,138 273,143 280,152 L 327,216" stroke-width="2.8"/>
+    <text x="290" y="302" text-anchor="middle" font-family="'Times New Roman', 'Georgia', serif" font-size="40" font-weight="400" fill="#111827" stroke="none" letter-spacing="2.2">PRISMA JRNA</text>
+    <text x="290" y="328" text-anchor="middle" font-family="'Adwaita Sans', 'Segoe UI', sans-serif" font-size="13.5" font-weight="600" fill="#111827" stroke="none" letter-spacing="3.6">AUDITORIA E CONTABILIDADE</text>
+  </g>
+</svg>
