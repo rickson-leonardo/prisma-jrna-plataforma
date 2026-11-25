@@ -256,6 +256,14 @@ def test_login_fail_closed_e_emissao_online(monkeypatch) -> None:
     assert c.get("/").status_code == 302
 
 
+def test_atalhos_criterios_e_marcadores_vivos(client) -> None:
+    sust = client.get("/sustentacao?matriz=plano_negocios").data.decode("utf-8")
+    assert "Abrir Sumário Executivo (S01)" in sust
+    assert "/emissao#secao-" in sust
+    em = client.get("/emissao").data.decode("utf-8")
+    assert "js-ins-mk" in em and "{{VPL}}" in em
+
+
 @pytest.mark.skipif(not _edge_disponivel(), reason="Microsoft Edge/Playwright indisponível para renderizar PDFs.")
 def test_emissao_pdfs_dossie1_padrao_dma(tmp_path: Path) -> None:
     import pymupdf

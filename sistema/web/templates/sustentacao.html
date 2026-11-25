@@ -45,6 +45,10 @@
           </span>
         </summary>
         <div class="corpo crud-bloco" data-crud-bloco>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+            <span class="meta-tec">Onde editar/conferir este item na plataforma:</span>
+            <span class="acoes"><a class="btn btn-sec btn-sm" href="{{ cr.destino_url }}">{{ cr.destino_rotulo }}</a>{{ m.tip('acao.ir_criterio', 'Onde resolver') }}</span>
+          </div>
           {% if cr.critica_v1 %}<div class="compare" style="grid-template-columns: 1fr;"><div class="ref ref-at"><span class="ref-h">Crítica literal da banca (v1){{ m.tip('col.nota_v1', 'Crítica v1') }}</span>{{ cr.critica_v1 }}</div></div>{% endif %}
           {{ m.crud_ctrl() }}
           <form method="post" action="{{ url_for('post_criterio_salvar', av_id=cr.id) }}">

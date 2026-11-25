@@ -258,6 +258,9 @@ main[data-modo="edicao"] .crud-ctrl { background: var(--at-bg); border-color: va
 main[data-modo="consulta"] [data-crud-bloco]:not([data-editando="1"]) .barra-acoes { display: none; }
 main[data-modo="edicao"] .crud-opt-editar,
 main[data-modo="edicao"] .crud-opt-bloquear { display: none; }
+.marcadores-bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 6px 8px; background: var(--n50); border: 1px solid var(--l200); border-radius: 6px; }
+.marcadores-bar .chip { font-family: var(--mono); font-size: 11px; padding: 2px 8px; }
+.crud-fs[disabled] .marcadores-bar { opacity: .65; }
 .alerta > div { min-width: 0; overflow-wrap: break-word; }
 
 @media (max-width: 1100px) {

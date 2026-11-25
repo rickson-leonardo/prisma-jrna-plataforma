@@ -82,6 +82,17 @@
         b2.removeAttribute("data-editando");
         syncModo();
       }
+      var btnMk = e.target.closest && e.target.closest(".js-ins-mk");
+      if (btnMk) {
+        var blocoMk = btnMk.closest("[data-crud-bloco]");
+        var ta = blocoMk && blocoMk.querySelector('textarea[name="conteudo_md"]:not([disabled])');
+        if (!ta) return;
+        var mk = btnMk.getAttribute("data-mk") || "";
+        var pos = ta.selectionStart || 0, fim = ta.selectionEnd || 0;
+        ta.value = ta.value.slice(0, pos) + mk + ta.value.slice(fim);
+        ta.focus();
+        ta.setSelectionRange(pos + mk.length, pos + mk.length);
+      }
     });
   }
 

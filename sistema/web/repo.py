@@ -942,6 +942,51 @@ def carregar_sustentacao(matriz: str = "plano_negocios", apenas_pendentes: bool 
             )
             criterios = cur.fetchall()
 
+            cur.execute("SELECT id, documento, codigo_secao FROM erp.documento_secao WHERE empresa_id = %s", (emp_id,))
+            sec_ids = {(r["documento"], r["codigo_secao"]): int(r["id"]) for r in cur.fetchall()}
+
+            cur.execute("SELECT id, codigo_criterio FROM erp.instrumento_societario_clausula WHERE empresa_id = %s ORDER BY ordem, id", (emp_id,))
+            cl_ids: dict[str, int] = {}
+            for r in cur.fetchall():
+                cl_ids.setdefault(str(r["codigo_criterio"]).strip().upper(), int(r["id"]))
+
+            cur.execute("SELECT id, codigo FROM erp.processo_legalizacao_etapa WHERE empresa_id = %s ORDER BY ordem, id", (emp_id,))
+            etapas_rows = cur.fetchall()
+
+            def _destino_criterio(cr: dict[str, Any]) -> tuple[str, str]:
+                mat, blk, cod = cr["matriz"], cr["bloco"], str(cr["codigo"]).strip().upper()
+                if mat == "plano_negocios":
+                    mapa_pn = {
+                        "A": ("S01", "Abrir Sumário Executivo (S01)"),
+                        "B": ("S03", "Abrir Proposta de Valor / Canvas (S03)"),
+                        "C": ("S04", "Abrir Mercado e Competição (S04)"),
+                        "D": ("S07", "Abrir Validação e Equipe (S07)"),
+                        "E": ("S05", "Abrir Marketing e Unit Economics (S05)"),
+                        "F": ("S06", "Abrir Operações e Tecnologia (S06)"),
+                        "I": ("S09", "Abrir Riscos e Legal (S09)"),
+                        "J": ("S10", "Abrir OKRs e Longo Prazo (S10)"),
+                    }
+                    if blk == "G":
+                        return ("/cadastro#socios", "Abrir QSA e Equipe (Estação 1)")
+                    if blk == "H":
+                        return ("/planejamento#premissas", "Abrir Planejamento Financeiro (Estação 4)")
+                    sec_cod, rotulo = mapa_pn.get(blk, ("S01", "Abrir seções do Plano (Estação 6)"))
+                    sid = sec_ids.get(("plano_negocios", sec_cod))
+                    return (f"/emissao#secao-{sid}" if sid else "/emissao#secoes", rotulo)
+                if mat in ("contrato_social", "memorando"):
+                    cid = cl_ids.get(cod)
+                    filtro = "contrato" if mat == "contrato_social" else "mou"
+                    if cid:
+                        return (f"/instrumentos?filtro={filtro}#clausula-{cid}", f"Abrir cláusula ({cod}) na Estação 2")
+                    return (f"/instrumentos?filtro={filtro}", "Abrir Instrumentos (Estação 2)")
+                for e in etapas_rows:
+                    tokens = [t.strip().upper() for t in str(e["codigo"]).replace(",", " ").split()]
+                    if cod in tokens:
+                        return (f"/legalizacao#etapa-{e['id']}", f"Abrir etapa {e['codigo']} na Estação 3")
+                return ("/legalizacao#lista-etapas", "Abrir Legalização DF (Estação 3)")
+
+            criterios = [dict(cr, destino_url=_destino_criterio(cr)[0], destino_rotulo=_destino_criterio(cr)[1]) for cr in criterios]
+
             cur.execute("SELECT * FROM auditoria.diario_ia WHERE empresa_id = %s AND dossie = 'D1' ORDER BY id", (emp_id,))
             diario_ia = cur.fetchall()
 

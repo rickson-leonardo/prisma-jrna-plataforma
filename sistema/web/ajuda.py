@@ -72,6 +72,8 @@ AJUDA: dict[str, str] = {
     "acao.incluir": "Cria um novo registro de origem “contadora” no PostgreSQL e reexecuta a auditoria cruzada.",
     "acao.revalidar": "Reexecuta o motor de coerência (QSA, CRC da RT, haveres MoU × Contrato, impasse 50/50, capital QSA × Plano, Fator R, caixa, porte ME→EPP) e regrava os alertas.",
     "acao.ir_registro": "Abre a estação e expande exatamente o registro que gerou o alerta.",
+    "acao.ir_criterio": "Abre diretamente a seção ou registro onde este critério da matriz é redigido ou conferido.",
+    "doc.marcadores": "Clique em qualquer marcador (ex.: {{VPL}}) durante a edição para inseri-lo no texto com os valores vivos do cenário oficial.",
     "modo.aba": "Alterna a estação entre Modo Consulta (somente leitura, padrão seguro ao abrir a aba) e Modo Edição em todos os formulários. Trocar de aba ou recarregar sempre restaura o Modo Consulta.",
     "modo.editar_item": "Desbloqueia apenas este registro/bloco para alteração ou exclusão, mantendo o restante da página protegido contra cliques acidentais.",
     "modo.incluir": "Desbloqueia este formulário para cadastrar um novo registro na estação.",

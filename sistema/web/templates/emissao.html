@@ -93,6 +93,12 @@
               {% call m.field('Documento', 'doc.documento') %}<input type="text" value="{{ s.documento|rotulo('documento') }}" disabled>{% endcall %}
               {% call m.field('Ordem', 'doc.ordem') %}<input type="text" data-fmt="int" name="ordem" value="{{ s.ordem }}">{% endcall %}
               {% call m.field('Título', 'doc.titulo', 'span-2') %}<input type="text" name="titulo" value="{{ s.titulo }}" required>{% endcall %}
+              <div class="span-all marcadores-bar">
+                <span class="lbl">Inserir valor vivo{{ m.tip('doc.marcadores', 'Marcadores vivos') }}</span>
+                {% for mk in ['CAPITAL_SOCIAL','RECEITA_A1','RECEITA_A2','RECEITA_A3','LUCRO_A1','LUCRO_A2','LUCRO_A3','VPL','TIR','PAYBACK_DESCONTADO','LTV_CAC'] %}
+                  <button type="button" class="chip js-ins-mk" data-mk="{{ '{{' ~ mk ~ '}}' }}">{{ '{{' ~ mk ~ '}}' }}</button>
+                {% endfor %}
+              </div>
               {% call m.field('Texto da seção', 'doc.conteudo', 'span-all') %}<textarea class="longo" name="conteudo_md">{{ s.conteudo_md }}</textarea>{% endcall %}
               {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(s.status_validacao) }}{% endcall %}
               {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-2') %}<input type="text" name="justificativa_contadora" value="{{ s.justificativa_contadora or '' }}">{% endcall %}
