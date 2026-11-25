@@ -72,6 +72,7 @@
         b.setAttribute("data-editando", "1");
         syncModo();
         var primeiro = b.querySelector("fieldset.crud-fs:not([disabled]) input:not([type=hidden]):not([disabled]), fieldset.crud-fs:not([disabled]) select:not([disabled]), fieldset.crud-fs:not([disabled]) textarea:not([disabled])");
+        b.querySelectorAll("textarea.longo").forEach(function (ta) { if (ta._setMdMode) ta._setMdMode("raw"); });
         if (primeiro) primeiro.focus();
         return;
       }
@@ -80,6 +81,7 @@
         var b2 = btnBl.closest("[data-crud-bloco]");
         if (!b2) return;
         b2.removeAttribute("data-editando");
+        b2.querySelectorAll("textarea.longo").forEach(function (ta) { if (ta._setMdMode) ta._setMdMode("fmt"); });
         syncModo();
       }
       var btnMk = e.target.closest && e.target.closest(".js-ins-mk");
@@ -87,6 +89,7 @@
         var blocoMk = btnMk.closest("[data-crud-bloco]");
         var ta = blocoMk && blocoMk.querySelector('textarea[name="conteudo_md"]:not([disabled])');
         if (!ta) return;
+        if (ta._setMdMode) ta._setMdMode("raw");
         var mk = btnMk.getAttribute("data-mk") || "";
         var pos = ta.selectionStart || 0, fim = ta.selectionEnd || 0;
         ta.value = ta.value.slice(0, pos) + mk + ta.value.slice(fim);
@@ -284,5 +287,97 @@
       else if (validar() && inp.getAttribute("data-fmt") === "brl") inp.value = fmtBRL(paraNumero(v));
       validar();
     });
+  });
+  /* ---------------------------------------------------------------
+     7. Visualizacao Markdown (Ver formatado x Ver texto puro)
+     --------------------------------------------------------------- */
+  function escHtml(s) {
+    return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  function mdInline(s) {
+    var out = escHtml(s);
+    out = out.replace(/\{\{([A-Z0-9_]+)\}\}/g, '<span class="mk-tag">{{$1}}</span>');
+    out = out.replace(/`([^`]+)`/g, "<code>$1</code>");
+    out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    out = out.replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
+    out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    return out;
+  }
+  function mdParaHtml(src) {
+    var lines = (src || "").replace(/\r\n/g, "\n").split("\n"), html = [], i = 0;
+    function splitRow(l) { return l.trim().replace(/^\||\|$/g, "").split("|").map(function (c) { return c.trim(); }); }
+    while (i < lines.length) {
+      var l = lines[i], tr = l.trim();
+      if (!tr) { i++; continue; }
+      if (/^#{1,4}\s+/.test(tr)) {
+        var m = tr.match(/^(#{1,4})\s+(.*)$/);
+        html.push("<h" + m[1].length + ">" + mdInline(m[2]) + "</h" + m[1].length + ">");
+        i++; continue;
+      }
+      if (tr.indexOf("|") >= 0 && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}/.test(lines[i + 1])) {
+        var hdr = splitRow(l); i += 2;
+        html.push("<table><thead><tr>" + hdr.map(function (c) { return "<th>" + mdInline(c) + "</th>"; }).join("") + "</tr></thead><tbody>");
+        while (i < lines.length && lines[i].trim().indexOf("|") >= 0) {
+          var row = splitRow(lines[i]);
+          html.push("<tr>" + row.map(function (c) { return "<td>" + mdInline(c) + "</td>"; }).join("") + "</tr>");
+          i++;
+        }
+        html.push("</tbody></table>"); continue;
+      }
+      if (/^[-*]\s+/.test(tr)) {
+        html.push("<ul>");
+        while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) {
+          html.push("<li>" + mdInline(lines[i].replace(/^\s*[-*]\s+/, "")) + "</li>"); i++;
+        }
+        html.push("</ul>"); continue;
+      }
+      if (/^\d+\.\s+/.test(tr)) {
+        html.push("<ol>");
+        while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
+          html.push("<li>" + mdInline(lines[i].replace(/^\s*\d+\.\s+/, "")) + "</li>"); i++;
+        }
+        html.push("</ol>"); continue;
+      }
+      if (/^>\s*/.test(tr)) {
+        var bq = [];
+        while (i < lines.length && /^\s*>\s*/.test(lines[i])) { bq.push(mdInline(lines[i].replace(/^\s*>\s*/, ""))); i++; }
+        html.push("<blockquote><p>" + bq.join("<br>") + "</p></blockquote>"); continue;
+      }
+      var p = [];
+      while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s+|[-*]\s+|\d+\.\s+|>\s*)/.test(lines[i].trim()) &&
+             !(lines[i].trim().indexOf("|") >= 0 && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}/.test(lines[i + 1]))) {
+        p.push(mdInline(lines[i].trim())); i++;
+      }
+      html.push("<p>" + p.join(" ") + "</p>");
+    }
+    return html.join("") || '<span class="meta-tec">Sem conteúdo preenchido.</span>';
+  }
+  document.querySelectorAll("textarea.longo").forEach(function (ta) {
+    var bar = document.createElement("span");
+    bar.className = "md-bar";
+    var btnFmt = document.createElement("span");
+    btnFmt.className = "chip on js-md-fmt"; btnFmt.setAttribute("role", "button"); btnFmt.setAttribute("tabindex", "0"); btnFmt.textContent = "Ver formatado";
+    var btnRaw = document.createElement("span");
+    btnRaw.className = "chip js-md-raw"; btnRaw.setAttribute("role", "button"); btnRaw.setAttribute("tabindex", "0"); btnRaw.textContent = "Ver texto puro";
+    bar.appendChild(btnFmt); bar.appendChild(btnRaw);
+    var view = document.createElement("div");
+    view.className = "md-view texto-md";
+    ta.parentNode.insertBefore(bar, ta);
+    ta.parentNode.insertBefore(view, ta.nextSibling);
+    function setMode(m) {
+      var fmt = m === "fmt";
+      if (fmt) view.innerHTML = mdParaHtml(ta.value);
+      view.hidden = !fmt;
+      ta.hidden = fmt;
+      btnFmt.classList.toggle("on", fmt);
+      btnRaw.classList.toggle("on", !fmt);
+    }
+    ta._setMdMode = setMode;
+    function bind(el, m) {
+      el.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); setMode(m); });
+      el.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); setMode(m); } });
+    }
+    bind(btnFmt, "fmt"); bind(btnRaw, "raw");
+    setMode((ta.value || "").trim() ? "fmt" : "raw");
   });
 })();

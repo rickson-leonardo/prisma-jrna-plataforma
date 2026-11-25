@@ -262,6 +262,10 @@ def test_atalhos_criterios_e_marcadores_vivos(client) -> None:
     assert "/emissao#secao-" in sust
     em = client.get("/emissao").data.decode("utf-8")
     assert "js-ins-mk" in em and "{{VPL}}" in em
+    js = client.get("/static/app.js").data.decode("utf-8")
+    assert "Ver formatado" in js and "Ver texto puro" in js
+    css = client.get("/static/style.css").data.decode("utf-8")
+    assert ".md-view" in css and ".md-bar" in css
 
 
 @pytest.mark.skipif(not _edge_disponivel(), reason="Microsoft Edge/Playwright indisponível para renderizar PDFs.")
