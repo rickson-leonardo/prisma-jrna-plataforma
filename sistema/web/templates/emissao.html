@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m %}
-{% block title %}Emissão do Dossiê 1{% endblock %}
+{% block title %}Emissão do {{ 'Dossiê 2' if empresa.dossie == 'D2' else 'Dossiê 1' }}{% endblock %}
 {% block content %}
 {% set pend_total = quarentena|sum(attribute='pendentes') + quarentena|sum(attribute='inconsistencias') %}
 <div class="topbar">
   <div>
-    <div class="kicker">Estação 6 · Sustentação do Dossiê 1</div>
-    <h2>Emissão dos documentos do Dossiê 1</h2>
+    <div class="kicker">Estação 6 · Sustentação do {{ 'Dossiê 2' if empresa.dossie == 'D2' else 'Dossiê 1' }}</div>
+    <h2>Emissão dos documentos do {{ 'Dossiê 2 — Rota Sul' if empresa.dossie == 'D2' else 'Dossiê 1' }}</h2>
     <div class="subtitle">Pacote oficial em PDF (padrão DMA-PRISMA-2026-v3) e planilha XLSX gerados diretamente do PostgreSQL.</div>
   </div>
   {% if modo_cloud %}
@@ -31,7 +31,7 @@
     <tbody>
       {% for q in quarentena %}
         <tr><td>{{ q.modulo|rotulo('modulo') }}</td><td class="num">{{ q.total }}</td><td class="num">{{ q.homologados }}</td><td class="num">{{ q.inconsistencias }}</td><td class="num">{{ q.pendentes }}</td>
-        <td>{% set est = {'cadastro_empresa':'cadastro','cadastro_estabelecimento':'cadastro','cadastro_socios':'cadastro','cadastro_pessoas':'cadastro','cadastro_identificadores':'cadastro','cadastro_enquadramento':'cadastro','instrumentos_societarios':'instrumentos','legalizacao_df':'legalizacao','orcamento_tributario':'planejamento','consultas_normativas':'sustentacao','decisoes_preliminares':'sustentacao','conformidade_criterios':'sustentacao','diario_ia':'sustentacao','documentos_dossie1':'emissao'}.get(q.modulo) %}{% if est %}<a href="{{ url_for(est) }}{{ '#secoes' if est == 'emissao' }}">Abrir estação</a>{% endif %}</td></tr>
+        <td>{% set est = {'cadastro_empresa':'cadastro','cadastro_estabelecimento':'cadastro','cadastro_socios':'cadastro','cadastro_pessoas':'cadastro','cadastro_identificadores':'cadastro','cadastro_enquadramento':'cadastro','instrumentos_societarios':'instrumentos','legalizacao_df':'legalizacao','orcamento_tributario':'planejamento','consultas_normativas':'sustentacao','decisoes_preliminares':'sustentacao','conformidade_criterios':'sustentacao','diario_ia':'sustentacao','documentos_dossie1':'emissao','contratos_servico':'onboarding','diligencia_onboarding':'onboarding','dp_contratos':'dp','dp_esocial':'dp','dp_parametros':'dp','folha_pagamento':'folha','auditoria_trabalhista':'folha'}.get(q.modulo) %}{% if est and endpoint_existe(est) %}<a href="{{ url_for(est) }}{{ '#secoes' if est == 'emissao' }}">Abrir estação</a>{% endif %}</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -95,7 +95,8 @@
               {% call m.field('Título', 'doc.titulo', 'span-2') %}<input type="text" name="titulo" value="{{ s.titulo }}" required>{% endcall %}
               <div class="span-all marcadores-bar">
                 <span class="lbl">Inserir valor vivo{{ m.tip('doc.marcadores', 'Marcadores vivos') }}</span>
-                {% for mk in ['CAPITAL_SOCIAL','RECEITA_A1','RECEITA_A2','RECEITA_A3','LUCRO_A1','LUCRO_A2','LUCRO_A3','VPL','TIR','PAYBACK_DESCONTADO','LTV_CAC'] %}
+                {% set _mks = ['BRUTO_TOTAL','INSS_TOTAL','FGTS_TOTAL','LIQUIDO_A','LIQUIDO_B','PROVISOES_TOTAL','CUSTO_SIMPLES','SUBSIDIO_VT','VR_TOTAL','IMPACTO_EXCLUSAO_SIMPLES'] if empresa.dossie == 'D2' else ['CAPITAL_SOCIAL','RECEITA_A1','RECEITA_A2','RECEITA_A3','LUCRO_A1','LUCRO_A2','LUCRO_A3','VPL','TIR','PAYBACK_DESCONTADO','LTV_CAC'] %}
+                {% for mk in _mks %}
                   <button type="button" class="chip js-ins-mk" data-mk="{{ '{{' ~ mk ~ '}}' }}">{{ '{{' ~ mk ~ '}}' }}</button>
                 {% endfor %}
               </div>
@@ -119,7 +120,8 @@
           <input type="hidden" name="status_validacao" value="pendente_revisao">
           <fieldset class="crud-fs" disabled>
           <div class="form-grid">
-            {% call m.field('Documento', 'doc.documento') %}{{ m.select_rotulos('documento', 'documento', 'plano_negocios') }}{% endcall %}
+            {% set _doc_grp = 'documento_d2' if empresa.dossie == 'D2' else 'documento_d1' %}
+            {% call m.field('Documento', 'doc.documento') %}{{ m.select_rotulos('documento', _doc_grp, 'd2_00_indice' if empresa.dossie == 'D2' else 'plano_negocios') }}{% endcall %}
             {% call m.field('Código da seção', 'doc.codigo') %}<input class="mono-in" type="text" name="codigo_secao" placeholder="S11">{% endcall %}
             {% call m.field('Ordem', 'doc.ordem') %}<input type="text" data-fmt="int" name="ordem">{% endcall %}
             {% call m.field('Título', 'doc.titulo', 'span-2') %}<input type="text" name="titulo" required>{% endcall %}

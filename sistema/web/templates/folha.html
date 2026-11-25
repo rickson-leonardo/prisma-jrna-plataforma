@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Folha 09/2026 e Auditoria (D2){% endblock %}
+{% block content %}
+<div class="topbar">
+  <div>
+    <div class="kicker">Estação 9 · Operação Rota Sul (Dossiê 2)</div>
+    <h2>Folha de Pagamento 09/2026, Partidas Dobradas e Auditoria</h2>
+    <div class="subtitle">Cálculo determinístico em centavos, integração contábil L1–L4 (Adm. × Comercial) e Papéis de Trabalho PT-01..05 / AUD-01..10.</div>
+  </div>
+  <form method="post" action="{{ url_for('post_folha_recalcular') }}" class="acoes">
+    {{ m.csrf() }}<button class="btn btn-primary" type="submit">Recalcular folha e partidas dobradas</button>{{ m.tip('acao.recalcular_folha', 'Recalcular folha') }}
+  </form>
+</div>
+{{ m.guia('folha') }}
+{{ m.modo_barra() }}
+
+{% if comp %}
+<div class="grid-kpi">
+  <div class="kpi"><div class="k-l">Proventos brutos (09/2026){{ m.tip('kpi.folha_bruto', 'Bruto') }}</div><div class="val">{{ comp.bruto_total_centavos|brl_tab }}</div><small>E1 + E2 ({{ comp.status_folha }})</small></div>
+  <div class="kpi"><div class="k-l">INSS Retido · DCTFWeb{{ m.tip('kpi.folha_inss', 'INSS') }}</div><div class="val">{{ comp.inss_total_centavos|brl_tab }}</div><small>Venc. 20/10/2026</small></div>
+  <div class="kpi"><div class="k-l">FGTS 8% · FGTS Digital{{ m.tip('kpi.folha_fgts', 'FGTS') }}</div><div class="val">{{ comp.fgts_total_centavos|brl_tab }}</div><small>Guia PIX 20/10/2026</small></div>
+  <div class="kpi"><div class="k-l">Líquido a pagar (07/10){{ m.tip('kpi.folha_liquido', 'Líquido') }}</div><div class="val">{{ comp.liquido_total_centavos|brl_tab }}</div><small>{{ comp.cenario_negocial|rotulo('cenario_negocial') }}</small></div>
+  <div class="kpi"><div class="k-l">Provisões E1 + FGTS 8%{{ m.tip('kpi.folha_provisoes', 'Provisões') }}</div><div class="val">{{ comp.provisoes_total_centavos|brl_tab }}</div><small>13º R$ 200 + Fér/1/3 R$ 266,67 + FGTS</small></div>
+  <div class="kpi"><div class="k-l">Custo total Simples{{ m.tip('kpi.folha_custo', 'Custo') }}</div><div class="val">{{ comp.custo_total_centavos|brl_tab }}</div><small>Partidas D − C: <span class="mono">{{ (tot_debito - tot_credito)|brl }}</span></small></div>
+</div>
+
+<section class="card" id="parametros-comp" data-crud-bloco>
+  {{ m.titulo_tabela('9.1', 'Parâmetros da competência 09/2026 e recálculo', 'fc.vendas_e2', 'erp.folha_competencia') }}
+  {{ m.governanca(comp) }}
+  {{ m.crud_ctrl() }}
+  <form method="post" action="{{ url_for('post_folha_competencia', comp_id=comp.id) }}">
+    {{ m.csrf() }}
+    <fieldset class="crud-fs" disabled>
+    <div class="form-grid">
+      {% call m.field('Vendas líquidas E2 (R$)', 'fc.vendas_e2') %}<input class="num-in" type="text" data-fmt="num" name="vendas_liquidas_e2_reais" value="{{ comp.vendas_liquidas_e2_centavos|reais_in }}">{% endcall %}
+      {% call m.field('Dias trabalhados E1', 'fc.dias') %}<input type="text" data-fmt="int" name="dias_trabalhados_e1" value="{{ comp.dias_trabalhados_e1 }}">{% endcall %}
+      {% call m.field('Dias trabalhados E2', 'fc.dias') %}<input type="text" data-fmt="int" name="dias_trabalhados_e2" value="{{ comp.dias_trabalhados_e2 }}">{% endcall %}
+      {% call m.field('Dias úteis comissão E2', 'fc.dias') %}<input type="text" data-fmt="int" name="dias_uteis_comissao_e2" value="{{ comp.dias_uteis_comissao_e2 }}">{% endcall %}
+      {% call m.field('Domingos/feriados E2', 'fc.dias') %}<input type="text" data-fmt="int" name="domingos_feriados_e2" value="{{ comp.domingos_feriados_e2 }}">{% endcall %}
+      {% call m.field('Dias úteis VT E1', 'fc.dias') %}<input type="text" data-fmt="int" name="dias_uteis_vt_e1" value="{{ comp.dias_uteis_vt_e1 }}">{% endcall %}
+      {% call m.field('Dias úteis VT E2', 'fc.dias') %}<input type="text" data-fmt="int" name="dias_uteis_vt_e2" value="{{ comp.dias_uteis_vt_e2 }}">{% endcall %}
+      {% call m.field('Dias úteis VR E1', 'fc.dias') %}<input type="text" data-fmt="int" name="dias_uteis_vr_e1" value="{{ comp.dias_uteis_vr_e1 }}">{% endcall %}
+      {% call m.field('Cenário Contrib. Negocial', 'fc.cenario', 'span-2') %}{{ m.select_rotulos('cenario_negocial', 'cenario_negocial', comp.cenario_negocial) }}{% endcall %}
+      {% call m.field('Data pagamento (5º dia útil)', 'fc.pagamento') %}<input type="date" name="data_pagamento" value="{{ comp.data_pagamento or '' }}">{% endcall %}
+      {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(comp.status_validacao) }}{% endcall %}
+      {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ comp.justificativa_contadora or '' }}">{% endcall %}
+    </div>
+    <div class="barra-acoes">{{ m.acoes() }}</div>
+    </fieldset>
+  </form>
+</section>
+{% endif %}
+
+<section class="card" id="rubricas">
+  {{ m.titulo_tabela('Tabela 9.2', 'Rubricas calculadas da folha 09/2026 (' ~ itens|length ~ ')', 'tab.folha_rubricas', 'erp.folha_item') }}
+  <div class="tabela-wrap">
+  <table>
+    <thead><tr><th>Emp.</th><th>Código</th><th>Rubrica</th><th>Tipo</th><th>Ref.</th><th class="num">Base (R$)</th><th class="num">Valor (R$)</th><th>Memória / Base legal</th></tr></thead>
+    <tbody>
+      {% for it in itens %}
+        <tr>
+          <td class="mono"><strong>{{ it.codigo_empregado }}</strong></td>
+          <td class="mono">{{ it.codigo_rubrica }}</td>
+          <td>{{ it.nome_rubrica }}</td>
+          <td>{{ it.tipo_rubrica }}</td>
+          <td class="mono">{{ it.referencia_texto }}</td>
+          <td class="num">{{ it.base_centavos|brl_tab }}</td>
+          <td class="num"><strong>{{ it.valor_centavos|brl_tab }}</strong></td>
+          <td style="font-size:12px;">{{ it.formula_texto }} · <span class="meta-tec">{{ it.fonte_normativa }}</span></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="8" class="vazio">Clique em “Recalcular folha e partidas dobradas” acima para gerar as rubricas.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="card" id="partidas">
+  {{ m.titulo_tabela('Tabela 9.3', 'Integração contábil em partidas dobradas (L1–L4) · Total D = ' ~ tot_debito|brl ~ ' · C = ' ~ tot_credito|brl, 'tab.folha_partidas', 'erp.lancamento · erp.partida') }}
+  <div class="tabela-wrap">
+  <table>
+    <thead><tr><th>Lote</th><th>D/C</th><th>Conta</th><th>Nome da conta</th><th>Histórico</th><th class="num">Débito (R$)</th><th class="num">Crédito (R$)</th></tr></thead>
+    <tbody>
+      {% for pt in partidas %}
+        <tr>
+          <td class="mono">{{ pt.tag_ref|upper }}</td>
+          <td class="mono"><strong>{{ pt.dc }}</strong></td>
+          <td class="mono">{{ pt.conta_codigo }}</td>
+          <td>{{ pt.conta_nome }}</td>
+          <td style="font-size:12px;">{{ pt.historico }}</td>
+          <td class="num">{{ pt.valor_centavos|brl_tab if pt.dc == 'D' else '—' }}</td>
+          <td class="num">{{ pt.valor_centavos|brl_tab if pt.dc == 'C' else '—' }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7" class="vazio">Partidas dobradas ainda não geradas — execute o recálculo acima.</td></tr>
+      {% endfor %}
+    </tbody>
+    {% if partidas %}
+    <tfoot><tr><th colspan="5">Total verificado pelo gatilho do banco (D = C)</th><th class="num">{{ tot_debito|brl_tab }}</th><th class="num">{{ tot_credito|brl_tab }}</th></tr></tfoot>
+    {% endif %}
+  </table>
+  </div>
+</section>
+
+<div class="zona"><span class="mundo mundo-sus">P7 · Auditoria Trabalhista</span><h2>Papéis de Trabalho (PT-01..05) e Achados (AUD-01..10)</h2></div>
+<section class="card" id="auditoria">
+  {{ m.titulo_tabela('Tabela 9.4', 'Papéis de trabalho e achados (' ~ auditoria|length ~ ')', 'tab.auditoria_folha', 'erp.auditoria_folha') }}
+  <div class="progs">{{ m.progresso(auditoria|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length, auditoria|length, 'registros de auditoria homologados') }}</div>
+  {{ m.filtros('lista-auditoria', 'Buscar: PT-, AUD-, ASO, comissão, Salário-Família, FGTS…') }}
+  <div class="lista" id="lista-auditoria">
+    {% for a in auditoria %}
+      <details class="item" id="aud-{{ a.id }}" data-item data-status="{{ a.status_validacao }}" style="--cols: 86px minmax(0,1fr) auto">
+        <summary>
+          <span class="it-cod">{{ a.codigo }}</span>
+          <span class="it-tit">{{ a.titulo }}<span class="it-sub">{{ a.tipo_registro|rotulo('tipo_auditoria') }} · <strong>{{ a.situacao_achado|rotulo('situacao_achado') }}</strong> · {{ a.responsavel or '—' }} ({{ a.prazo_texto or '—' }})</span></span>
+          <span class="it-meta">{{ m.badge(a.status_validacao) }}</span>
+        </summary>
+        <div class="corpo crud-bloco" data-crud-bloco>
+          {{ m.governanca(a) }}
+          {{ m.crud_ctrl() }}
+          <form method="post" action="{{ url_for('post_folha_auditoria', aud_id=a.id) }}">
+            {{ m.csrf() }}
+            <fieldset class="crud-fs" disabled>
+            <div class="form-grid">
+              {% call m.field('Título', 'aud.titulo', 'span-2') %}<input type="text" name="titulo" value="{{ a.titulo }}" required>{% endcall %}
+              {% call m.field('Situação do achado', 'aud.situacao') %}{{ m.select_rotulos('situacao_achado', 'situacao_achado', a.situacao_achado) }}{% endcall %}
+              {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(a.status_validacao) }}{% endcall %}
+              {% call m.field('Norma de referência', 'aud.norma', 'span-2') %}<input type="text" name="norma_referencia" value="{{ a.norma_referencia }}">{% endcall %}
+              {% call m.field('Responsável', 'aud.responsavel') %}<input type="text" name="responsavel" value="{{ a.responsavel or '' }}">{% endcall %}
+              {% call m.field('Prazo', 'aud.responsavel') %}<input type="text" name="prazo_texto" value="{{ a.prazo_texto or '' }}">{% endcall %}
+              {% call m.field('Objetivo / Evidência examinada', 'aud.conclusao', 'span-all') %}<textarea name="objetivo_ou_evidencia">{{ a.objetivo_ou_evidencia }}</textarea>{% endcall %}
+              {% call m.field('Procedimento / Risco', 'aud.conclusao', 'span-all') %}<textarea name="procedimento_ou_risco">{{ a.procedimento_ou_risco }}</textarea>{% endcall %}
+              {% call m.field('Conclusão / Correção proposta', 'aud.conclusao', 'span-all') %}<textarea class="longo" name="conclusao_ou_correcao">{{ a.conclusao_ou_correcao }}</textarea>{% endcall %}
+              {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ a.justificativa_contadora or '' }}">{% endcall %}
+            </div>
+            <div class="barra-acoes">{{ m.acoes() }}</div>
+            </fieldset>
+          </form>
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

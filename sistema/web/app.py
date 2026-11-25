@@ -15,7 +15,7 @@ from flask import Flask, abort, flash, g, redirect, render_template, request, se
 from werkzeug.security import check_password_hash
 
 from sistema.web import ajuda as ajuda_mod
-from sistema.web import repo, rotulos, texto
+from sistema.web import repo, repo_d2, rotulos, texto
 
 
 def _fmt_num_input(centavos: int | None) -> str:
@@ -91,6 +91,12 @@ def create_app() -> Flask:
     modo_cloud = bool(os.environ.get("VERCEL"))
     app.secret_key = os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32)
     app.config.update(SESSION_COOKIE_SAMESITE="Lax", SESSION_COOKIE_HTTPONLY=True, MAX_CONTENT_LENGTH=2 * 1024 * 1024)
+
+    @app.before_request
+    def sincronizar_contexto_dossie():
+        d = (request.args.get("dossie") or "").strip().upper()
+        if d in repo.DOSSIES_VALIDOS and session.get("dossie_ativo") != d:
+            session["dossie_ativo"] = d
 
     @app.before_request
     def exigir_autenticacao():
@@ -179,7 +185,31 @@ def create_app() -> Flask:
         progresso_estacoes=progresso_estacoes,
         ajuda_json=_ajuda_json,
         modo_cloud=modo_cloud,
+        dossie_ativo=repo.dossie_em_foco,
+        endpoint_existe=lambda ep: ep in app.view_functions,
     )
+
+    @app.post("/contexto/selecionar")
+    def post_contexto_selecionar():
+        d = (request.form.get("dossie") or "D1").strip().upper()
+        if d not in repo.DOSSIES_VALIDOS:
+            d = "D1"
+        session["dossie_ativo"] = d
+        prox = (request.form.get("next") or request.referrer or url_for("painel")).strip()
+        flash(f"Contexto alterado para o Dossiê {d}.", "info")
+        if prox.startswith(("http://", "https://")):
+            parsed = urlparse(prox)
+            prox = parsed.path + (f"?{parsed.query}" if parsed.query else "")
+        if prox.startswith("/") and not prox.startswith("//"):
+            # Se a pagina anterior e exclusiva de outro dossie, volta para o painel
+            if d == "D2" and prox.startswith("/planejamento"):
+                return redirect(url_for("painel"))
+            if d == "D1" and prox.startswith(("/onboarding", "/dp", "/folha")):
+                return redirect(url_for("painel"))
+            if prox.startswith("/sustentacao"):
+                return redirect(url_for("sustentacao"))
+            return redirect(prox)
+        return redirect(url_for("painel"))
 
     # -------------------------------------------------------------------------
     # AUTENTICACAO (obrigatória online / quando configurada)
@@ -401,9 +431,11 @@ def create_app() -> Flask:
     # -------------------------------------------------------------------------
     @app.get("/sustentacao")
     def sustentacao():
-        matriz = request.args.get("matriz", "plano_negocios")
-        if matriz not in ("plano_negocios", "contrato_social", "memorando", "fluxo_abertura"):
-            matriz = "plano_negocios"
+        cod = repo.dossie_em_foco()
+        validas = repo.MATRIZES_D2 if cod == "D2" else repo.MATRIZES_D1
+        matriz = request.args.get("matriz", validas[0])
+        if matriz not in validas:
+            matriz = validas[0]
         pend = request.args.get("pendentes") == "1"
         return render_template("sustentacao.html", **repo.carregar_sustentacao(matriz=matriz, apenas_pendentes=pend))
 
@@ -453,15 +485,19 @@ def create_app() -> Flask:
         return redirect(url_for("sustentacao") + "#diario-ia")
 
     # -------------------------------------------------------------------------
-    # ESTACAO 6: EMISSAO DOS DOCUMENTOS DO DOSSIE 1 (PDF + XLSX) E TEXTOS
+    # ESTACAO 6: EMISSAO DOS DOCUMENTOS (D1 e D2) E TEXTOS
     # -------------------------------------------------------------------------
-    from sistema.web import emissor_dossie1
+    from sistema.web import emissor_dossie1, emissor_dossie2
+
+    def _emissor_ativo():
+        return emissor_dossie2 if repo.dossie_em_foco() == "D2" else emissor_dossie1
 
     @app.get("/emissao")
     def emissao():
+        em = _emissor_ativo()
         dados = repo.carregar_emissao()
-        dados["pacote"] = emissor_dossie1.situacao_pacote()
-        dados["documentos_pdf"] = emissor_dossie1.DOCUMENTOS
+        dados["pacote"] = em.situacao_pacote()
+        dados["documentos_pdf"] = em.DOCUMENTOS
         return render_template("emissao.html", **dados)
 
     @app.post("/emissao/emitir")
@@ -469,10 +505,11 @@ def create_app() -> Flask:
         if modo_cloud:
             flash("Na versão online, use ‘Abrir / Salvar PDF’ em cada documento (Ctrl+P -> Salvar como PDF) e ‘Baixar planilha (.xlsx)’.", "info")
             return redirect(url_for("emissao") + "#pacote")
+        em = _emissor_ativo()
         doc = request.form.get("doc") or None
-        if doc and doc not in emissor_dossie1.DOCUMENTOS:
+        if doc and doc not in em.DOCUMENTOS:
             abort(404)
-        res = emissor_dossie1.emitir_pacote(somente=[doc] if doc else None)
+        res = em.emitir_pacote(somente=[doc] if doc else None)
         falhas = [v["arquivo"] for v in res["verificacoes"] if not v["ok"]]
         msg = f"{len(res['arquivos'])} arquivo(s) emitido(s) em {res['diretorio']}."
         if res["pendencias_quarentena"]:
@@ -484,36 +521,52 @@ def create_app() -> Flask:
 
     @app.get("/emissao/arquivo/<path:nome>")
     def baixar_arquivo(nome: str):
-        caminho = emissor_dossie1.caminho_arquivo(nome)
+        em = _emissor_ativo()
+        caminho = em.caminho_arquivo(nome)
         if caminho is None:
             abort(404)
         return send_file(caminho, as_attachment=request.args.get("ver") != "1")
 
     @app.get("/emissao/pacote.zip")
     def baixar_zip():
-        caminho = emissor_dossie1.compactar_pacote()
+        em = _emissor_ativo()
+        caminho = em.compactar_pacote()
         if caminho is None:
             flash("Nenhum arquivo emitido ainda: clique em “Emitir pacote completo”.", "info")
             return redirect(url_for("emissao"))
-        return send_file(caminho, as_attachment=True, download_name="Dossie1_PRISMA_JRNA.zip")
+        nome_zip = "Dossie2_Rota_Sul_G07.zip" if em is emissor_dossie2 else "Dossie1_PRISMA_JRNA.zip"
+        return send_file(caminho, as_attachment=True, download_name=nome_zip)
 
     @app.get("/emissao/previa/<doc>")
     def previa(doc: str):
-        if doc not in emissor_dossie1.DOCUMENTOS:
+        em = _emissor_ativo()
+        if doc not in em.DOCUMENTOS and doc in emissor_dossie2.DOCUMENTOS:
+            em = emissor_dossie2
+        elif doc not in em.DOCUMENTOS and doc in emissor_dossie1.DOCUMENTOS:
+            em = emissor_dossie1
+        if doc not in em.DOCUMENTOS:
             abort(404)
-        return emissor_dossie1.html_documento(doc, para_web=True)
+        return em.html_documento(doc, para_web=True)
 
     @app.get("/emissao/planilha.xlsx")
     def baixar_xlsx_online():
-        from sistema.web.dados_dossie1 import carregar_dados_dossie1
-        from sistema.web.planilha_dossie1 import gravar_xlsx_bytes
+        if repo.dossie_em_foco() == "D2":
+            from sistema.web.planilha_dossie2 import gravar_xlsx_bytes_d2
 
-        raw = gravar_xlsx_bytes(carregar_dados_dossie1())
+            raw = gravar_xlsx_bytes_d2(emissor_dossie2.carregar_dados_dossie2())
+            nome = emissor_dossie2.XLSX_NOME
+        else:
+            from sistema.web.dados_dossie1 import carregar_dados_dossie1
+            from sistema.web.planilha_dossie1 import gravar_xlsx_bytes
+
+            raw = gravar_xlsx_bytes(carregar_dados_dossie1())
+            nome = emissor_dossie1.XLSX_NOME
+
         return send_file(
             io.BytesIO(raw),
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             as_attachment=True,
-            download_name=emissor_dossie1.XLSX_NOME,
+            download_name=nome,
         )
 
     @app.post("/emissao/secao/nova")
@@ -534,6 +587,107 @@ def create_app() -> Flask:
         repo.excluir_secao(sec_id)
         flash("Seção removida.", "info")
         return redirect(url_for("emissao") + "#secoes")
+
+    # -------------------------------------------------------------------------
+    # ESTACOES 7, 8 E 9: DOSSIE 2 — ROTA SUL (ONBOARDING, DP, FOLHA E AUDITORIA)
+    # -------------------------------------------------------------------------
+    @app.get("/onboarding")
+    def onboarding():
+        session["dossie_ativo"] = "D2"
+        tipo = request.args.get("tipo", "todos")
+        return render_template("onboarding.html", **repo_d2.carregar_onboarding(tipo_filtro=tipo))
+
+    @app.post("/onboarding/contrato/<int:cs_id>/salvar")
+    def post_onboarding_contrato(cs_id: int):
+        session["dossie_ativo"] = "D2"
+        f = form_governanca(request.form)
+        repo_d2.salvar_contrato_servico(cs_id, f)
+        flash(_msg("Instrumento contratual atualizado.", f), "ok")
+        return redirect(url_for("onboarding") + f"#contrato-srv-{cs_id}")
+
+    @app.post("/onboarding/diligencia/nova")
+    def post_diligencia_nova():
+        session["dossie_ativo"] = "D2"
+        did = repo_d2.salvar_diligencia(None, form_governanca(request.form))
+        flash("Item de diligência incluído.", "ok")
+        return redirect(url_for("onboarding") + f"#diligencia-{did}")
+
+    @app.post("/onboarding/diligencia/<int:dil_id>/salvar")
+    def post_diligencia_salvar(dil_id: int):
+        session["dossie_ativo"] = "D2"
+        f = form_governanca(request.form)
+        repo_d2.salvar_diligencia(dil_id, f)
+        flash(_msg("Item de diligência atualizado.", f), "ok")
+        return redirect(url_for("onboarding") + f"#diligencia-{dil_id}")
+
+    @app.post("/onboarding/diligencia/<int:dil_id>/excluir")
+    def post_diligencia_excluir(dil_id: int):
+        session["dossie_ativo"] = "D2"
+        repo_d2.excluir_diligencia(dil_id)
+        flash("Item de diligência removido.", "info")
+        return redirect(url_for("onboarding") + "#diligencia")
+
+    @app.get("/dp")
+    def dp():
+        session["dossie_ativo"] = "D2"
+        return render_template("dp.html", **repo_d2.carregar_dp())
+
+    @app.post("/dp/contrato/<int:ct_id>/salvar")
+    def post_dp_contrato(ct_id: int):
+        session["dossie_ativo"] = "D2"
+        f = form_governanca(request.form)
+        repo_d2.salvar_contrato_trabalho(ct_id, f)
+        flash(_msg("Contrato de trabalho atualizado.", f), "ok")
+        return redirect(url_for("dp") + f"#contrato-{ct_id}")
+
+    @app.post("/dp/parametro/<int:par_id>/salvar")
+    def post_dp_parametro(par_id: int):
+        session["dossie_ativo"] = "D2"
+        f = form_governanca(request.form)
+        repo_d2.salvar_parametro_legal(par_id, f)
+        flash(_msg("Parâmetro legal atualizado e folha recalculada.", f), "ok")
+        return redirect(url_for("dp") + f"#param-{par_id}")
+
+    @app.post("/dp/esocial/<int:ev_id>/salvar")
+    def post_dp_esocial(ev_id: int):
+        session["dossie_ativo"] = "D2"
+        f = form_governanca(request.form)
+        repo_d2.salvar_esocial_evento(ev_id, f)
+        flash(_msg("Evento eSocial atualizado.", f), "ok")
+        return redirect(url_for("dp") + f"#esocial-{ev_id}")
+
+    @app.get("/folha")
+    def folha():
+        session["dossie_ativo"] = "D2"
+        return render_template("folha.html", **repo_d2.carregar_folha())
+
+    @app.post("/folha/recalcular")
+    def post_folha_recalcular():
+        session["dossie_ativo"] = "D2"
+        res = repo_d2.executar_recalculo_folha_d2()
+        flash(
+            f"Folha 09/2026 recalculada (Bruto {texto.brl(res['totais']['bruto'])} | "
+            f"Líquido {texto.brl(res['totais']['liq_a' if res['cenario_negocial'] == 'A_desconta' else 'liq_b'])} | "
+            f"Partidas D=C {texto.brl(res['partidas_debito_centavos'])}).",
+            "ok",
+        )
+        return redirect(url_for("folha"))
+
+    @app.post("/folha/competencia/<int:comp_id>/salvar")
+    def post_folha_competencia(comp_id: int):
+        session["dossie_ativo"] = "D2"
+        f = form_governanca(request.form)
+        res = repo_d2.salvar_competencia_e_recalcular(comp_id, f)
+        flash(_msg(f"Competência salva e recalculada (Bruto {texto.brl(res['totais']['bruto'])}).", f), "ok")
+        return redirect(url_for("folha"))
+
+    @app.post("/folha/auditoria/<int:aud_id>/salvar")
+    def post_folha_auditoria(aud_id: int):
+        session["dossie_ativo"] = "D2"
+        f = form_governanca(request.form)
+        repo_d2.salvar_auditoria_item(aud_id, f)
+        flash(_msg("Item de auditoria atualizado.", f), "ok")
+        return redirect(url_for("folha") + f"#aud-{aud_id}")
 
     return app
 

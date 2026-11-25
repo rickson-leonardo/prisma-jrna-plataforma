@@ -956,10 +956,11 @@ def validar_coerencia_dossie1(conn: Any, empresa_id: int) -> list[dict[str, Any]
             """
             SELECT modulo, COUNT(*) AS qtd
             FROM auditoria.vw_pendencias_quarentena
-            WHERE status_validacao IN ('pendente_revisao', 'alerta_inconsistencia')
+            WHERE empresa_id = %s AND status_validacao IN ('pendente_revisao', 'alerta_inconsistencia')
             GROUP BY modulo
             ORDER BY modulo
-            """
+            """,
+            (empresa_id,),
         )
         pends = cur.fetchall()
         total_pends = sum(int(p["qtd"]) for p in pends)

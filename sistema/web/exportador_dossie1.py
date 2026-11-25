@@ -83,7 +83,7 @@ def exportar_dossie1(destino_dir: Path = EXPORT_D1_DIR) -> dict[str, Any]:
                 mens = cur.fetchall()
             cur.execute("SELECT * FROM auditoria.diario_ia WHERE empresa_id = %s AND dossie = 'D1' ORDER BY id", (emp_id,))
             ia_rows = cur.fetchall()
-            cur.execute("SELECT COUNT(*) AS pendentes FROM auditoria.vw_pendencias_quarentena WHERE status_validacao <> 'homologado_contadora'")
+            cur.execute("SELECT COUNT(*) AS pendentes FROM auditoria.vw_pendencias_quarentena WHERE dossie = 'D1' AND status_validacao <> 'homologado_contadora'")
             pend_total = int(cur.fetchone()["pendentes"])
 
     aviso_topo = (

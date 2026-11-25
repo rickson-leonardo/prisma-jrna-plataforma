@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Departamento Pessoal (D2){% endblock %}
+{% block content %}
+<div class="topbar">
+  <div>
+    <div class="kicker">Estação 8 · Operação Rota Sul (Dossiê 2)</div>
+    <h2>Departamento Pessoal, Tabelas 2026 e eSocial S-1.3</h2>
+    <div class="subtitle">Contratos de experiência (E1 45+45d; E2 30+60d), INSS/IRRF 2026, CCT SRT00189/2025 e eventos eSocial sem recibo inventado.</div>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('folha') }}">Ir para Folha 09/2026 e Auditoria</a>
+</div>
+{{ m.guia('dp') }}
+{{ m.modo_barra() }}
+
+<div class="zona"><span class="mundo mundo-erp">P4 · Prontuários E1 e E2</span><h2>1. Contratos de Trabalho, Jornada, VT/VR e ASO</h2></div>
+<section class="card" id="contratos-trabalho">
+  {{ m.titulo_tabela('Tabela 8.1', 'Empregados ativos na competência 09/2026 (' ~ contratos|length ~ ')', 'tab.dp_contratos', 'erp.contrato_trabalho') }}
+  <div class="progs">{{ m.progresso(contratos|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length, contratos|length, 'contratos homologados') }}</div>
+  <div class="lista" id="lista-cts">
+    {% for ct in contratos %}
+      <details class="item" id="contrato-{{ ct.id }}" data-item data-status="{{ ct.status_validacao }}" style="--cols: 68px minmax(0,1fr) auto">
+        <summary>
+          <span class="it-cod">{{ ct.codigo_empregado }}</span>
+          <span class="it-tit">{{ ct.nome_empregado }} — {{ ct.cargo }} (CBO <span class="mono">{{ ct.cbo }}</span>)
+            <span class="it-sub">Adm. {{ ct.data_admissao }} · Salário {{ ct.salario_base_centavos|brl }} · Exp. {{ ct.experiencia_dias_1 }}+{{ ct.experiencia_dias_2 }}d · ASO: <strong>{{ ct.aso_status|rotulo('aso_status') }}</strong></span>
+          </span>
+          <span class="it-meta">{{ m.badge(ct.status_validacao) }}</span>
+        </summary>
+        <div class="corpo crud-bloco" data-crud-bloco>
+          {{ m.governanca(ct) }}
+          {{ m.crud_ctrl() }}
+          <form method="post" action="{{ url_for('post_dp_contrato', ct_id=ct.id) }}">
+            {{ m.csrf() }}
+            <fieldset class="crud-fs" disabled>
+            <div class="form-grid">
+              {% call m.field('Nome (didático PR-18)', 'ct.nome', 'span-2') %}<input type="text" name="nome_empregado" value="{{ ct.nome_empregado }}" required>{% endcall %}
+              {% call m.field('CPF (série didática)', 'ct.cpf') %}<input class="mono-in" type="text" name="cpf_ficticio" value="{{ ct.cpf_ficticio or '' }}">{% endcall %}
+              {% call m.field('Departamento DRE', 'ct.departamento') %}{{ m.select_rotulos('departamento', 'departamento', ct.departamento) }}{% endcall %}
+              {% call m.field('Cargo', 'ct.cargo', 'span-2') %}<input type="text" name="cargo" value="{{ ct.cargo }}" required>{% endcall %}
+              {% call m.field('CBO', 'ct.cbo') %}<input class="mono-in" type="text" name="cbo" value="{{ ct.cbo }}" required>{% endcall %}
+              {% call m.field('Data admissão', 'ct.admissao') %}<input type="date" name="data_admissao" value="{{ ct.data_admissao }}" required>{% endcall %}
+              {% call m.field('Experiência 1º período (d)', 'ct.exp1') %}<input type="text" data-fmt="int" name="experiencia_dias_1" value="{{ ct.experiencia_dias_1 }}">{% endcall %}
+              {% call m.field('Prorrogação experiência (d)', 'ct.exp2') %}<input type="text" data-fmt="int" name="experiencia_dias_2" value="{{ ct.experiencia_dias_2 }}">{% endcall %}
+              {% call m.field('Salário base (R$)', 'ct.salario') %}<input class="num-in" type="text" data-fmt="num" name="salario_base_reais" value="{{ ct.salario_base_centavos|reais_in }}">{% endcall %}
+              {% call m.field('Piso / Garantia CCT (R$)', 'ct.piso_cct') %}<input class="num-in" type="text" data-fmt="num" name="piso_cct_reais" value="{{ ct.piso_cct_centavos|reais_in }}">{% endcall %}
+              {% call m.field('Comissão (%)', 'ct.comissao') %}<input class="num-in" type="text" data-fmt="num" name="comissao_pct" value="{{ ct.comissao_pct_micro|pct_in }}">{% endcall %}
+              {% call m.field('Intervalo (min)', 'ct.intervalo') %}<input type="text" data-fmt="int" name="intervalo_minutos" value="{{ ct.intervalo_minutos }}">{% endcall %}
+              {% call m.field('Dep. IRRF', 'ct.deps') %}<input type="text" data-fmt="int" name="qtd_dependentes_ir" value="{{ ct.qtd_dependentes_ir }}">{% endcall %}
+              {% call m.field('Dep. Salário-Família', 'ct.deps') %}<input type="text" data-fmt="int" name="qtd_dependentes_sf" value="{{ ct.qtd_dependentes_sf }}">{% endcall %}
+              {% call m.field('VT: passagens/dia', 'ct.vt') %}<input type="text" data-fmt="int" name="vt_passagens_dia" value="{{ ct.vt_passagens_dia }}">{% endcall %}
+              {% call m.field('Tarifa VT RMTC (R$)', 'ct.vt') %}<input class="num-in" type="text" data-fmt="num" name="vt_tarifa_reais" value="{{ ct.vt_tarifa_centavos|reais_in }}">{% endcall %}
+              <label class="check" style="align-self:end;"><input type="checkbox" name="vt_optante" {{ 'checked' if ct.vt_optante }}> Optante VT (6%){{ m.tip('ct.vt', 'Optante VT') }}</label>
+              <label class="check" style="align-self:end;"><input type="checkbox" name="vr_elegivel" {{ 'checked' if ct.vr_elegivel }}> Recebe VR (PAT){{ m.tip('ct.vr', 'Elegível VR') }}</label>
+              {% call m.field('Valor diário VR (R$)', 'ct.vr') %}<input class="num-in" type="text" data-fmt="num" name="vr_valor_dia_reais" value="{{ ct.vr_valor_dia_centavos|reais_in }}">{% endcall %}
+              {% call m.field('Status real do ASO (NR-7)', 'ct.aso') %}{{ m.select_rotulos('aso_status', 'aso_status', ct.aso_status) }}{% endcall %}
+              {% call m.field('Observação ASO', 'ct.aso', 'span-2') %}<input type="text" name="aso_observacao" value="{{ ct.aso_observacao }}">{% endcall %}
+              {% call m.field('Descrição da jornada', 'ct.jornada', 'span-all') %}<input type="text" name="jornada_descricao" value="{{ ct.jornada_descricao }}">{% endcall %}
+              {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(ct.status_validacao) }}{% endcall %}
+              {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ ct.justificativa_contadora or '' }}">{% endcall %}
+            </div>
+            <div class="barra-acoes">{{ m.acoes() }}</div>
+            </fieldset>
+          </form>
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="zona"><span class="mundo mundo-erp">P4 / P5 · Fontes Legais 2026</span><h2>2. Tabelas Oficiais 2026 (INSS, IRRF, Lei 15.270) e CCT SECEG × SINDILOJAS-GO</h2></div>
+<section class="card" id="parametros">
+  {{ m.titulo_tabela('Tabela 8.2', 'Parâmetros legais vigentes (' ~ parametros|length ~ ')', 'tab.dp_parametros', 'erp.parametro_legal') }}
+  <div class="progs">{{ m.progresso(parametros|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length, parametros|length, 'parâmetros homologados') }}</div>
+  {{ m.filtros('lista-params', 'Buscar: INSS, IRRF, 15.270, Salário-Família, CCT, Negocial…') }}
+  <div class="lista" id="lista-params">
+    {% for p in parametros %}
+      <details class="item" id="param-{{ p.id }}" data-item data-status="{{ p.status_validacao }}" style="--cols: 120px minmax(0,1fr) auto">
+        <summary>
+          <span class="it-cod">{{ p.codigo }}</span>
+          <span class="it-tit">{{ p.descricao }}<span class="it-sub">{{ p.categoria|rotulo('categoria_parametro') }} · {{ p.norma_citada }}</span></span>
+          <span class="it-meta">{{ m.badge(p.status_validacao) }}</span>
+        </summary>
+        <div class="corpo crud-bloco" data-crud-bloco>
+          {{ m.crud_ctrl() }}
+          <form method="post" action="{{ url_for('post_dp_parametro', par_id=p.id) }}">
+            {{ m.csrf() }}
+            <fieldset class="crud-fs" disabled>
+            <div class="form-grid">
+              {% call m.field('Descrição', 'par.norma', 'span-2') %}<input type="text" name="descricao" value="{{ p.descricao }}" required>{% endcall %}
+              {% call m.field('Limite / Teto (R$)', 'par.limite') %}<input class="num-in" type="text" data-fmt="num" name="limite_reais" value="{{ p.limite_centavos|reais_in if p.limite_centavos is not none else '' }}">{% endcall %}
+              {% call m.field('Alíquota (%)', 'par.aliquota') %}<input class="num-in" type="text" data-fmt="num" name="aliquota_pct" value="{{ p.aliquota_micro|pct_in if p.aliquota_micro is not none else '' }}">{% endcall %}
+              {% call m.field('Valor fixo / Cota (R$)', 'par.valor') %}<input class="num-in" type="text" data-fmt="num" name="valor_reais" value="{{ p.valor_centavos|reais_in if p.valor_centavos is not none else '' }}">{% endcall %}
+              {% call m.field('Parcela a deduzir (R$)', 'par.deducao') %}<input class="num-in" type="text" data-fmt="num" name="deducao_reais" value="{{ p.deducao_centavos|reais_in if p.deducao_centavos is not none else '' }}">{% endcall %}
+              {% call m.field('Norma / Cláusula CCT', 'par.norma', 'span-2') %}<input type="text" name="norma_citada" value="{{ p.norma_citada }}">{% endcall %}
+              {% call m.field('Link oficial', 'q.link', 'span-2') %}<input type="url" name="link_oficial" value="{{ p.link_oficial or '' }}">{% endcall %}
+              {% call m.field('Regra técnica', 'par.norma', 'span-all') %}<input type="text" name="regra_texto" value="{{ p.regra_texto }}">{% endcall %}
+              {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(p.status_validacao) }}{% endcall %}
+              {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-2') %}<input type="text" name="justificativa_contadora" value="{{ p.justificativa_contadora or '' }}">{% endcall %}
+            </div>
+            <div class="barra-acoes">{{ m.acoes() }}</div>
+            </fieldset>
+          </form>
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="zona"><span class="mundo mundo-sus">P4 · Transmissão eSocial</span><h2>3. Roteiro de Eventos eSocial (S-1.3) e CTPS Digital</h2></div>
+<section class="card" id="esocial">
+  {{ m.titulo_tabela('Tabela 8.3', 'Eventos mapeados sem recibo inventado (' ~ esocial|length ~ ')', 'tab.dp_esocial', 'erp.esocial_evento') }}
+  <div class="progs">{{ m.progresso(esocial|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length, esocial|length, 'eventos homologados') }}</div>
+  <div class="lista" id="lista-esocial">
+    {% for ev in esocial %}
+      <details class="item" id="esocial-{{ ev.id }}" data-item data-status="{{ ev.status_validacao }}" style="--cols: 96px minmax(0,1fr) auto">
+        <summary>
+          <span class="it-cod">{{ ev.codigo_evento }}</span>
+          <span class="it-tit">{{ ev.nome_evento }}<span class="it-sub">Prazo: {{ ev.prazo_legal }} · <strong>{{ ev.status_envio|rotulo('status_esocial') }}</strong>{% if ev.numero_recibo %} · Recibo <span class="mono">{{ ev.numero_recibo }}</span>{% endif %}</span></span>
+          <span class="it-meta">{{ m.badge(ev.status_validacao) }}</span>
+        </summary>
+        <div class="corpo crud-bloco" data-crud-bloco>
+          {{ m.governanca(ev) }}
+          {{ m.crud_ctrl() }}
+          <form method="post" action="{{ url_for('post_dp_esocial', ev_id=ev.id) }}">
+            {{ m.csrf() }}
+            <fieldset class="crud-fs" disabled>
+            <div class="form-grid">
+              {% call m.field('Prazo legal', 'esoc.prazo', 'span-2') %}<input type="text" name="prazo_legal" value="{{ ev.prazo_legal }}">{% endcall %}
+              {% call m.field('Status de envio', 'esoc.status') %}{{ m.select_rotulos('status_envio', 'status_esocial', ev.status_envio) }}{% endcall %}
+              {% call m.field('Nº recibo oficial (se transmitido)', 'esoc.recibo') %}<input class="mono-in" type="text" name="numero_recibo" value="{{ ev.numero_recibo or '' }}">{% endcall %}
+              {% call m.field('Observação / Bloqueio real', 'esoc.observacao', 'span-all') %}<input type="text" name="observacao" value="{{ ev.observacao }}">{% endcall %}
+              {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(ev.status_validacao) }}{% endcall %}
+              {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-2') %}<input type="text" name="justificativa_contadora" value="{{ ev.justificativa_contadora or '' }}">{% endcall %}
+            </div>
+            <div class="barra-acoes">{{ m.acoes() }}</div>
+            </fieldset>
+          </form>
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

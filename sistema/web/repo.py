@@ -11,6 +11,42 @@ from sistema.erp.motor_contabil import recalcular_cenario_no_banco, validar_coer
 from sistema.pg.db import conectar_pg
 
 EMPRESA_CHAVE_D1 = "emp:prisma_jrna_g07"
+EMPRESA_CHAVE_D2 = "emp:rota_sul_d2"
+DOSSIES_VALIDOS = ("D1", "D2")
+EMPRESAS_POR_DOSSIE = {"D1": EMPRESA_CHAVE_D1, "D2": EMPRESA_CHAVE_D2}
+
+
+def dossie_em_foco(dossie: str | None = None) -> str:
+    if dossie and str(dossie).strip().upper() in DOSSIES_VALIDOS:
+        return str(dossie).strip().upper()
+    try:
+        from flask import has_request_context, request, session
+
+        if has_request_context():
+            q = (request.args.get("dossie") or "").strip().upper()
+            if q in DOSSIES_VALIDOS:
+                return q
+            s = (session.get("dossie_ativo") or "").strip().upper()
+            if s in DOSSIES_VALIDOS:
+                return s
+    except Exception:  # noqa: BLE001
+        pass
+    return "D1"
+
+
+def _validar_coerencia(conn: Any, emp_id: int) -> list[dict[str, Any]]:
+    with conn.cursor() as cur:
+        cur.execute("SELECT chave FROM erp.empresa WHERE id = %s", (emp_id,))
+        r = cur.fetchone()
+        chave = r["chave"] if r else EMPRESA_CHAVE_D1
+    if chave == EMPRESA_CHAVE_D2:
+        try:
+            from sistema.erp.motor_folha import validar_coerencia_dossie2
+
+            return validar_coerencia_dossie2(conn, emp_id)
+        except ImportError:
+            return []
+    return validar_coerencia_dossie1(conn, emp_id)
 
 
 def _slug(txt: str) -> str:
@@ -78,7 +114,7 @@ def parse_int_br(val: str | None, default: int = 0) -> int:
         raise ValueError(f"Numero inteiro invalido: {val!r}") from exc
 
 
-def _pessoas_ids_d1(cur: Any, emp: dict[str, Any]) -> list[int]:
+def _pessoas_ids(cur: Any, emp: dict[str, Any]) -> list[int]:
     emp_id = int(emp["id"])
     cur.execute("SELECT socio_pessoa_id FROM erp.participacao_societaria WHERE empresa_id = %s", (emp_id,))
     ids = {int(emp["pessoa_id"])}
@@ -86,7 +122,12 @@ def _pessoas_ids_d1(cur: Any, emp: dict[str, Any]) -> list[int]:
     return sorted(ids)
 
 
-def obter_empresa_d1(conn: Any) -> dict[str, Any]:
+_pessoas_ids_d1 = _pessoas_ids
+
+
+def empresa_em_foco(conn: Any, dossie: str | None = None) -> dict[str, Any]:
+    cod = dossie_em_foco(dossie)
+    chave = EMPRESAS_POR_DOSSIE[cod]
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -95,19 +136,26 @@ def obter_empresa_d1(conn: Any) -> dict[str, Any]:
             JOIN erp.pessoa p ON p.id = e.pessoa_id
             WHERE e.chave = %s
             """,
-            (EMPRESA_CHAVE_D1,),
+            (chave,),
         )
         row = cur.fetchone()
         if not row:
-            raise RuntimeError("Empresa emp:prisma_jrna_g07 nao encontrada no banco.")
-        return dict(row)
+            raise RuntimeError(f"Empresa {chave} nao encontrada no banco.")
+        d = dict(row)
+        d["dossie"] = cod
+        return d
+
+
+def obter_empresa_d1(conn: Any) -> dict[str, Any]:
+    return empresa_em_foco(conn)
 
 
 def carregar_painel_geral() -> dict[str, Any]:
     """Carrega visao executiva, placar de conformidade, backlog quarentena e alertas de coerencia."""
     with conectar_pg() as conn:
-        emp = obter_empresa_d1(conn)
+        emp = empresa_em_foco(conn)
         emp_id = int(emp["id"])
+        cod = emp["dossie"]
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM auditoria.alerta_coerencia WHERE empresa_id = %s ORDER BY CASE severidade WHEN 'critico' THEN 1 WHEN 'alerta' THEN 2 ELSE 3 END, id", (emp_id,))
             alertas = cur.fetchall()
@@ -123,9 +171,11 @@ def carregar_painel_geral() -> dict[str, Any]:
                        COUNT(*) FILTER (WHERE status_validacao = 'alerta_inconsistencia') AS inconsistencias,
                        COUNT(*) FILTER (WHERE status_validacao = 'pendente_revisao') AS pendentes
                 FROM auditoria.vw_pendencias_quarentena
+                WHERE dossie = %s
                 GROUP BY modulo
                 ORDER BY modulo
-                """
+                """,
+                (cod,),
             )
             quarentena_resumo = cur.fetchall()
 
@@ -144,19 +194,28 @@ def carregar_painel_geral() -> dict[str, Any]:
             )
             cen_oficial = cur.fetchone()
 
+            folha_resumo = None
+            if cod == "D2":
+                cur.execute(
+                    "SELECT * FROM erp.folha_competencia WHERE empresa_id = %s ORDER BY competencia DESC LIMIT 1",
+                    (emp_id,),
+                )
+                folha_resumo = cur.fetchone()
+
         return {
             "empresa": emp,
             "alertas": alertas,
             "placar_matrizes": placar_matrizes,
             "quarentena_resumo": quarentena_resumo,
             "cenario_oficial": cen_oficial,
+            "folha_resumo": folha_resumo,
         }
 
 
 def revalidar_coerencia() -> list[dict[str, Any]]:
     with conectar_pg() as conn:
-        emp = obter_empresa_d1(conn)
-        alertas = validar_coerencia_dossie1(conn, int(emp["id"]))
+        emp = empresa_em_foco(conn)
+        alertas = _validar_coerencia(conn, int(emp["id"]))
         conn.commit()
     return alertas
 
@@ -257,7 +316,7 @@ def salvar_empresa(form: dict[str, str]) -> None:
                     "UPDATE erp.pessoa SET nome_canonico = %s, origem_registro = 'usuario', status_validacao = %s WHERE id = %s",
                     (razao, form["status_validacao"], int(emp["pessoa_id"])),
                 )
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
@@ -295,7 +354,7 @@ def criar_ou_salvar_estabelecimento(est_id: int | None, form: dict[str, str]) ->
                         est_id, emp_id,
                     ),
                 )
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
@@ -305,7 +364,7 @@ def excluir_estabelecimento(est_id: int) -> None:
         emp_id = int(emp["id"])
         with conn.cursor() as cur:
             cur.execute("DELETE FROM erp.estabelecimento WHERE id = %s AND empresa_id = %s", (est_id, emp_id))
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
@@ -339,7 +398,7 @@ def salvar_identificador(pid_id: int | None, form: dict[str, str]) -> None:
                     """,
                     (form["tipo_id"], form["valor"].strip(), eh_ficticio, form["status_validacao"], form.get("justificativa_contadora", "").strip() or None, pid_id, list(permitidos)),
                 )
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
@@ -349,7 +408,7 @@ def excluir_identificador(pid_id: int) -> None:
         with conn.cursor() as cur:
             permitidos = _pessoas_ids_d1(cur, emp)
             cur.execute("DELETE FROM erp.pessoa_identificador WHERE id = %s AND pessoa_id = ANY(%s)", (pid_id, permitidos))
-        validar_coerencia_dossie1(conn, int(emp["id"]))
+        _validar_coerencia(conn, int(emp["id"]))
         conn.commit()
 
 
@@ -401,7 +460,7 @@ def salvar_socio(ps_id: int | None, form: dict[str, str]) -> None:
                     """,
                     (quotas, valor_cent, pct_micro, form["papel"].strip(), form["status_validacao"], form.get("justificativa_contadora", "").strip() or None, ps_id, emp_id),
                 )
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
@@ -411,7 +470,7 @@ def excluir_socio(ps_id: int) -> None:
         emp_id = int(emp["id"])
         with conn.cursor() as cur:
             cur.execute("DELETE FROM erp.participacao_societaria WHERE id = %s AND empresa_id = %s", (ps_id, emp_id))
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
@@ -443,7 +502,7 @@ def salvar_enquadramento(enq_id: int, form: dict[str, str]) -> None:
                     enq_id, emp_id,
                 ),
             )
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
@@ -512,7 +571,7 @@ def criar_clausula(form: dict[str, str]) -> None:
                     alc, form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
                 ),
             )
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
@@ -556,7 +615,7 @@ def salvar_clausula(cl_id: int, form: dict[str, str]) -> None:
                     cl_id, emp_id,
                 ),
             )
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
@@ -566,7 +625,7 @@ def excluir_clausula(cl_id: int) -> None:
         emp_id = int(emp["id"])
         with conn.cursor() as cur:
             cur.execute("DELETE FROM erp.instrumento_societario_clausula WHERE id = %s AND empresa_id = %s", (cl_id, emp_id))
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
@@ -617,7 +676,7 @@ def criar_etapa_legalizacao(form: dict[str, str]) -> None:
                     form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
                 ),
             )
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
@@ -647,7 +706,7 @@ def salvar_etapa_legalizacao(etapa_id: int, form: dict[str, str]) -> None:
                     etapa_id, emp_id,
                 ),
             )
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
@@ -657,7 +716,7 @@ def excluir_etapa_legalizacao(etapa_id: int) -> None:
         emp_id = int(emp["id"])
         with conn.cursor() as cur:
             cur.execute("DELETE FROM erp.processo_legalizacao_etapa WHERE id = %s AND empresa_id = %s", (etapa_id, emp_id))
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
@@ -831,7 +890,7 @@ def salvar_cenario(cenario_id: int | None, form: dict[str, str]) -> int:
                     ),
                 )
         recalcular_cenario_no_banco(conn, cenario_id)
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
     return cenario_id
 
@@ -878,7 +937,7 @@ def clonar_cenario(cenario_id: int) -> int:
             )
             novo_id = int(cur.fetchone()["id"])
         recalcular_cenario_no_banco(conn, novo_id)
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
     return novo_id
 
@@ -893,7 +952,7 @@ def definir_cenario_oficial(cenario_id: int) -> None:
                 raise ValueError(f"Cenario id={cenario_id} nao encontrado para esta empresa.")
             cur.execute("UPDATE erp.orcamento_cenario SET eh_oficial = false WHERE empresa_id = %s", (emp_id,))
             cur.execute("UPDATE erp.orcamento_cenario SET eh_oficial = true, origem_registro = 'usuario' WHERE id = %s AND empresa_id = %s", (cenario_id, emp_id))
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
@@ -907,7 +966,7 @@ def excluir_cenario(cenario_id: int) -> bool:
             if not row or row["eh_oficial"]:
                 return False
             cur.execute("DELETE FROM erp.orcamento_cenario WHERE id = %s AND empresa_id = %s", (cenario_id, emp_id))
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
     return True
 
@@ -915,18 +974,26 @@ def excluir_cenario(cenario_id: int) -> bool:
 # =============================================================================
 # ESTACAO 5: CONSULTAS NORMATIVAS, CONFORMIDADE (200) & DIARIO DE IA
 # =============================================================================
-def carregar_sustentacao(matriz: str = "plano_negocios", apenas_pendentes: bool = False) -> dict[str, Any]:
+MATRIZES_D1 = ("plano_negocios", "contrato_social", "memorando", "fluxo_abertura")
+MATRIZES_D2 = ("d2_p1", "d2_p2", "d2_p3", "d2_p4", "d2_p5", "d2_p6", "d2_p7", "d2_p8", "d2_p9")
+
+
+def carregar_sustentacao(matriz: str | None = None, apenas_pendentes: bool = False) -> dict[str, Any]:
     with conectar_pg() as conn:
-        emp = obter_empresa_d1(conn)
+        emp = empresa_em_foco(conn)
         emp_id = int(emp["id"])
+        cod = emp["dossie"]
+        validas = MATRIZES_D2 if cod == "D2" else MATRIZES_D1
+        if not matriz or matriz not in validas:
+            matriz = validas[0]
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM erp.consulta_normativa WHERE empresa_id = %s ORDER BY numero_questao", (emp_id,))
+            cur.execute("SELECT * FROM erp.consulta_normativa WHERE empresa_id = %s AND dossie = %s ORDER BY numero_questao", (emp_id, cod))
             consultas = cur.fetchall()
 
-            cur.execute("SELECT * FROM erp.empresa_decisao_preliminar WHERE empresa_id = %s ORDER BY ordem", (emp_id,))
+            cur.execute("SELECT * FROM erp.empresa_decisao_preliminar WHERE empresa_id = %s AND dossie = %s ORDER BY ordem", (emp_id, cod))
             decisoes = cur.fetchall()
 
-            cur.execute("SELECT * FROM auditoria.vw_placar_conformidade WHERE empresa_id = %s ORDER BY matriz", (emp_id,))
+            cur.execute("SELECT * FROM auditoria.vw_placar_conformidade WHERE empresa_id = %s AND dossie = %s ORDER BY matriz", (emp_id, cod))
             placar = cur.fetchall()
 
             where_pend = " AND av.status_validacao <> 'homologado_contadora'" if apenas_pendentes else ""
@@ -935,14 +1002,14 @@ def carregar_sustentacao(matriz: str = "plano_negocios", apenas_pendentes: bool 
                 SELECT av.*, c.matriz, c.bloco, c.bloco_titulo, c.bloco_peso, c.codigo, c.descricao, c.referencia_fonte
                 FROM auditoria.avaliacao_conformidade av
                 JOIN auditoria.criterio_conformidade c ON c.id = av.criterio_id
-                WHERE av.empresa_id = %s AND c.matriz = %s {where_pend}
+                WHERE av.empresa_id = %s AND c.dossie = %s AND c.matriz = %s {where_pend}
                 ORDER BY c.bloco, c.id
                 """,
-                (emp_id, matriz),
+                (emp_id, cod, matriz),
             )
             criterios = cur.fetchall()
 
-            cur.execute("SELECT id, documento, codigo_secao FROM erp.documento_secao WHERE empresa_id = %s", (emp_id,))
+            cur.execute("SELECT id, documento, codigo_secao FROM erp.documento_secao WHERE empresa_id = %s AND dossie = %s", (emp_id, cod))
             sec_ids = {(r["documento"], r["codigo_secao"]): int(r["id"]) for r in cur.fetchall()}
 
             cur.execute("SELECT id, codigo_criterio FROM erp.instrumento_societario_clausula WHERE empresa_id = %s ORDER BY ordem, id", (emp_id,))
@@ -954,7 +1021,20 @@ def carregar_sustentacao(matriz: str = "plano_negocios", apenas_pendentes: bool 
             etapas_rows = cur.fetchall()
 
             def _destino_criterio(cr: dict[str, Any]) -> tuple[str, str]:
-                mat, blk, cod = cr["matriz"], cr["bloco"], str(cr["codigo"]).strip().upper()
+                mat, blk, cr_cod = cr["matriz"], cr["bloco"], str(cr["codigo"]).strip().upper()
+                if mat.startswith("d2_p"):
+                    mapa_d2 = {
+                        "d2_p1": ("/instrumentos", "Abrir Análise da 2ª Alteração (Estação 2)"),
+                        "d2_p2": ("/onboarding#contratos", "Abrir Contratos e Termo RT (Estação 7)"),
+                        "d2_p3": ("/onboarding#diligencia", "Abrir Checklist, Q1–Q9 e Pendências (Estação 7)"),
+                        "d2_p4": ("/dp#contratos-trabalho", "Abrir Departamento Pessoal e eSocial (Estação 8)"),
+                        "d2_p5": ("/folha#rubricas", "Abrir Cálculo da Folha 09/2026 (Estação 9)"),
+                        "d2_p6": ("/folha#partidas", "Abrir Provisões e Partidas Dobradas (Estação 9)"),
+                        "d2_p7": ("/folha#auditoria", "Abrir Auditoria Trabalhista (Estação 9)"),
+                        "d2_p8": ("/sustentacao#consultas", "Abrir Registro de Premissas PR-01..18 (abaixo)"),
+                        "d2_p9": ("/sustentacao#diario-ia", "Abrir Diário de Uso de IA (abaixo)"),
+                    }
+                    return mapa_d2.get(mat, ("/emissao", "Abrir Emissão Dossiê 2 (Estação 6)"))
                 if mat == "plano_negocios":
                     mapa_pn = {
                         "A": ("S01", "Abrir Sumário Executivo (S01)"),
@@ -974,20 +1054,20 @@ def carregar_sustentacao(matriz: str = "plano_negocios", apenas_pendentes: bool 
                     sid = sec_ids.get(("plano_negocios", sec_cod))
                     return (f"/emissao#secao-{sid}" if sid else "/emissao#secoes", rotulo)
                 if mat in ("contrato_social", "memorando"):
-                    cid = cl_ids.get(cod)
+                    cid = cl_ids.get(cr_cod)
                     filtro = "contrato" if mat == "contrato_social" else "mou"
                     if cid:
-                        return (f"/instrumentos?filtro={filtro}#clausula-{cid}", f"Abrir cláusula ({cod}) na Estação 2")
+                        return (f"/instrumentos?filtro={filtro}#clausula-{cid}", f"Abrir cláusula ({cr_cod}) na Estação 2")
                     return (f"/instrumentos?filtro={filtro}", "Abrir Instrumentos (Estação 2)")
                 for e in etapas_rows:
                     tokens = [t.strip().upper() for t in str(e["codigo"]).replace(",", " ").split()]
-                    if cod in tokens:
+                    if cr_cod in tokens:
                         return (f"/legalizacao#etapa-{e['id']}", f"Abrir etapa {e['codigo']} na Estação 3")
                 return ("/legalizacao#lista-etapas", "Abrir Legalização DF (Estação 3)")
 
             criterios = [dict(cr, destino_url=_destino_criterio(cr)[0], destino_rotulo=_destino_criterio(cr)[1]) for cr in criterios]
 
-            cur.execute("SELECT * FROM auditoria.diario_ia WHERE empresa_id = %s AND dossie = 'D1' ORDER BY id", (emp_id,))
+            cur.execute("SELECT * FROM auditoria.diario_ia WHERE empresa_id = %s AND dossie = %s ORDER BY id", (emp_id, cod))
             diario_ia = cur.fetchall()
 
         return {
@@ -999,13 +1079,15 @@ def carregar_sustentacao(matriz: str = "plano_negocios", apenas_pendentes: bool 
             "diario_ia": diario_ia,
             "matriz_ativa": matriz,
             "apenas_pendentes": apenas_pendentes,
+            "matrizes_disponiveis": validas,
         }
 
 
 def salvar_consulta(cons_id: int | None, form: dict[str, str]) -> None:
     with conectar_pg() as conn:
-        emp = obter_empresa_d1(conn)
+        emp = empresa_em_foco(conn)
         emp_id = int(emp["id"])
+        cod = emp["dossie"]
         with conn.cursor() as cur:
             if cons_id is None:
                 cur.execute("SELECT COALESCE(MAX(numero_questao), 0) + 1 AS prox FROM erp.consulta_normativa WHERE empresa_id = %s", (emp_id,))
@@ -1014,14 +1096,14 @@ def salvar_consulta(cons_id: int | None, form: dict[str, str]) -> None:
                     """
                     INSERT INTO erp.consulta_normativa
                         (chave, empresa_id, numero_questao, enunciado, resposta_autoral, norma_citada, link_oficial,
-                         data_acesso, decisao_impactada, origem_registro, status_validacao, justificativa_contadora)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'usuario', %s, %s)
+                         data_acesso, decisao_impactada, origem_registro, status_validacao, justificativa_contadora, dossie)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'usuario', %s, %s, %s)
                     """,
                     (
-                        f"cons:usr:q{num:02d}", emp_id, num, form["enunciado"].strip(), form["resposta_autoral"].strip(),
+                        f"cons:usr:{cod.lower()}:q{num:02d}", emp_id, num, form["enunciado"].strip(), form["resposta_autoral"].strip(),
                         form["norma_citada"].strip(), form["link_oficial"].strip(), form["data_acesso"],
                         form.get("decisao_impactada", "").strip() or None, form["status_validacao"],
-                        form.get("justificativa_contadora", "").strip() or None,
+                        form.get("justificativa_contadora", "").strip() or None, cod,
                     ),
                 )
             else:
@@ -1040,23 +1122,23 @@ def salvar_consulta(cons_id: int | None, form: dict[str, str]) -> None:
                         cons_id, emp_id,
                     ),
                 )
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
 def excluir_consulta(cons_id: int) -> None:
     with conectar_pg() as conn:
-        emp = obter_empresa_d1(conn)
+        emp = empresa_em_foco(conn)
         emp_id = int(emp["id"])
         with conn.cursor() as cur:
             cur.execute("DELETE FROM erp.consulta_normativa WHERE id = %s AND empresa_id = %s", (cons_id, emp_id))
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
 def salvar_avaliacao_criterio(av_id: int, form: dict[str, str]) -> None:
     with conectar_pg() as conn:
-        emp = obter_empresa_d1(conn)
+        emp = empresa_em_foco(conn)
         emp_id = int(emp["id"])
         na = form.get("nao_aplicavel") == "on"
         nota_str = (form.get("nota") or "").strip()
@@ -1079,14 +1161,15 @@ def salvar_avaliacao_criterio(av_id: int, form: dict[str, str]) -> None:
                     form["status_validacao"], av_id, emp_id,
                 ),
             )
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
 
 
 def salvar_diario_ia(ia_id: int | None, form: dict[str, str]) -> None:
     with conectar_pg() as conn:
-        emp = obter_empresa_d1(conn)
+        emp = empresa_em_foco(conn)
         emp_id = int(emp["id"])
+        cod = emp["dossie"]
         with conn.cursor() as cur:
             if ia_id is None:
                 cur.execute("SELECT COALESCE(MAX(id), 0) + 1 AS nxt FROM auditoria.diario_ia")
@@ -1096,10 +1179,10 @@ def salvar_diario_ia(ia_id: int | None, form: dict[str, str]) -> None:
                     INSERT INTO auditoria.diario_ia
                         (chave, dossie, empresa_id, entregavel, ferramenta, finalidade, prompt_resumo,
                          fonte_oficial, revisao_humana, autor, origem_registro, status_validacao)
-                    VALUES (%s, 'D1', %s, %s, %s, %s, %s, %s, %s, %s, 'usuario', %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'usuario', %s)
                     """,
                     (
-                        f"ia:d1:usr:{nxt}", emp_id, form["entregavel"].strip(), form.get("ferramenta", "Assistente IA").strip(),
+                        f"ia:{cod.lower()}:usr:{nxt}", cod, emp_id, form["entregavel"].strip(), form.get("ferramenta", "Assistente IA").strip(),
                         form["finalidade"].strip(), form.get("prompt_resumo", form["finalidade"]).strip(),
                         form["fonte_oficial"].strip(), form["revisao_humana"].strip(),
                         form.get("autor", "Nathalia Peres").strip(), form["status_validacao"],
@@ -1124,7 +1207,7 @@ def salvar_diario_ia(ia_id: int | None, form: dict[str, str]) -> None:
 
 def excluir_diario_ia(ia_id: int) -> None:
     with conectar_pg() as conn:
-        emp = obter_empresa_d1(conn)
+        emp = empresa_em_foco(conn)
         emp_id = int(emp["id"])
         with conn.cursor() as cur:
             cur.execute("DELETE FROM auditoria.diario_ia WHERE id = %s AND empresa_id = %s", (ia_id, emp_id))
@@ -1134,10 +1217,11 @@ def excluir_diario_ia(ia_id: int) -> None:
 # =============================================================================
 # NAVEGACAO: PROGRESSO DE HOMOLOGACAO POR ESTACAO
 # =============================================================================
-def progresso_por_estacao() -> dict[str, dict[str, int]]:
+def progresso_por_estacao(dossie: str | None = None) -> dict[str, dict[str, int]]:
     """Homologados/total por estacao a partir de auditoria.vw_pendencias_quarentena."""
     from sistema.web.rotulos import MODULO_ESTACAO
 
+    cod = dossie_em_foco(dossie)
     with conectar_pg() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -1145,9 +1229,10 @@ def progresso_por_estacao() -> dict[str, dict[str, int]]:
                 SELECT modulo, COUNT(*) AS t,
                        COUNT(*) FILTER (WHERE status_validacao = 'homologado_contadora') AS h
                 FROM auditoria.vw_pendencias_quarentena
-                WHERE status_validacao <> 'acervo_referencia'
+                WHERE dossie = %s AND status_validacao <> 'acervo_referencia'
                 GROUP BY modulo
-                """
+                """,
+                (cod,),
             )
             linhas = cur.fetchall()
     out: dict[str, dict[str, int]] = {}
@@ -1164,15 +1249,23 @@ def progresso_por_estacao() -> dict[str, dict[str, int]]:
 # =============================================================================
 # ESTACAO 6: EMISSAO — SECOES NARRATIVAS DOS DOCUMENTOS (erp.documento_secao)
 # =============================================================================
-DOCUMENTOS_SECAO = ("indice", "pesquisa", "plano_negocios", "contrato_social", "memorando", "fluxo_abertura")
+DOCUMENTOS_SECAO_D1 = ("indice", "pesquisa", "plano_negocios", "contrato_social", "memorando", "fluxo_abertura")
+DOCUMENTOS_SECAO_D2 = (
+    "d2_00_indice", "d2_01_diagnostico", "d2_02_proposta", "d2_03_contrato",
+    "d2_04_termo_rt", "d2_05_onboarding", "d2_06_prontuario", "d2_07_ficha_e1",
+    "d2_08_exp_e1", "d2_09_ficha_e2", "d2_10_exp_e2", "d2_11_folha",
+    "d2_12_resumo_contab", "d2_13_auditoria", "d2_14_premissas", "d2_15_ia",
+)
+DOCUMENTOS_SECAO = DOCUMENTOS_SECAO_D1 + DOCUMENTOS_SECAO_D2
 
 
 def carregar_emissao() -> dict[str, Any]:
     with conectar_pg() as conn:
-        emp = obter_empresa_d1(conn)
+        emp = empresa_em_foco(conn)
         emp_id = int(emp["id"])
+        cod = emp["dossie"]
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM erp.documento_secao WHERE empresa_id = %s ORDER BY documento, ordem, id", (emp_id,))
+            cur.execute("SELECT * FROM erp.documento_secao WHERE empresa_id = %s AND dossie = %s ORDER BY documento, ordem, id", (emp_id, cod))
             secoes = cur.fetchall()
             cur.execute(
                 """
@@ -1182,9 +1275,10 @@ def carregar_emissao() -> dict[str, Any]:
                        COUNT(*) FILTER (WHERE status_validacao = 'alerta_inconsistencia') AS inconsistencias,
                        COUNT(*) FILTER (WHERE status_validacao = 'pendente_revisao') AS pendentes
                 FROM auditoria.vw_pendencias_quarentena
-                WHERE status_validacao <> 'acervo_referencia'
+                WHERE dossie = %s AND status_validacao <> 'acervo_referencia'
                 GROUP BY modulo ORDER BY modulo
-                """
+                """,
+                (cod,),
             )
             quarentena = cur.fetchall()
     return {"empresa": emp, "secoes": secoes, "quarentena": quarentena}
@@ -1198,8 +1292,9 @@ def salvar_secao(sec_id: int | None, form: dict[str, str]) -> int:
     if not titulo:
         raise ValueError("O titulo da secao nao pode ficar vazio.")
     with conectar_pg() as conn:
-        emp = obter_empresa_d1(conn)
+        emp = empresa_em_foco(conn)
         emp_id = int(emp["id"])
+        cod = emp["dossie"]
         with conn.cursor() as cur:
             if sec_id is None:
                 codigo = _slug(form.get("codigo_secao") or titulo)[:40]
@@ -1212,14 +1307,14 @@ def salvar_secao(sec_id: int | None, form: dict[str, str]) -> int:
                     """
                     INSERT INTO erp.documento_secao
                         (chave, empresa_id, documento, ordem, codigo_secao, titulo, conteudo_md,
-                         origem_registro, status_validacao, justificativa_contadora)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, 'usuario', %s, %s)
+                         origem_registro, status_validacao, justificativa_contadora, dossie)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, 'usuario', %s, %s, %s)
                     RETURNING id
                     """,
                     (
-                        f"docsec:usr:{documento}:{codigo}", emp_id, documento, max(ordem, 1), codigo, titulo,
+                        f"docsec:usr:{cod.lower()}:{documento}:{codigo}", emp_id, documento, max(ordem, 1), codigo, titulo,
                         (form.get("conteudo_md") or "").strip(), form.get("status_validacao", "pendente_revisao"),
-                        (form.get("justificativa_contadora") or "").strip() or None,
+                        (form.get("justificativa_contadora") or "").strip() or None, cod,
                     ),
                 )
                 sec_id = int(cur.fetchone()["id"])
@@ -1237,16 +1332,16 @@ def salvar_secao(sec_id: int | None, form: dict[str, str]) -> int:
                         (form.get("justificativa_contadora") or "").strip() or None, sec_id, emp_id,
                     ),
                 )
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()
     return sec_id
 
 
 def excluir_secao(sec_id: int) -> None:
     with conectar_pg() as conn:
-        emp = obter_empresa_d1(conn)
+        emp = empresa_em_foco(conn)
         emp_id = int(emp["id"])
         with conn.cursor() as cur:
             cur.execute("DELETE FROM erp.documento_secao WHERE id = %s AND empresa_id = %s", (sec_id, emp_id))
-        validar_coerencia_dossie1(conn, emp_id)
+        _validar_coerencia(conn, emp_id)
         conn.commit()

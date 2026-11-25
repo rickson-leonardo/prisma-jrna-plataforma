@@ -26,7 +26,7 @@
   <div class="band"></div>
   <img class="logo" src="{{ brand }}/logo_prisma_jrna_hd.png" alt="PRISMA JRNA">
   <h1>{{ info.titulo }}</h1>
-  <div class="meta">Doc. <span class="mono">{{ info.nn }}</span> · Dossiê 1 · Laboratório Contábil (CCA 0174 / UnB)</div>
+  <div class="meta">Doc. <span class="mono">{{ info.nn }}</span> · {{ info.get('dossie_label', 'Dossiê 1') }} · Laboratório Contábil (CCA 0174 / UnB)</div>
   <div class="rule"></div>
   {{ m.aviso() }}
   {% block capa %}{{ m.ficha() }}{% endblock %}

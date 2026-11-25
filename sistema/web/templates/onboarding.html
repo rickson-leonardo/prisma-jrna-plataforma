@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Onboarding e Contratos (D2){% endblock %}
+{% block content %}
+<div class="topbar">
+  <div>
+    <div class="kicker">Estação 7 · Operação Rota Sul (Dossiê 2)</div>
+    <h2>Onboarding, Contratos de Serviço e Diligência</h2>
+    <div class="subtitle">Proposta, Contrato, Termo RT (Res. CFC 1.708/2023), Procuração, Checklist DOC-01..13, Q1..Q9 e Pendências.</div>
+  </div>
+</div>
+{{ m.guia('onboarding') }}
+{{ m.modo_barra() }}
+
+{% if escritorio %}
+<section class="card">
+  {{ m.titulo_tabela('7.0', 'Contratada em leitura direta do Dossiê 1 (sem redigitação)', 'cs.titulo', 'emp:prisma_jrna_g07') }}
+  <div class="grid-kpi">
+    <div class="kpi"><div class="k-l">Escritório Contábil</div><div class="val txt">{{ escritorio.nome_canonico }}</div><small>CNPJ {{ escritorio.cnpj or '48.123.456/0001-90' }} · {{ escritorio.registro_crc or 'CRC-DF 004.821/O-2' }}</small></div>
+    <div class="kpi"><div class="k-l">Responsável Técnica (Cl. 11ª D1)</div><div class="val txt">{{ escritorio.rt_nome or 'Nathalia Peres Araujo' }}</div><small>{{ escritorio.rt_crc or 'CRC-DF 025.431/O-7' }} · assinatura conjunta &gt; R$ 15 mil</small></div>
+    <div class="kpi"><div class="k-l">Sede (Dossiê 1)</div><div class="val txt" style="font-size:13px;">{{ escritorio.sede or 'Asa Sul, Brasília-DF' }}</div><small><a href="{{ url_for('cadastro', dossie='D1') }}">Ver no Dossiê 1</a></small></div>
+  </div>
+</section>
+{% endif %}
+
+<div class="zona"><span class="mundo mundo-erp">P2 · Instrumentos da Contratada</span><h2>1. Proposta, Contrato de Serviços, Termo RT e Procuração</h2></div>
+<section class="card" id="contratos">
+  {{ m.titulo_tabela('Tabela 7.1', 'Documentos contratuais e procuração (' ~ contratos|length ~ ')', 'tab.contratos_servico', 'erp.contrato_servico') }}
+  <div class="progs">{{ m.progresso(contratos|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length, contratos|length, 'instrumentos homologados') }}</div>
+  <div class="lista" id="lista-contratos">
+    {% for cs in contratos %}
+      <details class="item" id="contrato-srv-{{ cs.id }}" data-item data-status="{{ cs.status_validacao }}" style="--cols: 120px minmax(0,1fr) auto">
+        <summary>
+          <span class="it-cod">{{ cs.codigo_documento|upper }}</span>
+          <span class="it-tit">{{ cs.titulo }}<span class="it-sub">{% if cs.honorario_mensal_centavos %}Mensal {{ cs.honorario_mensal_centavos|brl }}{% endif %}{% if cs.tem_decimo_terceiro %} · +13º honorário{% endif %} · Vigência {{ cs.vigencia_inicio or '—' }}</span></span>
+          <span class="it-meta">{{ m.badge(cs.status_validacao) }}</span>
+        </summary>
+        <div class="corpo crud-bloco" data-crud-bloco>
+          {{ m.governanca(cs) }}
+          {{ m.crud_ctrl() }}
+          <form method="post" action="{{ url_for('post_onboarding_contrato', cs_id=cs.id) }}">
+            {{ m.csrf() }}
+            <fieldset class="crud-fs" disabled>
+            <div class="form-grid">
+              {% call m.field('Título', 'cs.titulo', 'span-2') %}<input type="text" name="titulo" value="{{ cs.titulo }}" required>{% endcall %}
+              {% call m.field('Honorário mensal (R$)', 'cs.honorario') %}<input class="num-in" type="text" data-fmt="num" name="honorario_mensal_reais" value="{{ cs.honorario_mensal_centavos|reais_in }}">{% endcall %}
+              {% call m.field('Hora técnica (R$/h)', 'cs.valor_hora') %}<input class="num-in" type="text" data-fmt="num" name="valor_hora_reais" value="{{ cs.valor_hora_centavos|reais_in }}">{% endcall %}
+              {% call m.field('Horas/mês', 'cs.horas_mes') %}<input type="text" data-fmt="int" name="horas_mes_estimadas" value="{{ cs.horas_mes_estimadas }}">{% endcall %}
+              {% call m.field('Início vigência', 'cs.vigencia') %}<input type="date" name="vigencia_inicio" value="{{ cs.vigencia_inicio or '' }}">{% endcall %}
+              {% call m.field('Foro', 'cs.foro') %}<input type="text" name="foro" value="{{ cs.foro or '' }}">{% endcall %}
+              <label class="check" style="align-self:end;"><input type="checkbox" name="tem_decimo_terceiro" {{ 'checked' if cs.tem_decimo_terceiro }}> Inclui 13º honorário anual{{ m.tip('cs.decimo_terceiro', '13º honorário') }}</label>
+              {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(cs.status_validacao) }}{% endcall %}
+              {% call m.field('Escopo e memória resumida', 'cs.escopo', 'span-all') %}<textarea name="escopo_resumo">{{ cs.escopo_resumo }}</textarea>{% endcall %}
+              {% call m.field('Observações / cláusulas (Markdown)', 'cs.conteudo', 'span-all') %}<textarea class="longo" name="conteudo_md">{{ cs.conteudo_md }}</textarea>{% endcall %}
+              {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ cs.justificativa_contadora or '' }}">{% endcall %}
+            </div>
+            <div class="barra-acoes">{{ m.acoes() }}</div>
+            </fieldset>
+          </form>
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="zona"><span class="mundo mundo-sus">P3 · Diligência de Transição</span><h2>2. Checklist (DOC-01..13), Respostas (Q1..Q9) e Pendências (PEND-01..08)</h2></div>
+<section class="card" id="diligencia">
+  {{ m.titulo_tabela('Tabela 7.2', 'Itens de diligência do onboarding (' ~ diligencias|length ~ ')', 'tab.diligencia', 'erp.diligencia_item') }}
+  <div class="progs">{{ m.progresso(diligencias|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length, diligencias|length, 'itens de diligência homologados') }}</div>
+  <div class="tabs">
+    <a href="{{ url_for('onboarding', tipo='todos') }}#diligencia" class="{{ 'active' if tipo_filtro == 'todos' }}">Todos ({{ diligencias|length }})</a>
+    <a href="{{ url_for('onboarding', tipo='documento') }}#diligencia" class="{{ 'active' if tipo_filtro == 'documento' }}">Documentos (DOC)</a>
+    <a href="{{ url_for('onboarding', tipo='pergunta') }}#diligencia" class="{{ 'active' if tipo_filtro == 'pergunta' }}">Perguntas / Respostas (Q)</a>
+    <a href="{{ url_for('onboarding', tipo='pendencia') }}#diligencia" class="{{ 'active' if tipo_filtro == 'pendencia' }}">Pendências (PEND)</a>
+  </div>
+  {{ m.filtros('lista-diligencia', 'Buscar: ASO, Sócontas, RADAR, Q4, PEND-01…') }}
+  <div class="lista" id="lista-diligencia">
+    {% for d in diligencias %}
+      <details class="item" id="diligencia-{{ d.id }}" data-item data-status="{{ d.status_validacao }}" style="--cols: 92px minmax(0,1fr) auto">
+        <summary>
+          <span class="it-cod">{{ d.codigo }}</span>
+          <span class="it-tit">{{ d.enunciado }}<span class="it-sub">{{ d.ator|rotulo('ator_diligencia') }} · {{ d.tema }} · Prazo {{ d.prazo_texto or '—' }} · <strong>{{ d.status_item|rotulo('status_diligencia') }}</strong></span></span>
+          <span class="it-meta">{{ m.badge(d.status_validacao) }}</span>
+        </summary>
+        <div class="corpo crud-bloco" data-crud-bloco>
+          {{ m.governanca(d) }}
+          {{ m.crud_ctrl() }}
+          <form method="post" action="{{ url_for('post_diligencia_salvar', dil_id=d.id) }}">
+            {{ m.csrf() }}
+            <fieldset class="crud-fs" disabled>
+            <div class="form-grid">
+              {% call m.field('Ator responsável', 'dil.ator') %}{{ m.select_rotulos('ator', 'ator_diligencia', d.ator) }}{% endcall %}
+              {% call m.field('Tema / Área', 'dil.tema') %}<input type="text" name="tema" value="{{ d.tema }}">{% endcall %}
+              {% call m.field('Prazo', 'dil.prazo') %}<input type="text" name="prazo_texto" value="{{ d.prazo_texto or '' }}">{% endcall %}
+              {% call m.field('Risco', 'dil.risco') %}<input type="text" name="risco" value="{{ d.risco or '' }}">{% endcall %}
+              {% call m.field('Status real da evidência', 'dil.status') %}{{ m.select_rotulos('status_item', 'status_diligencia', d.status_item) }}{% endcall %}
+              {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(d.status_validacao) }}{% endcall %}
+              {% call m.field('Solicitação / Pergunta / Pendência', 'dil.enunciado', 'span-all') %}<textarea name="enunciado">{{ d.enunciado }}</textarea>{% endcall %}
+              {% call m.field('Resposta literal / Providência (sem inventar evidência)', 'dil.resposta', 'span-all') %}<textarea class="longo" name="resposta_literal">{{ d.resposta_literal or '' }}</textarea>{% endcall %}
+              {% call m.field('Fonte / Origem comprovada', 'dil.fonte', 'span-2') %}<input type="text" name="fonte_evidencia" value="{{ d.fonte_evidencia or '' }}">{% endcall %}
+              {% call m.field('Responsável operacional', 'dil.ator') %}<input type="text" name="responsavel" value="{{ d.responsavel or '' }}">{% endcall %}
+              {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ d.justificativa_contadora or '' }}">{% endcall %}
+            </div>
+            <div class="barra-acoes">{{ m.acoes() }}</div>
+            </fieldset>
+          </form>
+          <div class="barra-acoes">{{ m.excluir(url_for('post_diligencia_excluir', dil_id=d.id), d.codigo) }}</div>
+        </div>
+      </details>
+    {% endfor %}
+    <details class="item">
+      <summary><span class="it-cod">+ Novo</span><span class="it-tit">Adicionar item de diligência / pergunta complementar</span><span></span></summary>
+      <div class="corpo crud-bloco" data-crud-bloco>
+        {{ m.crud_ctrl('Habilitar inclusão', 'modo.incluir') }}
+        <form method="post" action="{{ url_for('post_diligencia_nova') }}">
+          {{ m.csrf() }}
+          <input type="hidden" name="status_validacao" value="pendente_revisao">
+          <fieldset class="crud-fs" disabled>
+          <div class="form-grid">
+            {% call m.field('Tipo', 'dil.tipo') %}{{ m.select_rotulos('tipo', 'tipo_diligencia', 'pergunta') }}{% endcall %}
+            {% call m.field('Código', 'dil.codigo') %}<input class="mono-in" type="text" name="codigo" placeholder="Q10" required>{% endcall %}
+            {% call m.field('Ator', 'dil.ator') %}{{ m.select_rotulos('ator', 'ator_diligencia', 'cliente') }}{% endcall %}
+            {% call m.field('Status real', 'dil.status') %}{{ m.select_rotulos('status_item', 'status_diligencia', 'sem_resposta') }}{% endcall %}
+            {% call m.field('Tema', 'dil.tema') %}<input type="text" name="tema" required>{% endcall %}
+            {% call m.field('Prazo', 'dil.prazo') %}<input type="text" name="prazo_texto" value="05/10/2026">{% endcall %}
+            {% call m.field('Solicitação / Pergunta', 'dil.enunciado', 'span-all') %}<textarea name="enunciado" required></textarea>{% endcall %}
+            {% call m.field('Resposta / Providência', 'dil.resposta', 'span-all') %}<textarea name="resposta_literal"></textarea>{% endcall %}
+          </div>
+          <div class="barra-acoes"><span class="acoes"><button class="btn btn-primary" type="submit">Adicionar item</button>{{ m.tip('acao.incluir', 'Incluir') }}</span></div>
+          </fieldset>
+        </form>
+      </div>
+    </details>
+  </div>
+</section>
+{% endblock %}

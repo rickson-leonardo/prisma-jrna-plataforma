@@ -133,7 +133,7 @@ def carregar_dados_dossie1() -> dict[str, Any]:
                    COUNT(*) FILTER (WHERE status_validacao = 'alerta_inconsistencia') AS inconsistencias,
                    COUNT(*) FILTER (WHERE status_validacao = 'pendente_revisao') AS pendentes
             FROM auditoria.vw_pendencias_quarentena
-            WHERE status_validacao <> 'acervo_referencia'
+            WHERE dossie = 'D1' AND status_validacao <> 'acervo_referencia'
             GROUP BY modulo ORDER BY modulo
             """
         )

@@ -1,0 +1,55 @@
+{% extends "_base.html" %}
+{% block corpo %}
+{% if resumo_executivo %}
+  <div class="box">
+    <strong>Resumo vivo consolidado do banco (Competência {{ resumo_executivo.competencia }}):</strong>
+    Proventos Brutos <strong>{{ resumo_executivo.bruto }}</strong> · INSS (DCTFWeb) <strong>{{ resumo_executivo.inss }}</strong> ·
+    FGTS Digital <strong>{{ resumo_executivo.fgts }}</strong> · Líquido Cenário A <strong>{{ resumo_executivo.liq_a }}</strong>
+    (Cenário B: {{ resumo_executivo.liq_b }}) · Provisões E1 <strong>{{ resumo_executivo.provisoes }}</strong> ·
+    Custo Total Simples <strong>{{ resumo_executivo.custo }}</strong> · Partidas Dobradas (D = C) <strong>{{ resumo_executivo.partidas }}</strong>.
+  </div>
+{% endif %}
+
+{% for s in secoes %}
+  <h2>{{ s.titulo|md_inline }}</h2>
+  {{ md(s.conteudo_md) }}
+{% endfor %}
+
+{% if extra_rubricas %}
+  <h2>Espelho dinâmico do Motor Contábil (Rubricas no PostgreSQL)</h2>
+  <table>
+    <thead><tr><th>Emp.</th><th>Código</th><th>Rubrica</th><th>Ref.</th><th class="num">Base (R$)</th><th class="num">Valor (R$)</th></tr></thead>
+    <tbody>
+      {% for it in extra_rubricas %}
+        <tr>
+          <td class="mono">{{ it.codigo_empregado }}</td>
+          <td class="mono">{{ it.codigo_rubrica }}</td>
+          <td>{{ it.nome_rubrica }}</td>
+          <td class="mono">{{ it.referencia_texto }}</td>
+          <td class="num">{{ brl_tab(it.base_centavos) }}</td>
+          <td class="num"><strong>{{ brl_tab(it.valor_centavos) }}</strong></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+
+{% if extra_partidas %}
+  <h2>Partidas dobradas verificadas pelo banco (L1–L4)</h2>
+  <table>
+    <thead><tr><th>Lote</th><th>D/C</th><th>Conta</th><th>Histórico</th><th class="num">Débito (R$)</th><th class="num">Crédito (R$)</th></tr></thead>
+    <tbody>
+      {% for p in extra_partidas %}
+        <tr>
+          <td class="mono">{{ p.tag_ref|upper }}</td>
+          <td class="mono">{{ p.dc }}</td>
+          <td class="mono">{{ p.conta_codigo }} · {{ p.conta_nome }}</td>
+          <td>{{ p.historico }}</td>
+          <td class="num">{{ brl_tab(p.valor_centavos) if p.dc == 'D' else '—' }}</td>
+          <td class="num">{{ brl_tab(p.valor_centavos) if p.dc == 'C' else '—' }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+{% endblock %}

@@ -4,11 +4,11 @@
 {% block content %}
 <div class="topbar">
   <div>
-    <div class="kicker">Estação 5 · Sustentação do Dossiê 1</div>
-    <h2>Sustentação normativa, Matriz IABP (200 critérios) e diário de IA</h2>
-    <div class="subtitle">Fundamentação da contadora, autoavaliação das 4 matrizes da disciplina e uso transparente de IA.</div>
+    <div class="kicker">Estação 5 · Sustentação do {{ 'Dossiê 2' if empresa.dossie == 'D2' else 'Dossiê 1' }}</div>
+    <h2>Sustentação normativa, Matriz IABP ({{ '47 critérios' if empresa.dossie == 'D2' else '200 critérios' }}) e diário de IA</h2>
+    <div class="subtitle">Fundamentação da contadora, autoavaliação das {{ 'matrizes P1–P9' if empresa.dossie == 'D2' else '4 matrizes da disciplina' }} e uso transparente de IA.</div>
   </div>
-  <a class="btn btn-primary" href="{{ url_for('emissao') }}">Emitir documentos do Dossiê 1</a>
+  <a class="btn btn-primary" href="{{ url_for('emissao') }}">Emitir documentos do {{ 'Dossiê 2' if empresa.dossie == 'D2' else 'Dossiê 1' }}</a>
 </div>
 {{ m.guia('sustentacao') }}
 
@@ -26,7 +26,7 @@
   {{ m.titulo_tabela('Tabela 5.1', 'Critérios — ' ~ (matriz_ativa|rotulo('matriz')) ~ ' (' ~ criterios|length ~ ')', 'col.iabp', 'auditoria.avaliacao_conformidade · auditoria.criterio_conformidade') }}
   <div class="progs">{{ m.progresso(criterios|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length, criterios|length, 'critérios desta matriz homologados') }}</div>
   <div class="tabs">
-    {% for mz in ['plano_negocios','contrato_social','memorando','fluxo_abertura'] %}
+    {% for mz in matrizes_disponiveis %}
       <a href="{{ url_for('sustentacao', matriz=mz, pendentes=1 if apenas_pendentes else 0) }}#criterios" class="{{ 'active' if matriz_ativa == mz }}">{{ mz|rotulo('matriz') }}</a>
     {% endfor %}
     <a href="{{ url_for('sustentacao', matriz=matriz_ativa, pendentes=0 if apenas_pendentes else 1) }}#criterios" class="{{ 'active' if apenas_pendentes }}">{{ 'Mostrar todos' if apenas_pendentes else 'Somente não homologados' }}</a>
@@ -72,15 +72,15 @@
   </div>
 </section>
 
-<div class="zona"><span class="mundo mundo-sus">Sustentação</span><h2>2. Consultas normativas (Q1 a Q10)</h2></div>
+<div class="zona"><span class="mundo mundo-sus">Sustentação</span><h2>2. {{ 'Premissas Adotadas e Fontes Oficiais (PR-01 a PR-18)' if empresa.dossie == 'D2' else 'Consultas normativas (Q1 a Q10)' }}</h2></div>
 <section class="card" id="consultas">
-  {{ m.titulo_tabela('Tabela 5.2', 'Registro profissional, organização contábil e Redesim-DF', 'q.resposta', 'erp.consulta_normativa') }}
-  <div class="progs">{{ m.progresso(consultas|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length, consultas|length, 'consultas homologadas') }}</div>
-  {{ m.filtros('lista-consultas', 'Buscar: CRC-DF, viabilidade, Fator R…') }}
+  {{ m.titulo_tabela('Tabela 5.2', 'Fontes oficiais, premissas e legislação verificada', 'q.resposta', 'erp.consulta_normativa') }}
+  <div class="progs">{{ m.progresso(consultas|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length, consultas|length, 'itens homologados') }}</div>
+  {{ m.filtros('lista-consultas', 'Buscar: Portaria, Lei, CCT, INSS, Simples…') }}
   <div class="lista" id="lista-consultas">
     {% for q in consultas %}
       <details class="item" id="consulta-{{ q.id }}" data-item data-status="{{ q.status_validacao }}" style="--cols: 46px minmax(0,1fr) auto">
-        <summary><span class="it-cod">Q{{ q.numero_questao }}</span><span class="it-tit">{{ q.enunciado }}<span class="it-sub">{{ q.norma_citada }} · acesso <span class="mono">{{ q.data_acesso }}</span></span></span><span class="it-meta">{{ m.badge(q.status_validacao) }}</span></summary>
+        <summary><span class="it-cod">{{ 'PR-' ~ '%02d'|format(q.numero_questao) if empresa.dossie == 'D2' else 'Q' ~ q.numero_questao }}</span><span class="it-tit">{{ q.enunciado }}<span class="it-sub">{{ q.norma_citada }} · acesso <span class="mono">{{ q.data_acesso }}</span></span></span><span class="it-meta">{{ m.badge(q.status_validacao) }}</span></summary>
         <div class="corpo crud-bloco" data-crud-bloco>
           {{ m.governanca(q) }}
           {{ m.crud_ctrl() }}
@@ -138,7 +138,7 @@
 
 <div class="zona"><span class="mundo mundo-sus">Sustentação</span><h2>3. Diário de uso e revisão humana de IA</h2></div>
 <section class="card" id="diario-ia">
-  {{ m.titulo_tabela('Tabela 5.3', 'Diário transparente de IA — Dossiê 1', 'ia.revisao', 'auditoria.diario_ia') }}
+  {{ m.titulo_tabela('Tabela 5.3', 'Diário transparente de IA — ' ~ ('Dossiê 2' if empresa.dossie == 'D2' else 'Dossiê 1'), 'ia.revisao', 'auditoria.diario_ia') }}
   <div class="lista">
     {% for ia in diario_ia %}
       <details class="item" id="ia-{{ ia.id }}" data-item data-status="{{ ia.status_validacao }}" style="--cols: 150px minmax(0,1fr) auto">

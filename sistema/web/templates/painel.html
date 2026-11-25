@@ -4,9 +4,9 @@
 {% block content %}
 <div class="topbar">
   <div>
-    <div class="kicker">Estação 0</div>
+    <div class="kicker">Estação 0 · {{ 'Dossiê 2 (Rota Sul)' if empresa.dossie == 'D2' else 'Dossiê 1 (PRISMA JRNA)' }}</div>
     <h2>Painel da Contadora — {{ empresa.nome_curto }}</h2>
-    <div class="subtitle">Operação do ERP contábil e sustentação técnica do Dossiê 1 em uma única visão.</div>
+    <div class="subtitle">Operação do ERP contábil e sustentação técnica do {{ 'Dossiê 2 (09/2026)' if empresa.dossie == 'D2' else 'Dossiê 1' }} em uma única visão.</div>
   </div>
   <form method="post" action="{{ url_for('post_revalidar') }}" class="acoes">
     {{ m.csrf() }}<button class="btn btn-primary" type="submit">Reexecutar auditoria cruzada</button>{{ m.tip('acao.revalidar', 'Reexecutar auditoria cruzada') }}
@@ -14,23 +14,39 @@
 </div>
 {{ m.guia('painel') }}
 
-<div class="zona"><span class="mundo mundo-erp">Operação ERP</span><h2>Cenário financeiro oficial</h2></div>
-{% if cenario_oficial %}
-  {% set ind = cenario_oficial.indicadores_json or {} %}
-  <div class="grid-kpi">
-    <div class="kpi">
-      <div class="k-l">Cenário oficial ativo{{ m.tip('kpi.cenario_oficial', 'Cenário oficial') }}</div>
-      <div class="val txt"><a href="{{ url_for('planejamento', cenario_id=cenario_oficial.id) }}#cenario-{{ cenario_oficial.id }}">{{ cenario_oficial.regime_simulacao|rotulo('regime') }}</a></div>
-      <small>{{ m.badge(cenario_oficial.status_validacao) }}</small>
+{% if empresa.dossie == 'D2' %}
+  <div class="zona"><span class="mundo mundo-erp">Operação ERP · Dossiê 2</span><h2>Folha de Pagamento 09/2026 e Integração Contábil</h2></div>
+  {% if folha_resumo %}
+    <div class="grid-kpi">
+      <div class="kpi"><div class="k-l">Proventos brutos (09/2026){{ m.tip('kpi.folha_bruto', 'Bruto') }}</div><div class="val">{{ folha_resumo.bruto_total_centavos|brl_tab }}</div><small>{{ folha_resumo.status_folha }}</small></div>
+      <div class="kpi"><div class="k-l">INSS Retido · DCTFWeb{{ m.tip('kpi.folha_inss', 'INSS') }}</div><div class="val">{{ folha_resumo.inss_total_centavos|brl_tab }}</div></div>
+      <div class="kpi"><div class="k-l">FGTS 8% · FGTS Digital{{ m.tip('kpi.folha_fgts', 'FGTS') }}</div><div class="val">{{ folha_resumo.fgts_total_centavos|brl_tab }}</div></div>
+      <div class="kpi"><div class="k-l">Líquido a pagar (07/10){{ m.tip('kpi.folha_liquido', 'Líquido') }}</div><div class="val">{{ folha_resumo.liquido_total_centavos|brl_tab }}</div><small>{{ folha_resumo.cenario_negocial|rotulo('cenario_negocial') }}</small></div>
+      <div class="kpi"><div class="k-l">Provisões (13º/Fér.+FGTS){{ m.tip('kpi.folha_provisoes', 'Provisões') }}</div><div class="val">{{ folha_resumo.provisoes_total_centavos|brl_tab }}</div></div>
+      <div class="kpi"><div class="k-l">Custo total Simples{{ m.tip('kpi.folha_custo', 'Custo') }}</div><div class="val">{{ folha_resumo.custo_total_centavos|brl_tab }}</div></div>
     </div>
-    <div class="kpi"><div class="k-l">Receita bruta — ano 1 (R$){{ m.tip('kpi.receita_a1', 'Receita bruta ano 1') }}</div><div class="val">{{ cenario_oficial.receita_bruta_centavos|brl_tab }}</div></div>
-    <div class="kpi"><div class="k-l">DAS ano 1 (R$) · Fator R{{ m.tip('kpi.das_fator_r', 'DAS e Fator R') }}</div><div class="val">{{ cenario_oficial.das_centavos|brl_tab }}</div><small>Fator R <span class="mono">{{ cenario_oficial.fator_r_anual_micro|pct_micro }}</span></small></div>
-    <div class="kpi"><div class="k-l">Lucro líquido — ano 1 (R$){{ m.tip('kpi.lucro_a1', 'Lucro líquido') }}</div><div class="val">{{ cenario_oficial.lucro_liquido_centavos|brl_tab }}</div></div>
-    <div class="kpi"><div class="k-l">VPL (R$) · TIR — 3 anos{{ m.tip('kpi.vpl_tir', 'VPL e TIR') }}</div><div class="val">{{ ind.get('vpl_centavos', 0)|brl_tab }}</div><small>TIR <span class="mono">{{ ind.get('tir_pct')|num_br }}%</span></small></div>
-    <div class="kpi"><div class="k-l">Check do balanço (R$){{ m.tip('kpi.check_bp', 'Check do balanço') }}</div><div class="val">{{ cenario_oficial.bp_diferenca_centavos|brl }}</div><small>Ativo − (Passivo + PL)</small></div>
-  </div>
+  {% else %}
+    <p class="vazio">Competência 09/2026 aberta. Execute o recálculo na Estação 9 (Folha e Auditoria).</p>
+  {% endif %}
 {% else %}
-  <p class="vazio">Nenhum cenário oficial definido. Promova um cenário na <a href="{{ url_for('planejamento') }}">Estação 4</a>.</p>
+  <div class="zona"><span class="mundo mundo-erp">Operação ERP</span><h2>Cenário financeiro oficial</h2></div>
+  {% if cenario_oficial %}
+    {% set ind = cenario_oficial.indicadores_json or {} %}
+    <div class="grid-kpi">
+      <div class="kpi">
+        <div class="k-l">Cenário oficial ativo{{ m.tip('kpi.cenario_oficial', 'Cenário oficial') }}</div>
+        <div class="val txt"><a href="{{ url_for('planejamento', cenario_id=cenario_oficial.id) }}#cenario-{{ cenario_oficial.id }}">{{ cenario_oficial.regime_simulacao|rotulo('regime') }}</a></div>
+        <small>{{ m.badge(cenario_oficial.status_validacao) }}</small>
+      </div>
+      <div class="kpi"><div class="k-l">Receita bruta — ano 1 (R$){{ m.tip('kpi.receita_a1', 'Receita bruta ano 1') }}</div><div class="val">{{ cenario_oficial.receita_bruta_centavos|brl_tab }}</div></div>
+      <div class="kpi"><div class="k-l">DAS ano 1 (R$) · Fator R{{ m.tip('kpi.das_fator_r', 'DAS e Fator R') }}</div><div class="val">{{ cenario_oficial.das_centavos|brl_tab }}</div><small>Fator R <span class="mono">{{ cenario_oficial.fator_r_anual_micro|pct_micro }}</span></small></div>
+      <div class="kpi"><div class="k-l">Lucro líquido — ano 1 (R$){{ m.tip('kpi.lucro_a1', 'Lucro líquido') }}</div><div class="val">{{ cenario_oficial.lucro_liquido_centavos|brl_tab }}</div></div>
+      <div class="kpi"><div class="k-l">VPL (R$) · TIR — 3 anos{{ m.tip('kpi.vpl_tir', 'VPL e TIR') }}</div><div class="val">{{ ind.get('vpl_centavos', 0)|brl_tab }}</div><small>TIR <span class="mono">{{ ind.get('tir_pct')|num_br }}%</span></small></div>
+      <div class="kpi"><div class="k-l">Check do balanço (R$){{ m.tip('kpi.check_bp', 'Check do balanço') }}</div><div class="val">{{ cenario_oficial.bp_diferenca_centavos|brl }}</div><small>Ativo − (Passivo + PL)</small></div>
+    </div>
+  {% else %}
+    <p class="vazio">Nenhum cenário oficial definido. Promova um cenário na <a href="{{ url_for('planejamento') }}">Estação 4</a>.</p>
+  {% endif %}
 {% endif %}
 
 <div class="zona"><span class="mundo mundo-sus">Sustentação</span><h2>Radar de coerência e quarentena</h2></div>
