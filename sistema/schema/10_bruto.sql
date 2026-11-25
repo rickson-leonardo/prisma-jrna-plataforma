@@ -44,6 +44,11 @@ CREATE TABLE IF NOT EXISTS bru_linha (
     pagina INTEGER NOT NULL CHECK (pagina >= 1),
     n_linha INTEGER NOT NULL CHECK (n_linha >= 1),
     texto TEXT NOT NULL, -- Texto exato extraido via pymupdf
+    x0 REAL NOT NULL DEFAULT 0, -- Coordenada horizontal inicial (pt)
+    y0 REAL NOT NULL DEFAULT 0, -- Coordenada vertical superior (pt)
+    tam_fonte REAL NOT NULL DEFAULT 0, -- Tamanho da fonte em pt
+    fonte TEXT, -- Nome da fonte no PDF
+    cor_hex TEXT, -- Cor RGB em hexadecimal (ex.: 0x1d2433, 0x5a6477)
     eh_marca_dagua INTEGER NOT NULL DEFAULT 0 CHECK (eh_marca_dagua IN (0, 1)),
     destino TEXT, -- Identificador do consumidor na Camada 2 (NULL = nao consumida)
     UNIQUE (arquivo_id, pagina, n_linha)

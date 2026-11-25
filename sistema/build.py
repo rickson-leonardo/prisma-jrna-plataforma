@@ -7,7 +7,10 @@ import sqlite3
 from pathlib import Path
 
 from sistema.bruto.acervo import executar_camada_bruta
-from sistema.config import ACERVO_DIR, BANCO_DIR, LABORATORIO_DB, SCHEMA_DIR, TRABALHO_DB
+from sistema.config import ACERVO_DIR, LABORATORIO_DB, SCHEMA_DIR, TRABALHO_DB
+from sistema.extracao.livros import extrair_livros
+from sistema.extracao.motor import extrair_documentos_pdf, parse_nome_arquivo_d4
+from sistema.extracao.planilhas import extrair_planilhas
 from sistema.gerar_docs import gerar_documentacao
 
 
@@ -46,6 +49,62 @@ def inicializar_bancos(
     return conn_lab, conn_trab
 
 
+def _limpar_camada_extraida(conn: sqlite3.Connection, filtro_modelo: str | None = None) -> None:
+    """Limpa registros da Camada 2 antes de re-extrair (total ou por modelo)."""
+    if filtro_modelo is None:
+        for tabela in (
+            "ext_campo",
+            "ext_item",
+            "ext_nota_didatica",
+            "ext_documento",
+            "ext_extrato_linha",
+            "ext_diario_partida",
+            "ext_diario_lancamento",
+            "ext_razao_linha",
+            "ext_balancete_linha",
+            "ext_estoque_linha",
+            "ext_parametro_planilha",
+            "ext_secao",
+            "ext_material",
+        ):
+            conn.execute(f"DELETE FROM {tabela}")
+        conn.execute(
+            "UPDATE bru_linha SET destino = CASE WHEN eh_marca_dagua = 1 THEN 'marca_dagua' ELSE NULL END"
+        )
+        conn.execute("UPDATE bru_celula SET destino = NULL")
+        conn.execute("UPDATE bru_paragrafo SET destino = NULL")
+    else:
+        doc_ids = [
+            r[0]
+            for r in conn.execute("SELECT id FROM ext_documento WHERE modelo = ?", (filtro_modelo,)).fetchall()
+        ]
+        if doc_ids:
+            placeholders = ",".join("?" for _ in doc_ids)
+            conn.execute(f"DELETE FROM ext_campo WHERE documento_id IN ({placeholders})", doc_ids)
+            conn.execute(f"DELETE FROM ext_item WHERE documento_id IN ({placeholders})", doc_ids)
+            conn.execute(f"DELETE FROM ext_nota_didatica WHERE documento_id IN ({placeholders})", doc_ids)
+            conn.execute(f"DELETE FROM ext_documento WHERE id IN ({placeholders})", doc_ids)
+        arq_rows = conn.execute(
+            """
+            SELECT id, nome FROM bru_arquivo
+            WHERE dossie = 'D4' AND extensao = '.pdf' AND papel_acervo = 'primario' AND nome NOT LIKE 'Livro_%'
+            """
+        ).fetchall()
+        alvo_arqs = [
+            r[0] for r in arq_rows if parse_nome_arquivo_d4(str(r[1]))[0] == filtro_modelo
+        ]
+        if alvo_arqs:
+            placeholders = ",".join("?" for _ in alvo_arqs)
+            conn.execute(
+                f"""
+                UPDATE bru_linha
+                SET destino = CASE WHEN eh_marca_dagua = 1 THEN 'marca_dagua' ELSE NULL END
+                WHERE arquivo_id IN ({placeholders})
+                """,
+                alvo_arqs,
+            )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Constrói o banco relacional do Laboratório Contábil.")
     parser.add_argument(
@@ -64,12 +123,25 @@ def main(argv: list[str] | None = None) -> int:
     conn_lab, conn_trab = inicializar_bancos(args.lab_db, args.trab_db, recriar_lab=recriar)
     try:
         if args.camada in ("bruto", "tudo"):
-            resumo = executar_camada_bruta(conn_lab, args.acervo)
-            print("Camada 1 (bruto) concluída:", resumo)
+            resumo_bruto = executar_camada_bruta(conn_lab, args.acervo)
+            print("Camada 1 (bruto) concluída:", resumo_bruto)
 
-        if args.camada in ("extraido", "normalizado", "plataforma", "tudo"):
-            if args.camada != "bruto":
-                print(f"Aviso: camada '{args.camada}' ainda será implementada nas próximas fases.")
+        if args.camada in ("extraido", "tudo"):
+            if not recriar:
+                _limpar_camada_extraida(conn_lab, filtro_modelo=args.modelo)
+            if args.modelo is not None:
+                resumo_docs = extrair_documentos_pdf(conn_lab, filtro_modelo=args.modelo)
+                print(f"Camada 2 (modelo={args.modelo}) concluída:", resumo_docs)
+            else:
+                resumo_livros = extrair_livros(conn_lab)
+                print("Camada 2 (livros) concluída:", resumo_livros)
+                resumo_planilhas = extrair_planilhas(conn_lab)
+                print("Camada 2 (planilhas) concluída:", resumo_planilhas)
+                resumo_docs = extrair_documentos_pdf(conn_lab)
+                print("Camada 2 (documentos PDF) concluída:", resumo_docs)
+
+        if args.camada in ("normalizado", "plataforma"):
+            print(f"Aviso: camada '{args.camada}' será implementada nas próximas fases.")
 
         conn_lab.commit()
     finally:

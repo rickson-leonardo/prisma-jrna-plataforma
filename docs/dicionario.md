@@ -51,6 +51,11 @@ Documento gerado automaticamente por `python -m sistema.gerar_docs` a partir do 
 | `pagina` | `INTEGER` | Sim |  | `` |  |
 | `n_linha` | `INTEGER` | Sim |  | `` |  |
 | `texto` | `TEXT` | Sim |  | `` | Texto exato extraido via pymupdf |
+| `x0` | `REAL` | Sim |  | `` | Coordenada horizontal inicial (pt) |
+| `y0` | `REAL` | Sim |  | `` | Coordenada vertical superior (pt) |
+| `tam_fonte` | `REAL` | Sim |  | `` | Tamanho da fonte em pt |
+| `fonte` | `TEXT` | Não |  | `` | Nome da fonte no PDF |
+| `cor_hex` | `TEXT` | Não |  | `` | Cor RGB em hexadecimal (ex.: 0x1d2433, 0x5a6477) |
 | `eh_marca_dagua` | `INTEGER` | Sim |  | `` |  |
 | `destino` | `TEXT` | Não |  | `` | Identificador do consumidor na Camada 2 (NULL = nao consumida) |
 

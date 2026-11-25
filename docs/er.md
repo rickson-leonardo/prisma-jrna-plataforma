@@ -44,6 +44,11 @@ erDiagram
         integer pagina
         integer n_linha
         text texto
+        real x0
+        real y0
+        real tam_fonte
+        text fonte
+        text cor_hex
         integer eh_marca_dagua
         text destino
     }

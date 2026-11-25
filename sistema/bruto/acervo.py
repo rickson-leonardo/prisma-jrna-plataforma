@@ -174,8 +174,12 @@ def _inferir_dominio(rel_posix: str, dossie: str) -> str:
     return "curso"
 
 
-def _eh_marca_dagua(texto: str) -> bool:
+def _eh_marca_dagua(texto: str, cor_hex: str | None = None, tam_fonte: float = 0.0) -> bool:
     s = texto.strip()
+    if cor_hex in ("0xb41e1e", "0x8a1c1c"):
+        return True
+    if cor_hex == "0xffffff" and tam_fonte == 6.0 and "fictício" in s.lower():
+        return True
     if s in ("DOCUMENTO DIDÁTICO", "SEM VALOR FISCAL"):
         return True
     if s.startswith("DOCUMENTO DIDÁTICO – SEM VALOR FISCAL"):
@@ -327,7 +331,7 @@ def _extrair_pdfs(
     conn: sqlite3.Connection,
     info_por_rel: dict[str, tuple[int, str, str, Path, str]],
 ) -> int:
-    """Extrai todas as linhas de todos os PDFs via pymupdf."""
+    """Extrai todas as linhas de todos os PDFs via pymupdf com geometria e tipografia."""
     total_linhas = 0
     batch: list[tuple[Any, ...]] = []
 
@@ -338,30 +342,53 @@ def _extrair_pdfs(
             n_paginas = len(doc)
             conn.execute("UPDATE bru_arquivo SET paginas_total = ? WHERE id = ?", (n_paginas, arq_id))
             for pag_idx, page in enumerate(doc, start=1):
-                linhas = page.get_text("text").splitlines()
-                for n_linha, texto in enumerate(linhas, start=1):
-                    eh_md = 1 if _eh_marca_dagua(texto) else 0
-                    destino = "marca_dagua" if eh_md else None
-                    chave_lin = f"lin:{rel}:{pag_idx}:{n_linha}"
-                    batch.append((chave_lin, arq_id, pag_idx, n_linha, texto, eh_md, destino))
-                    total_linhas += 1
-                    if len(batch) >= 10000:
-                        conn.executemany(
-                            """
-                            INSERT INTO bru_linha (
-                                chave, arquivo_id, pagina, n_linha, texto, eh_marca_dagua, destino
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                            """,
-                            batch,
+                n_linha = 0
+                for block in page.get_text("dict")["blocks"]:
+                    if block.get("type") != 0:
+                        continue
+                    for ln in block.get("lines", []):
+                        spans = ln.get("spans", [])
+                        texto = "".join(sp.get("text", "") for sp in spans)
+                        n_linha += 1
+                        bbox = ln.get("bbox", (0.0, 0.0, 0.0, 0.0))
+                        x0 = round(float(bbox[0]), 1)
+                        y0 = round(float(bbox[1]), 1)
+                        if spans:
+                            sp0 = spans[0]
+                            tam_fonte = round(float(sp0.get("size", 0.0)), 1)
+                            fonte = str(sp0.get("font", ""))
+                            cor_hex = f"0x{int(sp0.get('color', 0)):06x}"
+                        else:
+                            tam_fonte = 0.0
+                            fonte = ""
+                            cor_hex = "0x000000"
+
+                        eh_md = 1 if _eh_marca_dagua(texto, cor_hex, tam_fonte) else 0
+                        destino = "marca_dagua" if eh_md else None
+                        chave_lin = f"lin:{rel}:{pag_idx}:{n_linha}"
+                        batch.append(
+                            (chave_lin, arq_id, pag_idx, n_linha, texto, x0, y0, tam_fonte, fonte, cor_hex, eh_md, destino)
                         )
-                        batch.clear()
+                        total_linhas += 1
+                        if len(batch) >= 10000:
+                            conn.executemany(
+                                """
+                                INSERT INTO bru_linha (
+                                    chave, arquivo_id, pagina, n_linha, texto,
+                                    x0, y0, tam_fonte, fonte, cor_hex, eh_marca_dagua, destino
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """,
+                                batch,
+                            )
+                            batch.clear()
 
     if batch:
         conn.executemany(
             """
             INSERT INTO bru_linha (
-                chave, arquivo_id, pagina, n_linha, texto, eh_marca_dagua, destino
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                chave, arquivo_id, pagina, n_linha, texto,
+                x0, y0, tam_fonte, fonte, cor_hex, eh_marca_dagua, destino
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             batch,
         )
