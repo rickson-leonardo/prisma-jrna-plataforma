@@ -76,6 +76,13 @@ def garantir_banco_existe() -> str:
     """Cria o banco de destino (ex.: lab_contabil) caso ainda nao exista no Postgres 17."""
     cfg = parse_database_url()
     alvo = str(cfg["dbname"])
+    try:
+        conn_ok = conectar_pg()
+        conn_ok.close()
+        return alvo
+    except psycopg2.OperationalError:
+        pass
+
     conn_adm = conectar_pg(dbname_override="postgres", autocommit=True)
     try:
         with conn_adm.cursor() as cur:
