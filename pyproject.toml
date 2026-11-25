@@ -2,15 +2,19 @@
 name = "laboratorio-contabil-plataforma"
 version = "0.1.0"
 description = "Banco relacional e plataforma do Laboratório Contábil (CCA 0174)"
-requires-python = ">=3.13"
+requires-python = ">=3.13,<3.14"
 dependencies = [
-  "pymupdf>=2.0",
+  "flask>=3.1",
+  "psycopg2-binary>=2.9",
   "openpyxl>=3.1",
-  "python-docx>=1.2",
-  "datasette>=0.65",
 ]
 
 [project.optional-dependencies]
+local = [
+  "pymupdf>=2.0",
+  "python-docx>=1.2",
+  "datasette>=0.65",
+]
 dev = ["pytest>=8.0"]
 
 [tool.pytest.ini_options]
