@@ -1,5 +1,7 @@
 banco/laboratorio.db
 banco/laboratorio.db-*
+banco/snapshots/*.dump
+.env
 __pycache__/
 *.py[cod]
 .pytest_cache/
