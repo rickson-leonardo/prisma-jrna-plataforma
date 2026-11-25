@@ -8,10 +8,13 @@ from pathlib import Path
 
 from sistema.bruto.acervo import executar_camada_bruta
 from sistema.config import ACERVO_DIR, LABORATORIO_DB, SCHEMA_DIR, TRABALHO_DB
+from sistema.extracao.curso import extrair_curso
 from sistema.extracao.livros import extrair_livros
 from sistema.extracao.motor import extrair_documentos_pdf, parse_nome_arquivo_d4
 from sistema.extracao.planilhas import extrair_planilhas
 from sistema.gerar_docs import gerar_documentacao
+from sistema.normalizacao import normalizar_tudo
+from sistema.qualidade.gates import executar_gates_fidelidade
 
 
 def aplicar_schema_arquivo(conn: sqlite3.Connection, sql_path: Path) -> None:
@@ -49,9 +52,69 @@ def inicializar_bancos(
     return conn_lab, conn_trab
 
 
+def _limpar_camada_normalizada(conn: sqlite3.Connection) -> None:
+    """Limpa registros da Camada 3 e conferencia em ordem reversa de FK."""
+    tabelas = (
+        "evidencia",
+        "conferencia",
+        "nrm_vinculo",
+        "nrm_tema",
+        "nrm_nota_didatica",
+        "nrm_devolutiva",
+        "nrm_material_secao",
+        "nrm_material",
+        "nrm_requisito",
+        "nrm_dossie",
+        "nrm_transacao_membro",
+        "nrm_transacao",
+        "nrm_estoque_movimento",
+        "nrm_ciclo_importacao",
+        "nrm_saldo",
+        "nrm_partida",
+        "nrm_lancamento",
+        "nrm_conta_contabil",
+        "nrm_recibo",
+        "nrm_memorando",
+        "nrm_fechamento_caixa_dia",
+        "nrm_fechamento_caixa",
+        "nrm_di_adicao",
+        "nrm_di",
+        "nrm_apuracao",
+        "nrm_guia_composicao",
+        "nrm_guia",
+        "nrm_liquidacao_cartao_venda",
+        "nrm_liquidacao_cartao",
+        "nrm_parcela",
+        "nrm_contrato_credito",
+        "nrm_cambio",
+        "nrm_titulo",
+        "nrm_comprovante",
+        "nrm_movimento_bancario",
+        "nrm_item_tributo",
+        "nrm_documento_fiscal_item",
+        "nrm_documento_fiscal",
+        "nrm_produto",
+        "nrm_participacao_societaria",
+        "nrm_fato",
+        "nrm_evento",
+        "nrm_conta_bancaria",
+        "nrm_estabelecimento",
+        "nrm_empresa",
+        "nrm_pessoa_ocorrencia",
+        "nrm_pessoa_identificador",
+        "nrm_pessoa",
+    )
+    for tabela in tabelas:
+        if tabela == "conferencia":
+            conn.execute("DELETE FROM conferencia WHERE regra != 'sigaa_html_vazio'")
+        else:
+            conn.execute(f"DELETE FROM {tabela}")
+
+
 def _limpar_camada_extraida(conn: sqlite3.Connection, filtro_modelo: str | None = None) -> None:
     """Limpa registros da Camada 2 antes de re-extrair (total ou por modelo)."""
     if filtro_modelo is None:
+        _limpar_camada_normalizada(conn)
         for tabela in (
             "ext_campo",
             "ext_item",
@@ -139,9 +202,20 @@ def main(argv: list[str] | None = None) -> int:
                 print("Camada 2 (planilhas) concluída:", resumo_planilhas)
                 resumo_docs = extrair_documentos_pdf(conn_lab)
                 print("Camada 2 (documentos PDF) concluída:", resumo_docs)
+                resumo_curso = extrair_curso(conn_lab)
+                print("Camada 2 (curso) concluída:", resumo_curso)
 
-        if args.camada in ("normalizado", "plataforma"):
-            print(f"Aviso: camada '{args.camada}' será implementada nas próximas fases.")
+        if args.camada in ("normalizado", "tudo"):
+            if not recriar:
+                _limpar_camada_normalizada(conn_lab)
+            resumo_nrm = normalizar_tudo(conn_lab)
+            print("Camada 3 (normalizado) concluída:", resumo_nrm)
+            resumo_gates = executar_gates_fidelidade(conn_lab, incluir_camada3=True)
+            print("Camada 3 (gates de fidelidade) concluída:", resumo_gates)
+
+        if args.camada in ("plataforma", "tudo"):
+            aplicar_schema_arquivo(conn_lab, SCHEMA_DIR / "40_plataforma.sql")
+            print("Camada 4 (visões da plataforma) atualizada.")
 
         conn_lab.commit()
     finally:

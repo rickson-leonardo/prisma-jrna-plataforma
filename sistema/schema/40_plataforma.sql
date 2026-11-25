@@ -79,3 +79,86 @@ SELECT
 FROM conferencia
 GROUP BY regra, severidade, status
 ORDER BY severidade, regra;
+
+CREATE VIEW IF NOT EXISTS vw_ficha_documento AS
+SELECT
+    d.chave AS doc_chave,
+    a.caminho_relativo,
+    d.modelo,
+    d.tipo,
+    d.numero,
+    d.data_emissao,
+    d.data_referencia,
+    d.doc_ref,
+    d.estabelecimento_prefixo,
+    d.valor_total_centavos,
+    d.moeda,
+    (SELECT COUNT(*) FROM ext_campo c WHERE c.documento_id = d.id) AS qtd_campos,
+    (SELECT COUNT(*) FROM ext_item i WHERE i.documento_id = d.id) AS qtd_itens,
+    (SELECT COUNT(*) FROM ext_nota_didatica n WHERE n.documento_id = d.id) AS qtd_notas_didaticas
+FROM ext_documento d
+JOIN bru_arquivo a ON a.id = d.arquivo_id
+ORDER BY d.data_referencia, d.modelo, d.numero;
+
+CREATE VIEW IF NOT EXISTS vw_navegacao_doc_ref AS
+SELECT
+    t.chave AS transacao_chave,
+    t.regra_agrupamento,
+    t.doc_ref,
+    t.ano_mes,
+    t.data_referencia,
+    t.status_vinculo,
+    m.tabela_membro,
+    m.membro_chave,
+    m.papel_membro,
+    m.criterio_vinculo
+FROM nrm_transacao t
+JOIN nrm_transacao_membro m ON m.transacao_id = t.id
+ORDER BY t.data_referencia, t.chave, m.papel_membro, m.id;
+
+CREATE VIEW IF NOT EXISTS vw_auditoria_retencoes_d3 AS
+SELECT
+    df.chave AS documento_chave,
+    df.numero,
+    df.data_emissao,
+    pe.nome_canonico AS prestador,
+    pd.nome_canonico AS tomador,
+    df.valor_total_centavos,
+    it.tributo,
+    it.base_centavos,
+    it.aliquota_texto,
+    it.valor_centavos
+FROM nrm_documento_fiscal df
+JOIN nrm_item_tributo it ON it.documento_fiscal_id = df.id
+LEFT JOIN nrm_pessoa pe ON pe.id = df.emitente_pessoa_id
+LEFT JOIN nrm_pessoa pd ON pd.id = df.destinatario_pessoa_id
+WHERE df.chave = 'nrm:df:d3:nfse_2026_000184'
+ORDER BY it.id;
+
+CREATE VIEW IF NOT EXISTS vw_d4_faturamento_grupo_economico AS
+SELECT
+    substr(df.data_emissao, 1, 7) AS ano_mes,
+    e.chave AS empresa_chave,
+    e.nome_curto AS empresa,
+    COUNT(*) AS qtd_nfes,
+    SUM(df.valor_total_centavos) AS faturamento_centavos
+FROM nrm_documento_fiscal df
+JOIN nrm_estabelecimento est ON est.id = df.estabelecimento_id
+JOIN nrm_empresa e ON e.id = est.empresa_id
+WHERE df.tipo_documento = 'NFe'
+GROUP BY substr(df.data_emissao, 1, 7), e.id
+ORDER BY ano_mes, e.chave;
+
+CREATE VIEW IF NOT EXISTS vw_curso_devolutivas_e_requisitos AS
+SELECT
+    dos.codigo AS dossie,
+    dos.titulo AS dossie_titulo,
+    dev.grupo,
+    dev.nossa_dupla,
+    dev.nota_texto,
+    dev.resumo,
+    mat.chave AS material_chave
+FROM nrm_devolutiva dev
+JOIN nrm_dossie dos ON dos.id = dev.dossie_id
+JOIN nrm_material mat ON mat.id = dev.material_id
+ORDER BY dos.codigo, dev.nossa_dupla DESC, dev.grupo;

@@ -1,1 +1,1 @@
-"""Gates de fidelidade e integridade."""
+"""Camada de qualidade e gates de fidelidade entre fontes."""

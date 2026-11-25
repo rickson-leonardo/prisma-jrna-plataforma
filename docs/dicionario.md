@@ -928,9 +928,14 @@ Documento gerado automaticamente por `python -m sistema.gerar_docs` a partir do 
 
 ### Views em `laboratorio.db`
 
+- `vw_auditoria_retencoes_d3`
 - `vw_cobertura_bruto`
+- `vw_curso_devolutivas_e_requisitos`
+- `vw_d4_faturamento_grupo_economico`
+- `vw_ficha_documento`
 - `vw_inventario_acervo`
 - `vw_linha_do_tempo`
+- `vw_navegacao_doc_ref`
 - `vw_resumo_conferencia`
 - `vw_sigaa_cobertura`
 - `vw_situacao_em`

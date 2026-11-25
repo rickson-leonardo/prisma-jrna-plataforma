@@ -14,7 +14,33 @@ databases:
         sql: SELECT * FROM vw_sigaa_cobertura
       conferencias:
         title: Conferências e Anomalias
-        sql: SELECT * FROM conferencia ORDER BY id
+        sql: SELECT * FROM conferencia ORDER BY severidade, id
+      d1_requisitos_e_g07:
+        title: "D1: Requisitos e Nossa Dupla (G07)"
+        sql: |
+          SELECT dos.codigo AS dossie, dev.grupo, dev.nossa_dupla, dev.nota_texto, dev.resumo
+          FROM nrm_devolutiva dev
+          JOIN nrm_dossie dos ON dos.id = dev.dossie_id
+          ORDER BY dev.nossa_dupla DESC, dos.codigo, dev.grupo
+      d2_historia_rota_sul:
+        title: "D2/D4: Linha do Tempo das Empresas e Fatos"
+        sql: SELECT * FROM vw_linha_do_tempo ORDER BY sujeito_chave, vigente_de
+      d3_auditoria_nfse_horizonte:
+        title: "D3: Auditoria NFS-e 2026/000184 (Horizonte Projetos)"
+        sql: SELECT * FROM vw_auditoria_retencoes_d3
+      d4_navegador_doc_ref:
+        title: "D4: Navegador por Doc/Ref (Transações Ligadas)"
+        sql: |
+          SELECT t.chave, t.regra_agrupamento, t.doc_ref, t.data_referencia, t.status_vinculo,
+                 COUNT(DISTINCT m.papel_membro) AS papeis_distintos, COUNT(*) AS total_membros
+          FROM nrm_transacao t
+          JOIN nrm_transacao_membro m ON m.transacao_id = t.id
+          GROUP BY t.id
+          ORDER BY total_membros DESC, t.data_referencia
+          LIMIT 200
+      d4_faturamento_grupo_sn:
+        title: "D4: Faturamento Mensal Consolidado (Rota Sul + Meia Ponte)"
+        sql: SELECT * FROM vw_d4_faturamento_grupo_economico
   trabalho:
     queries:
       anotacoes:
