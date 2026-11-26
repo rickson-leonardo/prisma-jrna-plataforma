@@ -94,6 +94,11 @@
               {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(q.status_validacao) }}{% endcall %}
               {% call m.field('Link oficial', 'q.link', 'span-2') %}<input type="url" name="link_oficial" value="{{ q.link_oficial }}">{% endcall %}
               {% call m.field('Decisão impactada', 'q.decisao', 'span-2') %}<input type="text" name="decisao_impactada" value="{{ q.decisao_impactada or '' }}">{% endcall %}
+              {% if empresa.dossie == 'D2' %}
+                {% call m.field('Responsável pela decisão', 'q.resp_decisao') %}<input type="text" name="responsavel_decisao" value="{{ q.get('responsavel_decisao') or '' }}">{% endcall %}
+                {% call m.field('Prazo da decisão', 'q.prazo_decisao') %}<input type="text" name="prazo_decisao" value="{{ q.get('prazo_decisao') or '' }}">{% endcall %}
+                {% call m.field('Impacto se alterada', 'q.impacto_alt', 'span-2') %}<input type="text" name="impacto_se_alterada" value="{{ q.get('impacto_se_alterada') or '' }}">{% endcall %}
+              {% endif %}
               {% call m.field('Resposta autoral da contadora', 'q.resposta', 'span-all') %}<textarea class="longo" name="resposta_autoral">{{ q.resposta_autoral }}</textarea>{% endcall %}
               {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ q.justificativa_contadora or '' }}">{% endcall %}
             </div>
@@ -118,6 +123,11 @@
             {% call m.field('Norma citada', 'q.norma') %}<input type="text" name="norma_citada" required>{% endcall %}
             {% call m.field('Link oficial', 'q.link', 'span-2') %}<input type="url" name="link_oficial" required>{% endcall %}
             {% call m.field('Data de acesso', 'q.data') %}<input type="date" name="data_acesso" required>{% endcall %}
+            {% if empresa.dossie == 'D2' %}
+              {% call m.field('Responsável pela decisão', 'q.resp_decisao') %}<input type="text" name="responsavel_decisao">{% endcall %}
+              {% call m.field('Prazo da decisão', 'q.prazo_decisao') %}<input type="text" name="prazo_decisao">{% endcall %}
+              {% call m.field('Impacto se alterada', 'q.impacto_alt', 'span-2') %}<input type="text" name="impacto_se_alterada">{% endcall %}
+            {% endif %}
             {% call m.field('Resposta autoral', 'q.resposta', 'span-all') %}<textarea name="resposta_autoral" required></textarea>{% endcall %}
           </div>
           <div class="barra-acoes"><span class="acoes"><button class="btn btn-primary" type="submit">Registrar consulta</button>{{ m.tip('acao.incluir', 'Registrar') }}</span></div>

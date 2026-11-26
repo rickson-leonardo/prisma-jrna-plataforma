@@ -556,22 +556,47 @@ def criar_clausula(form: dict[str, str]) -> None:
             aplica_mou = form.get("aplica_mou") == "on"
             txt = form["regra_texto"].strip()
             alc = parse_reais_centavos(form.get("alcada_reais"), 0) or None
-            cur.execute(
-                """
-                INSERT INTO erp.instrumento_societario_clausula
-                    (chave, empresa_id, ordem, bloco, codigo_criterio, numero_clausula, titulo, regra_texto,
-                     aplica_mou, aplica_contrato, redacao_mou, redacao_contrato, metodo_haveres, quorum_tipo,
-                     alcada_centavos, versao, origem_registro, status_validacao, justificativa_contadora)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1, 'usuario', %s, %s)
-                """,
-                (
-                    chave, emp_id, ordem, form.get("bloco", "GERAL").strip(), form.get("codigo_criterio", "USR").strip(),
-                    num_cl, form["titulo"].strip(), txt, aplica_mou, aplica_cs,
-                    txt if aplica_mou else None, txt if aplica_cs else None,
-                    form.get("metodo_haveres", "nao_aplicavel"), form.get("quorum_tipo", "nao_aplicavel"),
-                    alc, form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
-                ),
-            )
+            if emp["dossie"] == "D2":
+                cur.execute(
+                    """
+                    INSERT INTO erp.instrumento_societario_clausula
+                        (chave, empresa_id, ordem, bloco, codigo_criterio, numero_clausula, titulo, regra_texto,
+                         aplica_mou, aplica_contrato, redacao_mou, redacao_contrato, metodo_haveres, quorum_tipo,
+                         alcada_centavos, tipo_instrumento, risco_tipo, risco_nivel, providencia, fundamento_legal,
+                         responsavel, prazo_texto, versao, origem_registro, status_validacao, justificativa_contadora)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, '2a_alteracao', %s, %s, %s, %s, %s, %s, 1, 'usuario', %s, %s)
+                    """,
+                    (
+                        chave, emp_id, ordem, form.get("bloco", "GERAL").strip(), form.get("codigo_criterio", "C-01").strip(),
+                        num_cl, form["titulo"].strip(), txt, aplica_mou, aplica_cs,
+                        txt if aplica_mou else None, txt if aplica_cs else None,
+                        form.get("metodo_haveres", "nao_aplicavel"), form.get("quorum_tipo", "nao_aplicavel"),
+                        alc, (form.get("risco_tipo") or "").strip() or None,
+                        (form.get("risco_nivel") or "").strip() or None,
+                        (form.get("providencia") or "").strip() or None,
+                        (form.get("fundamento_legal") or "").strip() or None,
+                        (form.get("responsavel") or "").strip() or None,
+                        (form.get("prazo_texto") or "").strip() or None,
+                        form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
+                    ),
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO erp.instrumento_societario_clausula
+                        (chave, empresa_id, ordem, bloco, codigo_criterio, numero_clausula, titulo, regra_texto,
+                         aplica_mou, aplica_contrato, redacao_mou, redacao_contrato, metodo_haveres, quorum_tipo,
+                         alcada_centavos, versao, origem_registro, status_validacao, justificativa_contadora)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1, 'usuario', %s, %s)
+                    """,
+                    (
+                        chave, emp_id, ordem, form.get("bloco", "GERAL").strip(), form.get("codigo_criterio", "USR").strip(),
+                        num_cl, form["titulo"].strip(), txt, aplica_mou, aplica_cs,
+                        txt if aplica_mou else None, txt if aplica_cs else None,
+                        form.get("metodo_haveres", "nao_aplicavel"), form.get("quorum_tipo", "nao_aplicavel"),
+                        alc, form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
+                    ),
+                )
         _validar_coerencia(conn, emp_id)
         conn.commit()
 
@@ -585,36 +610,81 @@ def salvar_clausula(cl_id: int, form: dict[str, str]) -> None:
         txt = form["regra_texto"].strip()
         alc = parse_reais_centavos(form.get("alcada_reais"), 0) or None
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE erp.instrumento_societario_clausula
-                SET ordem = %s,
-                    bloco = %s,
-                    codigo_criterio = %s,
-                    numero_clausula = %s,
-                    titulo = %s,
-                    regra_texto = %s,
-                    aplica_contrato = %s,
-                    aplica_mou = %s,
-                    redacao_contrato = CASE WHEN %s THEN %s ELSE NULL END,
-                    redacao_mou = CASE WHEN %s THEN %s ELSE NULL END,
-                    metodo_haveres = %s,
-                    quorum_tipo = %s,
-                    alcada_centavos = %s,
-                    versao = versao + 1,
-                    status_validacao = %s,
-                    justificativa_contadora = %s
-                WHERE id = %s AND empresa_id = %s
-                """,
-                (
-                    int(form.get("ordem") or 1), form.get("bloco", "GERAL").strip(), form.get("codigo_criterio", "USR").strip(),
-                    form["numero_clausula"].strip(), form["titulo"].strip(), txt,
-                    aplica_cs, aplica_mou, aplica_cs, txt, aplica_mou, txt,
-                    form.get("metodo_haveres", "nao_aplicavel"), form.get("quorum_tipo", "nao_aplicavel"),
-                    alc, form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
-                    cl_id, emp_id,
-                ),
-            )
+            if emp["dossie"] == "D2":
+                cur.execute(
+                    """
+                    UPDATE erp.instrumento_societario_clausula
+                    SET ordem = %s,
+                        bloco = %s,
+                        codigo_criterio = %s,
+                        numero_clausula = %s,
+                        titulo = %s,
+                        regra_texto = %s,
+                        aplica_contrato = %s,
+                        aplica_mou = %s,
+                        redacao_contrato = CASE WHEN %s THEN %s ELSE NULL END,
+                        redacao_mou = CASE WHEN %s THEN %s ELSE NULL END,
+                        metodo_haveres = %s,
+                        quorum_tipo = %s,
+                        alcada_centavos = %s,
+                        risco_tipo = %s,
+                        risco_nivel = %s,
+                        providencia = %s,
+                        fundamento_legal = %s,
+                        responsavel = %s,
+                        prazo_texto = %s,
+                        versao = versao + 1,
+                        status_validacao = %s,
+                        justificativa_contadora = %s
+                    WHERE id = %s AND empresa_id = %s
+                    """,
+                    (
+                        int(form.get("ordem") or 1), form.get("bloco", "GERAL").strip(), form.get("codigo_criterio", "USR").strip(),
+                        form["numero_clausula"].strip(), form["titulo"].strip(), txt,
+                        aplica_cs, aplica_mou, aplica_cs, txt, aplica_mou, txt,
+                        form.get("metodo_haveres", "nao_aplicavel"), form.get("quorum_tipo", "nao_aplicavel"),
+                        alc,
+                        (form.get("risco_tipo") or "").strip() or None,
+                        (form.get("risco_nivel") or "").strip() or None,
+                        (form.get("providencia") or "").strip() or None,
+                        (form.get("fundamento_legal") or "").strip() or None,
+                        (form.get("responsavel") or "").strip() or None,
+                        (form.get("prazo_texto") or "").strip() or None,
+                        form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
+                        cl_id, emp_id,
+                    ),
+                )
+            else:
+                cur.execute(
+                    """
+                    UPDATE erp.instrumento_societario_clausula
+                    SET ordem = %s,
+                        bloco = %s,
+                        codigo_criterio = %s,
+                        numero_clausula = %s,
+                        titulo = %s,
+                        regra_texto = %s,
+                        aplica_contrato = %s,
+                        aplica_mou = %s,
+                        redacao_contrato = CASE WHEN %s THEN %s ELSE NULL END,
+                        redacao_mou = CASE WHEN %s THEN %s ELSE NULL END,
+                        metodo_haveres = %s,
+                        quorum_tipo = %s,
+                        alcada_centavos = %s,
+                        versao = versao + 1,
+                        status_validacao = %s,
+                        justificativa_contadora = %s
+                    WHERE id = %s AND empresa_id = %s
+                    """,
+                    (
+                        int(form.get("ordem") or 1), form.get("bloco", "GERAL").strip(), form.get("codigo_criterio", "USR").strip(),
+                        form["numero_clausula"].strip(), form["titulo"].strip(), txt,
+                        aplica_cs, aplica_mou, aplica_cs, txt, aplica_mou, txt,
+                        form.get("metodo_haveres", "nao_aplicavel"), form.get("quorum_tipo", "nao_aplicavel"),
+                        alc, form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
+                        cl_id, emp_id,
+                    ),
+                )
         _validar_coerencia(conn, emp_id)
         conn.commit()
 
@@ -1092,36 +1162,78 @@ def salvar_consulta(cons_id: int | None, form: dict[str, str]) -> None:
             if cons_id is None:
                 cur.execute("SELECT COALESCE(MAX(numero_questao), 0) + 1 AS prox FROM erp.consulta_normativa WHERE empresa_id = %s", (emp_id,))
                 num = int(form.get("numero_questao") or cur.fetchone()["prox"])
-                cur.execute(
-                    """
-                    INSERT INTO erp.consulta_normativa
-                        (chave, empresa_id, numero_questao, enunciado, resposta_autoral, norma_citada, link_oficial,
-                         data_acesso, decisao_impactada, origem_registro, status_validacao, justificativa_contadora, dossie)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'usuario', %s, %s, %s)
-                    """,
-                    (
-                        f"cons:usr:{cod.lower()}:q{num:02d}", emp_id, num, form["enunciado"].strip(), form["resposta_autoral"].strip(),
-                        form["norma_citada"].strip(), form["link_oficial"].strip(), form["data_acesso"],
-                        form.get("decisao_impactada", "").strip() or None, form["status_validacao"],
-                        form.get("justificativa_contadora", "").strip() or None, cod,
-                    ),
-                )
+                if cod == "D2":
+                    cur.execute(
+                        """
+                        INSERT INTO erp.consulta_normativa
+                            (chave, empresa_id, numero_questao, enunciado, resposta_autoral, norma_citada, link_oficial,
+                             data_acesso, decisao_impactada, responsavel_decisao, prazo_decisao, impacto_se_alterada,
+                             origem_registro, status_validacao, justificativa_contadora, dossie)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'usuario', %s, %s, %s)
+                        """,
+                        (
+                            f"cons:usr:{cod.lower()}:q{num:02d}", emp_id, num, form["enunciado"].strip(), form["resposta_autoral"].strip(),
+                            form["norma_citada"].strip(), form["link_oficial"].strip(), form["data_acesso"],
+                            form.get("decisao_impactada", "").strip() or None,
+                            (form.get("responsavel_decisao") or "").strip() or None,
+                            (form.get("prazo_decisao") or "").strip() or None,
+                            (form.get("impacto_se_alterada") or "").strip() or None,
+                            form["status_validacao"],
+                            form.get("justificativa_contadora", "").strip() or None, cod,
+                        ),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        INSERT INTO erp.consulta_normativa
+                            (chave, empresa_id, numero_questao, enunciado, resposta_autoral, norma_citada, link_oficial,
+                             data_acesso, decisao_impactada, origem_registro, status_validacao, justificativa_contadora, dossie)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'usuario', %s, %s, %s)
+                        """,
+                        (
+                            f"cons:usr:{cod.lower()}:q{num:02d}", emp_id, num, form["enunciado"].strip(), form["resposta_autoral"].strip(),
+                            form["norma_citada"].strip(), form["link_oficial"].strip(), form["data_acesso"],
+                            form.get("decisao_impactada", "").strip() or None, form["status_validacao"],
+                            form.get("justificativa_contadora", "").strip() or None, cod,
+                        ),
+                    )
             else:
-                cur.execute(
-                    """
-                    UPDATE erp.consulta_normativa
-                    SET enunciado = %s, resposta_autoral = %s, norma_citada = %s, link_oficial = %s,
-                        data_acesso = %s, decisao_impactada = %s,
-                        status_validacao = %s, justificativa_contadora = %s
-                    WHERE id = %s AND empresa_id = %s
-                    """,
-                    (
-                        form["enunciado"].strip(), form["resposta_autoral"].strip(), form["norma_citada"].strip(),
-                        form["link_oficial"].strip(), form["data_acesso"], form.get("decisao_impactada", "").strip() or None,
-                        form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
-                        cons_id, emp_id,
-                    ),
-                )
+                if cod == "D2":
+                    cur.execute(
+                        """
+                        UPDATE erp.consulta_normativa
+                        SET enunciado = %s, resposta_autoral = %s, norma_citada = %s, link_oficial = %s,
+                            data_acesso = %s, decisao_impactada = %s,
+                            responsavel_decisao = %s, prazo_decisao = %s, impacto_se_alterada = %s,
+                            status_validacao = %s, justificativa_contadora = %s
+                        WHERE id = %s AND empresa_id = %s
+                        """,
+                        (
+                            form["enunciado"].strip(), form["resposta_autoral"].strip(), form["norma_citada"].strip(),
+                            form["link_oficial"].strip(), form["data_acesso"], form.get("decisao_impactada", "").strip() or None,
+                            (form.get("responsavel_decisao") or "").strip() or None,
+                            (form.get("prazo_decisao") or "").strip() or None,
+                            (form.get("impacto_se_alterada") or "").strip() or None,
+                            form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
+                            cons_id, emp_id,
+                        ),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        UPDATE erp.consulta_normativa
+                        SET enunciado = %s, resposta_autoral = %s, norma_citada = %s, link_oficial = %s,
+                            data_acesso = %s, decisao_impactada = %s,
+                            status_validacao = %s, justificativa_contadora = %s
+                        WHERE id = %s AND empresa_id = %s
+                        """,
+                        (
+                            form["enunciado"].strip(), form["resposta_autoral"].strip(), form["norma_citada"].strip(),
+                            form["link_oficial"].strip(), form["data_acesso"], form.get("decisao_impactada", "").strip() or None,
+                            form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
+                            cons_id, emp_id,
+                        ),
+                    )
         _validar_coerencia(conn, emp_id)
         conn.commit()
 

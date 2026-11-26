@@ -64,6 +64,163 @@
   {% endif %}
 {% endif %}
 
+{# ==================== DOC 01 — DIAGNOSTICO SOCIETARIO ==================== #}
+{% if doc == 'd2_01_diagnostico' %}
+  <h2>Identificação Societária, Estabelecimentos e Capital (Banco de Dados)</h2>
+  <p class="tt">Tabela 1 — Identificação do cliente, matriz e filial</p>
+  <table class="keep">
+    <tbody>
+      <tr><td>Razão social</td><td>{{ empresa.razao_social }} {{ m.badge(empresa.status_validacao) }}</td></tr>
+      <tr><td>Nome fantasia / curto</td><td>{{ empresa.nome_curto }}</td></tr>
+      <tr><td>Natureza jurídica / Porte</td><td>Sociedade Empresária Limitada (Ltda.){% if enquadramento_d2 %} · {{ rot(enquadramento_d2.porte, 'porte') }} · {{ rot(enquadramento_d2.regime_tributario, 'regime_tributario') }}{% endif %}</td></tr>
+      <tr><td>NIRE (Matriz)</td><td class="mono">{{ nire_matriz or '—' }}</td></tr>
+      {% for est in estabelecimentos_d2 %}
+        <tr><td>{{ rot(est.tipo, 'tipo_estab') }} ({{ est.municipio }}/{{ est.uf }})</td><td>CNPJ <span class="mono">{{ est.cnpj }}</span> · {{ est.endereco or '—' }} {{ m.badge(est.status_validacao) }}</td></tr>
+      {% endfor %}
+      {% if capital_d2 %}
+        <tr><td>Capital social</td><td>Subscrito: <span class="mono">{{ brl(capital_d2.subscrito) }}</span> · Integralizado: <span class="mono">{{ brl(capital_d2.integralizado) }}</span> · A integralizar: <span class="mono">{{ brl(capital_d2.a_integralizar) }}</span></td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+  <p class="fonte">Fonte: erp.empresa, erp.estabelecimento, erp.pessoa_identificador, erp.enquadramento_historico e erp.fato.</p>
+
+  {% if socios_d2 %}
+    <p class="tt">Tabela 2 — Quadro de sócios e participações societárias</p>
+    <table>
+      <thead><tr><th>Sócio</th><th>Papel</th><th class="num">Quotas</th><th class="num">Participação (%)</th><th class="num">Capital (R$)</th><th>Quarentena</th></tr></thead>
+      <tbody>
+        {% for s in socios_d2 %}
+          <tr>
+            <td>{{ s.nome_canonico }}</td>
+            <td>{{ s.papel }}</td>
+            <td class="num">{{ num(s.quotas, 0) }}</td>
+            <td class="num">{{ fmt_pct_socio(s.percentual_micro) }}</td>
+            <td class="num">{{ brl_tab(s.valor_centavos) }}</td>
+            <td>{{ m.badge(s.status_validacao) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="fonte">Fonte: erp.participacao_societaria.</p>
+  {% endif %}
+
+  {% if clausulas_d2 %}
+    <p class="tt">Tabela 3 — Quadro de achados da 2ª Alteração Contratual (Anexo I)</p>
+    <table>
+      <thead><tr><th>Cláusula</th><th>Achado</th><th>Risco</th><th>Fundamento legal</th><th>Providência</th><th>Quarentena</th></tr></thead>
+      <tbody>
+        {% for cl in clausulas_d2 %}
+          <tr>
+            <td class="mono">{{ cl.numero_clausula }}</td>
+            <td><strong>{{ cl.titulo }}</strong><br>{{ cl.regra_texto }}</td>
+            <td>{{ rot(cl.get('risco_tipo'), 'risco_tipo') if cl.get('risco_tipo') else '—' }} / {{ rot(cl.get('risco_nivel'), 'risco_nivel') if cl.get('risco_nivel') else '—' }}</td>
+            <td>{{ cl.get('fundamento_legal') or '—' }}</td>
+            <td>{{ cl.get('providencia') or cl.apontamento_auditoria or '—' }}</td>
+            <td>{{ m.badge(cl.status_validacao) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="fonte">Fonte: erp.instrumento_societario_clausula (2ª Alteração Contratual).</p>
+
+    <p class="tt">Tabela 4 — Plano de saneamento societário (3ª Alteração Contratual)</p>
+    <table>
+      <thead><tr><th>Cláusula</th><th>Providência de saneamento</th><th>Responsável</th><th>Prazo</th><th>Situação</th></tr></thead>
+      <tbody>
+        {% for cl in clausulas_d2 %}
+          <tr>
+            <td class="mono">{{ cl.numero_clausula }}</td>
+            <td>{{ cl.get('providencia') or cl.apontamento_auditoria or '—' }}</td>
+            <td>{{ cl.get('responsavel') or '—' }}</td>
+            <td>{{ cl.get('prazo_texto') or '—' }}</td>
+            <td>{{ m.badge(cl.status_validacao) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="fonte">Fonte: erp.instrumento_societario_clausula.</p>
+  {% endif %}
+{% endif %}
+
+{# ==================== DOCS 02, 03 E 04 — PROPOSTA, CONTRATO, TERMO RT ==================== #}
+{% if doc in ('d2_02_proposta', 'd2_03_contrato', 'd2_04_termo_rt') %}
+  <h2>Qualificação das Partes e Condições Comerciais (Banco de Dados)</h2>
+  <p class="tt">Tabela 1 — Qualificação das partes (Contratada × Contratante)</p>
+  <table class="keep">
+    <tbody>
+      {% if escritorio_d1 %}
+        <tr><td>Contratada (Escritório)</td><td>{{ escritorio_d1.nome_canonico }} · CNPJ <span class="mono">{{ escritorio_d1.cnpj or '—' }}</span> · <span class="mono">{{ escritorio_d1.registro_crc or '—' }}</span> · Sede: {{ escritorio_d1.sede or '—' }}</td></tr>
+        <tr><td>Responsável Técnica</td><td>{{ escritorio_d1.rt_nome or rt.nome }} · <span class="mono">{{ escritorio_d1.rt_crc or rt.crc }}</span></td></tr>
+      {% endif %}
+      <tr><td>Contratante</td><td>{{ empresa.razao_social }}</td></tr>
+      {% for est in estabelecimentos_d2 %}
+        <tr><td>{{ rot(est.tipo, 'tipo_estab') }} Contratante</td><td>CNPJ <span class="mono">{{ est.cnpj }}</span> · {{ est.endereco or '—' }} ({{ est.municipio }}/{{ est.uf }})</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="fonte">Fonte: erp.empresa, erp.estabelecimento, erp.enquadramento_historico e erp.pessoa_identificador (D1 + D2).</p>
+
+  {% if contrato_srv %}
+    <p class="tt">Tabela 2 — Condições comerciais e cláusulas estruturais</p>
+    <table class="keep">
+      <tbody>
+        <tr><td>Instrumento</td><td>{{ contrato_srv.titulo }} {{ m.badge(contrato_srv.status_validacao) }}</td></tr>
+        <tr><td>Honorário mensal</td><td class="mono">{{ brl(contrato_srv.honorario_mensal_centavos) }}</td></tr>
+        <tr><td>13º honorário anual</td><td>{{ 'Sim — ' ~ brl(contrato_srv.honorario_mensal_centavos) if contrato_srv.tem_decimo_terceiro else 'Não previsto' }}</td></tr>
+        <tr><td>Valor-hora técnico / Horas estimadas</td><td class="mono">{{ brl(contrato_srv.valor_hora_centavos) }}/h · {{ contrato_srv.horas_mes_estimadas }}h/mês</td></tr>
+        <tr><td>Vigência inicial / Foro</td><td><span class="mono">{{ fmt_data(contrato_srv.vigencia_inicio) }}</span> · Foro: {{ contrato_srv.foro or '—' }}</td></tr>
+        <tr><td>Escopo resumido</td><td>{{ contrato_srv.escopo_resumo or '—' }}</td></tr>
+      </tbody>
+    </table>
+    <p class="fonte">Fonte: erp.contrato_servico ({{ contrato_srv.codigo_documento }}).</p>
+  {% endif %}
+
+  {% if doc == 'd2_02_proposta' and memoria_custo %}
+    <p class="tt">Tabela 3 — Memória de custo e horas técnicas (calculada do banco)</p>
+    <table>
+      <thead><tr><th>Frente / Atividade</th><th class="num">Horas</th><th class="num">Valor-hora (R$)</th><th class="num">Total (R$)</th></tr></thead>
+      <tbody>
+        {% for mc in memoria_custo %}
+          <tr>
+            <td>{{ mc.frente }}</td>
+            <td class="num">{{ mc.horas }}</td>
+            <td class="num">{{ brl_tab(mc.valor_hora_centavos) }}</td>
+            <td class="num">{{ brl_tab(mc.total_centavos) }}</td>
+          </tr>
+        {% endfor %}
+        <tr class="total">
+          <td>Total da memória técnica</td>
+          <td class="num">{{ memoria_custo|sum(attribute='horas') }}</td>
+          <td class="num">—</td>
+          <td class="num">{{ brl_tab(memoria_total) }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="fonte">Fonte: erp.contrato_servico (memoria_horas_json × valor_hora_centavos).</p>
+  {% endif %}
+
+  {% if doc == 'd2_04_termo_rt' and pends_termo_rt %}
+    <p class="tt">Tabela 3 — Rol de pendências abertas do onboarding</p>
+    <table>
+      <thead><tr><th>Cód.</th><th>Pendência</th><th>Risco</th><th>Responsável</th><th>Prazo</th><th>Status real</th><th>Quarentena</th></tr></thead>
+      <tbody>
+        {% for pd in pends_termo_rt %}
+          <tr>
+            <td class="mono">{{ pd.codigo }}</td>
+            <td>{{ pd.enunciado }}</td>
+            <td>{{ pd.risco or '—' }}</td>
+            <td>{{ pd.responsavel or '—' }}</td>
+            <td>{{ pd.prazo_texto or '—' }}</td>
+            <td>{{ rot(pd.status_item, 'status_diligencia') }}</td>
+            <td>{{ m.badge(pd.status_validacao) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="fonte">Fonte: erp.diligencia_item (tipo = 'pendencia', status_item != 'concluido').</p>
+  {% endif %}
+{% endif %}
+
 {# ==================== DOC 05 — ONBOARDING ==================== #}
 {% if doc == 'd2_05_onboarding' %}
   <h2>Quadros Estruturados de Diligência (Banco de Dados)</h2>
@@ -226,6 +383,21 @@
   <p class="fonte">Fonte: erp.contrato_trabalho e erp.estabelecimento.</p>
 {% endif %}
 
+{# ==================== DOCS 08 E 10 — CONTRATOS DE EXPERIENCIA ==================== #}
+{% if doc in ('d2_08_exp_e1', 'd2_10_exp_e2') and exp_ct %}
+  <h2>Quadro-Resumo do Contrato de Experiência (Banco de Dados)</h2>
+  <p class="tt">Tabela 1 — Parâmetros contratuais de {{ exp_ct.codigo_empregado }} ({{ exp_ct.nome_empregado }})</p>
+  <table class="keep">
+    <tbody>
+      <tr><td>Empregado / Cargo / CBO</td><td><span class="mono">{{ exp_ct.codigo_empregado }}</span> — {{ exp_ct.nome_empregado }} · {{ exp_ct.cargo }} (CBO <span class="mono">{{ exp_ct.cbo }}</span>) {{ m.badge(exp_ct.status_validacao) }}</td></tr>
+      <tr><td>Admissão e experiência</td><td>Admissão <span class="mono">{{ fmt_data(exp_ct.data_admissao) }}</span> · Prazo: {{ exp_ct.experiencia_dias_1 }} + {{ exp_ct.experiencia_dias_2 }} dias (total {{ (exp_ct.experiencia_dias_1 or 0) + (exp_ct.experiencia_dias_2 or 0) }} dias)</td></tr>
+      <tr><td>Salário e comissão</td><td class="mono">{{ brl(exp_ct.salario_base_centavos) }}{% if exp_ct.comissao_pct_micro %} · Comissão {{ pct(exp_ct.comissao_pct_micro) }} sobre vendas líquidas{% else %} · Sem comissão{% endif %}</td></tr>
+      <tr><td>Jornada e intervalo</td><td>{{ exp_ct.jornada_descricao or '—' }} ({{ exp_ct.jornada_semanal_horas or '—' }}h/sem · intervalo <span class="mono">{{ fmt_hhmm(exp_ct.intervalo_minutos) }}</span>)</td></tr>
+    </tbody>
+  </table>
+  <p class="fonte">Fonte: erp.contrato_trabalho.</p>
+{% endif %}
+
 {# ==================== SECOES NARRATIVAS (TODAS AS FASES) ==================== #}
 {% if doc != 'd2_15_ia' %}
   {% for s in secoes %}
@@ -372,5 +544,26 @@
       {% endfor %}
     </tbody>
   </table>
+{% endif %}
+
+{% if doc == 'd2_12_resumo_contab' and conciliacao_d2 %}
+  <h2>Conciliação Folha × Resumo × Lançamentos Contábeis</h2>
+  <p class="tt">Tabela 2 — Conciliação integral das rubricas com as partidas L1–L4</p>
+  <table>
+    <thead><tr><th>#</th><th>Rubrica conciliada</th><th class="num">Folha / Motor (R$)</th><th class="num">Contabilidade L1–L4 (R$)</th><th class="num">Diferença (R$)</th><th>Situação</th></tr></thead>
+    <tbody>
+      {% for c in conciliacao_d2 %}
+        <tr>
+          <td class="mono">{{ c.num }}</td>
+          <td>{{ c.rubrica }}</td>
+          <td class="num">{{ brl_tab(c.folha) }}</td>
+          <td class="num">{{ brl_tab(c.contab) }}</td>
+          <td class="num">{{ brl(c.diferenca) if c.diferenca == 0 else brl_tab(c.diferenca) }}</td>
+          <td>{% if c.diferenca == 0 %}<span class="badge b-ok">Conciliado</span>{% else %}<span class="badge b-cr">Divergente</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="fonte">Fonte: erp.folha_competencia, erp.folha_item, erp.lancamento e erp.partida.</p>
 {% endif %}
 {% endblock %}

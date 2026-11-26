@@ -20,6 +20,7 @@ from sistema.web import rotulos, texto
 from sistema.web.emissor_dossie1 import BRAND_DIR, CSS, JS_ORIENTACAO, WEB_DIR, verificar_pdf
 from sistema.web.fontes_pdf import garantir_fontes_estaticas
 from sistema.web.planilha_dossie2 import XLSX_D2_NOME, gravar_xlsx_d2
+from sistema.web.repo_d2 import obter_dados_escritorio_d1
 
 EXPORT_D2_DIR = PLATAFORMA_DIR / "exportacoes" / "dossie2"
 XLSX_NOME = XLSX_D2_NOME
@@ -144,18 +145,56 @@ def carregar_dados_dossie2() -> dict[str, Any]:
         cur.execute("SELECT * FROM auditoria.diario_ia WHERE empresa_id = %s AND dossie = 'D2' ORDER BY id", (emp_id,))
         diario_ia = cur.fetchall()
 
+        escritorio = obter_dados_escritorio_d1(cur)
+
         cur.execute(
             """
-            SELECT rt.nome_canonico AS rt_nome,
-                   (SELECT pi.valor FROM erp.pessoa_identificador pi WHERE pi.pessoa_id = rt.id AND pi.tipo_id = 'CRC' LIMIT 1) AS rt_crc
-            FROM erp.empresa e
-            JOIN erp.enquadramento_historico enq ON enq.empresa_id = e.id
-            JOIN erp.pessoa rt ON rt.id = enq.responsavel_tecnico_pessoa_id
-            WHERE e.chave = %s LIMIT 1
+            SELECT ps.*, p.nome_canonico, p.id AS pessoa_id
+            FROM erp.participacao_societaria ps
+            JOIN erp.pessoa p ON p.id = ps.socio_pessoa_id
+            WHERE ps.empresa_id = %s AND ps.vigente_ate IS NULL
+            ORDER BY ps.id
             """,
-            (ESCRITORIO_CHAVE_D1,),
+            (emp_id,),
         )
-        rt = cur.fetchone() or {"rt_nome": "Nathalia Peres Araujo", "rt_crc": "CRC-DF 025.431/O-7"}
+        socios = cur.fetchall()
+
+        pessoa_ids = [int(emp["pessoa_id"])] + [int(s["pessoa_id"]) for s in socios]
+        cur.execute(
+            """
+            SELECT pi.*, p.nome_canonico
+            FROM erp.pessoa_identificador pi
+            JOIN erp.pessoa p ON p.id = pi.pessoa_id
+            WHERE pi.pessoa_id = ANY(%s)
+            ORDER BY pi.pessoa_id, pi.tipo_id, pi.id
+            """,
+            (pessoa_ids,),
+        )
+        identificadores = cur.fetchall()
+
+        cur.execute(
+            "SELECT * FROM erp.enquadramento_historico WHERE empresa_id = %s ORDER BY vigente_de DESC, id DESC LIMIT 1",
+            (emp_id,),
+        )
+        enquadramento = cur.fetchone()
+
+        cur.execute(
+            "SELECT * FROM erp.fato WHERE sujeito_chave = %s AND atributo = 'capital_social' ORDER BY vigente_de, id",
+            (EMPRESA_CHAVE_D2,),
+        )
+        fatos_capital = cur.fetchall()
+
+        cur.execute("SELECT * FROM erp.instrumento_societario_clausula WHERE empresa_id = %s ORDER BY ordem, id", (emp_id,))
+        clausulas_d2 = cur.fetchall()
+
+        cur.execute("SELECT * FROM erp.contrato_servico WHERE empresa_id = %s ORDER BY ordem, id", (emp_id,))
+        contratos_servico = cur.fetchall()
+
+        cur.execute("SELECT * FROM erp.auditoria_folha WHERE empresa_id = %s ORDER BY ordem, id", (emp_id,))
+        auditoria = cur.fetchall()
+
+        rt_nome = (escritorio or {}).get("rt_nome") or "Nathalia Peres Araujo"
+        rt_crc = (escritorio or {}).get("rt_crc") or "CRC-DF 025.431/O-7"
 
     return {
         "emitido_em": datetime.now(),
@@ -174,7 +213,15 @@ def carregar_dados_dossie2() -> dict[str, Any]:
         "esocial": esocial,
         "consultas": consultas,
         "diario_ia": diario_ia,
-        "rt": {"nome": rt["rt_nome"], "crc": rt["rt_crc"]},
+        "escritorio": escritorio,
+        "socios": socios,
+        "identificadores": identificadores,
+        "enquadramento": enquadramento,
+        "fatos_capital": fatos_capital,
+        "clausulas_d2": clausulas_d2,
+        "contratos_servico": contratos_servico,
+        "auditoria": auditoria,
+        "rt": {"nome": rt_nome, "crc": rt_crc},
     }
 
 
@@ -357,6 +404,90 @@ def _parametros_por_categoria(parametros: list[dict[str, Any]]) -> list[tuple[st
     return [(c, grupos[c]) for c in cats]
 
 
+def _fmt_pct_socio(micro: int | None) -> str:
+    if micro is None:
+        return "—"
+    v = int(micro)
+    if abs(v) > 1_000_000:
+        return texto.num_br(v / 1_000_000.0, 2) + "%"
+    return texto.pct_micro(v)
+
+
+def _capital_doc01(d: dict[str, Any]) -> dict[str, int]:
+    subscrito = sum(int(s.get("valor_centavos") or 0) for s in (d.get("socios") or []))
+    fatos = d.get("fatos_capital") or []
+    depois = next((f for f in fatos if f.get("vigente_ate") is None and f.get("valor_centavos") is not None), None)
+    antes = next((f for f in fatos if f.get("vigente_ate") is not None and f.get("valor_centavos") is not None), None)
+    if subscrito <= 0 and depois:
+        subscrito = int(depois["valor_centavos"])
+    integralizado = int(antes["valor_centavos"]) if antes else subscrito
+    a_integralizar = max(0, subscrito - integralizado)
+    return {"subscrito": subscrito, "integralizado": integralizado, "a_integralizar": a_integralizar}
+
+
+def _memoria_custo_doc02(cs: dict[str, Any] | None) -> tuple[list[dict[str, Any]], int]:
+    if not cs:
+        return [], 0
+    vh = int(cs.get("valor_hora_centavos") or 0)
+    linhas: list[dict[str, Any]] = []
+    for raw in cs.get("memoria_horas_json") or []:
+        if not isinstance(raw, dict):
+            continue
+        horas = int(raw.get("horas") or 0)
+        linhas.append({
+            "frente": str(raw.get("frente") or raw.get("atividade") or "—"),
+            "horas": horas,
+            "valor_hora_centavos": vh,
+            "total_centavos": horas * vh,
+        })
+    return linhas, sum(int(ln["total_centavos"]) for ln in linhas)
+
+
+def _conciliacao_doc12(d: dict[str, Any]) -> list[dict[str, Any]]:
+    comp = d.get("comp") or {}
+    itens = d.get("itens") or []
+    partidas = d.get("partidas") or []
+    if not comp and not itens and not partidas:
+        return []
+
+    def soma_it(cod: str) -> int:
+        return sum(int(it.get("valor_centavos") or 0) for it in itens if it.get("codigo_rubrica") == cod)
+
+    def soma_pt(dc: str, contas: tuple[str, ...] | None = None, tag: str | None = None) -> int:
+        return sum(
+            int(p.get("valor_centavos") or 0)
+            for p in partidas
+            if p.get("dc") == dc
+            and (contas is None or p.get("conta_codigo") in contas)
+            and (tag is None or p.get("tag_ref") == tag)
+        )
+
+    bruto_folha = sum(int(it.get("valor_centavos") or 0) for it in itens if it.get("tipo_rubrica") == "provento") if itens else int(comp.get("bruto_total_centavos") or 0)
+    liq_folha = int(comp.get("liquido_total_centavos") or 0)
+    inss_folha = soma_it("INSS-RET") if itens else int(comp.get("inss_total_centavos") or 0)
+    neg_folha = soma_it("NEGOCIAL")
+    fgts_folha = soma_it("FGTS-8") if itens else int(comp.get("fgts_total_centavos") or 0)
+    vt_desc_folha = soma_it("VT-DESC")
+    prov_folha = sum(int(it.get("valor_centavos") or 0) for it in itens if it.get("tipo_rubrica") == "provisao") if itens else int(comp.get("provisoes_total_centavos") or 0)
+    tot_d = soma_pt("D")
+    tot_c = soma_pt("C")
+
+    linhas = [
+        ("1", "Total de Proventos Brutos", bruto_folha, soma_pt("D", ("4.1.1.01", "4.2.1.01", "4.2.1.02"), "folha_l1")),
+        ("2", "Salários Líquidos a Pagar", liq_folha, soma_pt("C", ("2.1.2.01",), "folha_l1")),
+        ("3", "INSS Retido (DCTFWeb)", inss_folha, soma_pt("C", ("2.1.2.02",), "folha_l1")),
+        ("4", "Contribuição Negocial (CCT)", neg_folha, soma_pt("C", ("2.1.2.05",), "folha_l1")),
+        ("5", "FGTS da Folha (FGTS Digital 8%)", fgts_folha, soma_pt("C", ("2.1.2.03",), "folha_l2")),
+        ("6", "Desconto Vale-Transporte (6%)", vt_desc_folha, soma_pt("C", ("4.1.1.05", "4.2.1.05"), "folha_l1")),
+        ("7", "Provisões Trabalhistas + FGTS (L4)", prov_folha, soma_pt("D", None, "folha_l4")),
+        ("8", "Partidas Dobradas (Débitos × Créditos)", tot_d, tot_c),
+    ]
+    return [
+        {"num": num, "rubrica": rub, "folha": v_fol, "contab": v_con, "diferenca": v_fol - v_con}
+        for num, rub, v_fol, v_con in linhas
+    ]
+
+
 def _jinja() -> Environment:
     global _env
     if _env is None:
@@ -425,6 +556,37 @@ def html_documento(doc: str, para_web: bool = False, dados: dict[str, Any] | Non
         ctx_extra["parametros_grupos"] = _parametros_por_categoria(d.get("parametros") or [])
     elif doc == "d2_15_ia":
         ctx_extra["diario_ia"] = d.get("diario_ia") or []
+    elif doc == "d2_01_diagnostico":
+        emp_pid = int(d["empresa"].get("pessoa_id") or 0)
+        nire_matriz = next(
+            (pi.get("valor") for pi in (d.get("identificadores") or []) if int(pi.get("pessoa_id") or 0) == emp_pid and pi.get("tipo_id") == "NIRE"),
+            None,
+        )
+        ctx_extra["estabelecimentos_d2"] = d.get("estabelecimentos") or []
+        ctx_extra["socios_d2"] = d.get("socios") or []
+        ctx_extra["enquadramento_d2"] = d.get("enquadramento")
+        ctx_extra["nire_matriz"] = nire_matriz
+        ctx_extra["capital_d2"] = _capital_doc01(d)
+        ctx_extra["clausulas_d2"] = d.get("clausulas_d2") or []
+    elif doc in ("d2_02_proposta", "d2_03_contrato", "d2_04_termo_rt"):
+        cod_srv = {"d2_02_proposta": "proposta", "d2_03_contrato": "contrato", "d2_04_termo_rt": "termo_rt"}[doc]
+        cs = next((c for c in (d.get("contratos_servico") or []) if c.get("codigo_documento") == cod_srv), None)
+        mem_linhas, mem_total = _memoria_custo_doc02(cs)
+        ctx_extra["escritorio_d1"] = d.get("escritorio")
+        ctx_extra["estabelecimentos_d2"] = d.get("estabelecimentos") or []
+        ctx_extra["contrato_srv"] = cs
+        ctx_extra["memoria_custo"] = mem_linhas
+        ctx_extra["memoria_total"] = mem_total
+        if doc == "d2_04_termo_rt":
+            ctx_extra["pends_termo_rt"] = [
+                x for x in (d.get("diligencias") or [])
+                if x.get("tipo") == "pendencia" and x.get("status_item") != "concluido"
+            ]
+    elif doc in ("d2_08_exp_e1", "d2_10_exp_e2"):
+        alvo = "E1" if doc == "d2_08_exp_e1" else "E2"
+        ctx_extra["exp_ct"] = next((c for c in (d.get("contratos") or []) if c.get("codigo_empregado") == alvo), None)
+    elif doc == "d2_12_resumo_contab":
+        ctx_extra["conciliacao_d2"] = _conciliacao_doc12(d)
 
     return _jinja().get_template("d2_doc.html").render(
         doc=doc, info=info, css=Markup(css), brand=brand, para_web=para_web,
@@ -434,7 +596,7 @@ def html_documento(doc: str, para_web: bool = False, dados: dict[str, Any] | Non
         sede_txt=f"{sede.get('endereco') or '—'} — {sede.get('municipio') or 'Goiânia'}/{sede.get('uf') or 'GO'}",
         secoes=d["secoes"].get(doc, []), md=_md_vivo_d2(d), rot=rotulos.rotulo,
         brl=texto.brl, brl_tab=texto.brl_tab, pct=texto.pct_micro, num=texto.num_br,
-        fmt_hhmm=_fmt_hhmm, fmt_data=_fmt_data,
+        fmt_hhmm=_fmt_hhmm, fmt_data=_fmt_data, fmt_pct_socio=_fmt_pct_socio,
         resumo_executivo=resumo_exec,
         extra_rubricas=d["itens"] if doc == "d2_11_folha" else None,
         extra_partidas=d["partidas"] if doc == "d2_12_resumo_contab" else None,

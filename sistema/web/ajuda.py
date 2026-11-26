@@ -350,6 +350,21 @@ AJUDA: dict[str, str] = {
     "aud.situacao": "Classificação atual do achado (saneado na revisão v2, aberto para cliente ou conforme).",
     "aud.responsavel": "Responsável pela correção e prazo acordado.",
     "aud.conclusao": "Evidência examinada, impacto financeiro e recomendação de saneamento.",
+    "aud.valor_v1": "Valor apurado na 1ª entrega (v1) para confronto com o recálculo da auditoria.",
+    "aud.valor_rec": "Valor recalculado pela auditoria trabalhista conforme a norma vigente.",
+    "cl.risco_tipo": "Classifica o achado societário em risco formal (redação, grafia, registro) ou material (capital, objeto/Simples, quórum, haveres).",
+    "cl.risco_nivel": "Gravidade do risco societário ou tributário (baixo, médio, alto ou crítico).",
+    "cl.fundamento": "Dispositivo legal, normativo ou contratual que embasa o apontamento (ex.: CC art. 1.031; LC 123/2006 art. 17, VIII).",
+    "cl.providencia": "Saneamento proposto para a 3ª Alteração Contratual ou regularização cadastral.",
+    "cl.responsavel": "Responsável pela execução da providência (Sócios, Advogado ou PRISMA JRNA).",
+    "cl.prazo": "Prazo acordado para conclusão da providência de saneamento.",
+    "q.resp_decisao": "Quem detém a competência para decidir ou confirmar a premissa (contadora RT, diretoria ou jurídico).",
+    "q.prazo_decisao": "Data-limite ou status da definição sobre esta premissa.",
+    "q.impacto_alt": "Efeito prático nos cálculos, impostos ou documentos caso esta premissa seja alterada.",
+    "dil.data": "Data em que a resposta ou documento foi efetivamente recebido ou registrado.",
+    "ct.jornada_horas": "Carga horária semanal contratual em horas (ex.: 44h — CF art. 7º, XIII).",
+    "ct.cct_ref": "Convenção Coletiva de Trabalho aplicável e seu registro no MTE/Mediador.",
+    "par.data_consulta": "Data de conferência da tabela ou cláusula na fonte oficial.",
 }
 
 

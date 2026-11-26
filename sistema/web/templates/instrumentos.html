@@ -64,6 +64,14 @@
             {% call m.field('Quórum', 'cl.quorum') %}{{ m.select_rotulos('quorum_tipo', 'quorum', c.quorum_tipo) }}{% endcall %}
             {% call m.field('Alçada isolada (R$)', 'cl.alcada') %}<input type="text" data-fmt="brl" name="alcada_reais" value="{{ c.alcada_centavos|reais_in if c.alcada_centavos else '' }}">{% endcall %}
             {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(c.status_validacao) }}{% endcall %}
+            {% if empresa.dossie == 'D2' %}
+              {% call m.field('Natureza do risco', 'cl.risco_tipo') %}{{ m.select_rotulos('risco_tipo', 'risco_tipo', c.get('risco_tipo') or 'formal') }}{% endcall %}
+              {% call m.field('Nível do risco', 'cl.risco_nivel') %}{{ m.select_rotulos('risco_nivel', 'risco_nivel', c.get('risco_nivel') or 'medio') }}{% endcall %}
+              {% call m.field('Responsável (3ª Alteração)', 'cl.responsavel') %}<input type="text" name="responsavel" value="{{ c.get('responsavel') or '' }}">{% endcall %}
+              {% call m.field('Prazo de saneamento', 'cl.prazo') %}<input type="text" name="prazo_texto" value="{{ c.get('prazo_texto') or '' }}">{% endcall %}
+              {% call m.field('Fundamento legal', 'cl.fundamento', 'span-all') %}<input type="text" name="fundamento_legal" value="{{ c.get('fundamento_legal') or '' }}">{% endcall %}
+              {% call m.field('Providência (3ª Alteração Contratual)', 'cl.providencia', 'span-all') %}<textarea name="providencia">{{ c.get('providencia') or '' }}</textarea>{% endcall %}
+            {% endif %}
           </div>
           <div style="margin: 10px 0 6px;">
             <span class="lbl">Instrumento{{ m.tip('cl.aplica', 'Instrumento') }}</span>
@@ -98,6 +106,14 @@
           {% call m.field('Apuração de haveres', 'cl.haveres') %}{{ m.select_rotulos('metodo_haveres', 'haveres', 'nao_aplicavel') }}{% endcall %}
           {% call m.field('Quórum', 'cl.quorum') %}{{ m.select_rotulos('quorum_tipo', 'quorum', 'nao_aplicavel') }}{% endcall %}
           {% call m.field('Alçada isolada (R$)', 'cl.alcada') %}<input type="text" data-fmt="brl" name="alcada_reais" placeholder="15.000,00">{% endcall %}
+          {% if empresa.dossie == 'D2' %}
+            {% call m.field('Natureza do risco', 'cl.risco_tipo') %}{{ m.select_rotulos('risco_tipo', 'risco_tipo', 'formal') }}{% endcall %}
+            {% call m.field('Nível do risco', 'cl.risco_nivel') %}{{ m.select_rotulos('risco_nivel', 'risco_nivel', 'medio') }}{% endcall %}
+            {% call m.field('Responsável (3ª Alteração)', 'cl.responsavel') %}<input type="text" name="responsavel">{% endcall %}
+            {% call m.field('Prazo de saneamento', 'cl.prazo') %}<input type="text" name="prazo_texto">{% endcall %}
+            {% call m.field('Fundamento legal', 'cl.fundamento', 'span-all') %}<input type="text" name="fundamento_legal">{% endcall %}
+            {% call m.field('Providência (3ª Alteração Contratual)', 'cl.providencia', 'span-all') %}<textarea name="providencia"></textarea>{% endcall %}
+          {% endif %}
         </div>
         <div style="margin: 10px 0 6px;">
           <label class="check"><input type="checkbox" name="aplica_contrato" checked> Contrato Social{{ m.tip('cl.aplica', 'Contrato Social') }}</label>

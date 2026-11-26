@@ -12,11 +12,14 @@ import openpyxl
 import pytest
 
 from sistema.erp.motor_folha import (
+    detectar_divergencia_contratos_d2,
     detectar_residuos_texto_d2,
+    detectar_salario_abaixo_piso_d2,
     impacto_exclusao_simples,
     recalcular_folha_d2,
 )
 from sistema.pg.db import ENV_PATH, conectar_pg, obter_database_url
+from sistema.web import ajuda as ajuda_mod
 from sistema.web import texto
 from sistema.web.app import create_app
 from sistema.web.emissor_dossie2 import DOCUMENTOS, _marcadores_d2, html_documento
@@ -162,6 +165,66 @@ def _fixture_dados_d2() -> dict[str, Any]:
         ],
         "diario_ia": [
             {"id": 1, "entregavel": "Doc. 05", "ferramenta": "Antigravity (Gemini 4)", "finalidade": "Organização de checklist e respostas literais", "prompt_resumo": "Tabular DOC-01..13 e Q1..Q9 sem inventar evidência.", "fonte_oficial": "Estudo de Caso 02 e respostas da diretoria", "revisao_humana": "Conferido item a item pela contadora.", "status_validacao": "pendente_revisao"},
+        ],
+        "escritorio": {
+            "nome_curto": "PRISMA JRNA",
+            "nome_canonico": "Prisma JRNA Auditoria e Contabilidade Ltda.",
+            "cnpj": "48.123.456/0001-90",
+            "registro_crc": "CRC-DF 004.821/O-2",
+            "rt_nome": "Nathalia Peres Araujo",
+            "rt_crc": "CRC-DF 025.431/O-7",
+            "sede": "Asa Sul, Brasília-DF",
+        },
+        "socios": [
+            {"pessoa_id": 7, "nome_canonico": "Helena Aparecida Mendes Duarte", "papel": "socio_administrador", "quotas": 750_000, "valor_centavos": 75_000_000, "percentual_micro": 50_000_000, "status_validacao": "acervo_referencia"},
+            {"pessoa_id": 8, "nome_canonico": "Bruno Mendes Duarte", "papel": "socio_administrador", "quotas": 750_000, "valor_centavos": 75_000_000, "percentual_micro": 50_000_000, "status_validacao": "acervo_referencia"},
+        ],
+        "identificadores": [
+            {"pessoa_id": 1, "tipo_id": "CNPJ", "valor": "11.222.333/0001-81"},
+            {"pessoa_id": 1, "tipo_id": "NIRE", "valor": "52900000015"},
+        ],
+        "enquadramento": {"porte": "EPP", "regime_tributario": "Simples_Anexo_I"},
+        "fatos_capital": [
+            {"atributo": "capital_social", "valor_centavos": 100_000_000, "vigente_ate": "2026-09-13"},
+            {"atributo": "capital_social", "valor_centavos": 150_000_000, "vigente_ate": None},
+        ],
+        "clausulas_d2": [
+            {
+                "id": 1, "numero_clausula": "Cl. 2ª Alteração / Cl. 3ª", "titulo": "CNAE 4541-2/01 no Simples",
+                "regra_texto": "Importação de motocicletas veda Simples Nacional.",
+                "risco_tipo": "material", "risco_nivel": "critico",
+                "fundamento_legal": "LC 123/2006, art. 17, VIII",
+                "providencia": "Excluir 4541-2/01 na 3ª Alteração Contratual.",
+                "responsavel": "Sócios + Advogado", "prazo_texto": "10/10/2026",
+                "apontamento_auditoria": "Excluir CNAE impeditivo.", "status_validacao": "alerta_inconsistencia",
+            },
+        ],
+        "contratos_servico": [
+            {
+                "id": 1, "codigo_documento": "proposta", "titulo": "Proposta de Honorários e BPO",
+                "honorario_mensal_centavos": 400_000, "tem_decimo_terceiro": True,
+                "valor_hora_centavos": 12_500, "horas_mes_estimadas": 32,
+                "vigencia_inicio": "2026-09-14", "foro": "Goiânia-GO",
+                "escopo_resumo": "BPO Contábil, Fiscal e DP (Matriz GO + Filial SC).",
+                "memoria_horas_json": [{"frente": "Setup Fee (Implantação)", "horas": 16, "valor_hora": 999}, {"frente": "Mensal Matriz + Filial", "horas": 32, "valor_hora": 125}],
+                "conteudo_md": "Proposta válida por 15 dias.", "status_validacao": "pendente_revisao",
+            },
+            {
+                "id": 2, "codigo_documento": "contrato", "titulo": "Contrato de Prestação de Serviços Contábeis",
+                "honorario_mensal_centavos": 400_000, "tem_decimo_terceiro": True,
+                "valor_hora_centavos": 12_500, "horas_mes_estimadas": 32,
+                "vigencia_inicio": "2026-09-01", "foro": "Goiânia-GO",
+                "escopo_resumo": "Prestação contínua a partir de 09/2026.",
+                "memoria_horas_json": [], "conteudo_md": "Contrato completo.", "status_validacao": "pendente_revisao",
+            },
+            {
+                "id": 3, "codigo_documento": "termo_rt", "titulo": "Termo de Responsabilidade Técnica",
+                "honorario_mensal_centavos": 400_000, "tem_decimo_terceiro": True,
+                "valor_hora_centavos": 12_500, "horas_mes_estimadas": 32,
+                "vigencia_inicio": "2026-09-01", "foro": "Goiânia-GO",
+                "escopo_resumo": "Res. CFC nº 1.708/2023.",
+                "memoria_horas_json": [], "conteudo_md": "Termo RT.", "status_validacao": "pendente_revisao",
+            },
         ],
         "comp": {
             "id": 1,
@@ -327,6 +390,62 @@ def test_d2_quadros_fase2() -> None:
         assert "(Dossiê 1)" not in html and "do Dossiê 1" not in html, doc
         for tr in trechos:
             assert tr in html, f"{doc}: trecho esperado ausente: {tr!r}"
+
+
+def test_d2_quadros_fase3_e_dado_muda_pdf_muda() -> None:
+    dados = _fixture_dados_d2()
+    esperados = {
+        "d2_01_diagnostico": ("Tabela 1 — Identificação do cliente", "52900000015", "Helena Aparecida Mendes Duarte", "50,00%", "1.000.000,00", "500.000,00", "Tabela 3 — Quadro de achados", "LC 123/2006, art. 17, VIII", "Tabela 4 — Plano de saneamento"),
+        "d2_02_proposta": ("Tabela 1 — Qualificação das partes", "48.123.456/0001-90", "CRC-DF 025.431/O-7", "Tabela 2 — Condições comerciais", "Tabela 3 — Memória de custo", "2.000,00", "6.000,00"),
+        "d2_03_contrato": ("Tabela 1 — Qualificação das partes", "Tabela 2 — Condições comerciais", "4.000,00"),
+        "d2_04_termo_rt": ("Tabela 1 — Qualificação das partes", "Tabela 3 — Rol de pendências abertas", "PEND-01"),
+        "d2_08_exp_e1": ("Tabela 1 — Parâmetros contratuais de E1", "45 + 45 dias", "1h48"),
+        "d2_10_exp_e2": ("Tabela 1 — Parâmetros contratuais de E2", "30 + 60 dias", "1,50%", "2h00"),
+        "d2_12_resumo_contab": ("Tabela 2 — Conciliação integral", "Conciliado", "2.833,33"),
+    }
+    for doc, trechos in esperados.items():
+        html = html_documento(doc, para_web=True, dados=dados)
+        assert "[INSERIR" not in html, doc
+        for tr in trechos:
+            assert tr in html, f"{doc}: trecho esperado ausente: {tr!r}"
+
+    # test_d2_dado_muda_pdf_muda: alterar intervalo do E1 e honorario da proposta reflete no HTML
+    dados["contratos"][0]["intervalo_minutos"] = 90
+    html_e1 = html_documento("d2_07_ficha_e1", para_web=True, dados=dados)
+    assert "1h30" in html_e1
+    dados["contratos_servico"][0]["honorario_mensal_centavos"] = 450_000
+    html_prop = html_documento("d2_02_proposta", para_web=True, dados=dados)
+    assert "4.500,00" in html_prop
+
+
+def test_d2_regras_contrato_e_piso_puras() -> None:
+    dados = _fixture_dados_d2()
+    # Estado base: proposta 14/09 != contrato 01/09 nao deve gerar alerta; contrato == termo_rt (01/09) -> 0 divergencias
+    assert detectar_divergencia_contratos_d2(dados["contratos_servico"]) == []
+
+    # Contrato != termo_rt na vigencia ou proposta != contrato no honorario -> alerta
+    cs_div = [dict(x) for x in dados["contratos_servico"]]
+    cs_div[0]["honorario_mensal_centavos"] = 350_000
+    cs_div[2]["vigencia_inicio"] = "2026-09-15"
+    divs = detectar_divergencia_contratos_d2(cs_div)
+    assert {d["campo"] for d in divs} == {"honorario_mensal_centavos", "vigencia_inicio"}
+
+    # Salario >= piso e referencia preenchida -> 0 alertas
+    assert detectar_salario_abaixo_piso_d2(dados["contratos"]) == []
+    cts_err = [dict(x) for x in dados["contratos"]]
+    cts_err[0]["salario_base_centavos"] = 150_000
+    cts_err[1]["cct_referencia"] = ""
+    errs = detectar_salario_abaixo_piso_d2(cts_err)
+    assert any(e["tipo"] == "abaixo_piso" and e["severidade"] == "critico" for e in errs)
+    assert any(e["tipo"] == "piso_ausente" and e["severidade"] == "alerta" for e in errs)
+
+    # Todas as chaves de ajuda novas estao registradas
+    for chave in (
+        "aud.valor_v1", "aud.valor_rec", "cl.risco_tipo", "cl.risco_nivel", "cl.fundamento",
+        "cl.providencia", "cl.responsavel", "cl.prazo", "q.resp_decisao", "q.prazo_decisao",
+        "q.impacto_alt", "dil.data", "ct.jornada_horas", "ct.cct_ref", "par.data_consulta",
+    ):
+        assert ajuda_mod.ajuda(chave), f"Chave de ajuda ausente: {chave}"
 
 
 @pytest.mark.skipif(not _pg_disponivel(), reason=f"PostgreSQL indisponivel ({ENV_PATH}).")

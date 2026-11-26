@@ -226,6 +226,8 @@ ROTULOS: dict[str, dict[str, str]] = {
         "conforme": "Conforme / Documentado",
     },
     "tipo_auditoria": {"papel_trabalho": "Papel de trabalho (PT)", "achado": "Achado de auditoria (AUD)"},
+    "risco_tipo": {"formal": "Formal", "material": "Material"},
+    "risco_nivel": {"baixo": "Baixo", "medio": "Médio", "alto": "Alto", "critico": "Crítico"},
 }
 
 # Status -> classe visual DMA v3 (ok / at / cr / in)

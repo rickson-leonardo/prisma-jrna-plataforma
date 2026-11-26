@@ -98,6 +98,7 @@
               {% call m.field('Solicitação / Pergunta / Pendência', 'dil.enunciado', 'span-all') %}<textarea name="enunciado">{{ d.enunciado }}</textarea>{% endcall %}
               {% call m.field('Resposta literal / Providência (sem inventar evidência)', 'dil.resposta', 'span-all') %}<textarea class="longo" name="resposta_literal">{{ d.resposta_literal or '' }}</textarea>{% endcall %}
               {% call m.field('Fonte / Origem comprovada', 'dil.fonte', 'span-2') %}<input type="text" name="fonte_evidencia" value="{{ d.fonte_evidencia or '' }}">{% endcall %}
+              {% call m.field('Data da interação', 'dil.data') %}<input type="date" name="data_interacao" value="{{ d.data_interacao or '' }}">{% endcall %}
               {% call m.field('Responsável operacional', 'dil.ator') %}<input type="text" name="responsavel" value="{{ d.responsavel or '' }}">{% endcall %}
               {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ d.justificativa_contadora or '' }}">{% endcall %}
             </div>

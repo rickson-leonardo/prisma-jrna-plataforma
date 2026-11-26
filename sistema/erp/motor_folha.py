@@ -89,6 +89,62 @@ def detectar_residuos_texto_d2(
     return achados
 
 
+def detectar_divergencia_contratos_d2(contratos_servico: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Compara proposta, contrato e termo_rt (procuracao fica fora). Vigencia so compara contrato x termo_rt."""
+    por_cod = {str(c.get("codigo_documento")): c for c in (contratos_servico or [])}
+    comerciais = [por_cod[k] for k in ("proposta", "contrato", "termo_rt") if k in por_cod]
+    if len(comerciais) < 2:
+        return []
+    divs: list[dict[str, Any]] = []
+    for campo, rot in (
+        ("honorario_mensal_centavos", "Honorário mensal"),
+        ("tem_decimo_terceiro", "13º honorário"),
+        ("valor_hora_centavos", "Valor da hora técnica"),
+    ):
+        vals = {str(c["codigo_documento"]): c.get(campo) for c in comerciais}
+        if len(set(vals.values())) > 1:
+            divs.append({"campo": campo, "rotulo": rot, "valores": vals})
+    if "contrato" in por_cod and "termo_rt" in por_cod:
+        vc = str(por_cod["contrato"].get("vigencia_inicio") or "")
+        vt = str(por_cod["termo_rt"].get("vigencia_inicio") or "")
+        if vc != vt:
+            divs.append({"campo": "vigencia_inicio", "rotulo": "Vigência inicial (contrato × termo RT)", "valores": {"contrato": vc or "—", "termo_rt": vt or "—"}})
+    return divs
+
+
+def detectar_salario_abaixo_piso_d2(
+    contratos_trabalho: list[dict[str, Any]],
+    parametros: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Verifica salario_base_centavos < piso_cct_centavos e ausencia de piso/referencia CCT."""
+    achados: list[dict[str, Any]] = []
+    garantia_com = next(
+        (int(p["valor_centavos"]) for p in (parametros or []) if p.get("codigo") == "CCT-GARANTIA-COM" and p.get("valor_centavos")),
+        None,
+    )
+    for ct in contratos_trabalho or []:
+        cod = str(ct.get("codigo_empregado") or "?")
+        sal = int(ct.get("salario_base_centavos") or 0)
+        piso = int(ct.get("piso_cct_centavos") or 0)
+        ref = str(ct.get("cct_referencia") or "").strip()
+        if piso <= 0 or not ref:
+            achados.append({
+                "codigo_empregado": cod,
+                "tipo": "piso_ausente",
+                "severidade": "alerta",
+                "mensagem": f"{cod}: piso_cct_centavos ou cct_referencia vazio.",
+            })
+        piso_efetivo = garantia_com if (int(ct.get("comissao_pct_micro") or 0) > 0 and garantia_com) else piso
+        if piso_efetivo > 0 and sal < piso_efetivo:
+            achados.append({
+                "codigo_empregado": cod,
+                "tipo": "abaixo_piso",
+                "severidade": "critico",
+                "mensagem": f"{cod}: salário base ({sal/100:.2f}) abaixo do piso CCT ({piso_efetivo/100:.2f}).",
+            })
+    return achados
+
+
 def _calc_inss_progressivo(base_centavos: int, faixas: list[dict[str, Any]]) -> tuple[int, str]:
     """INSS progressivo por faixas (Portaria MPS/MF no 13/2026)."""
     if base_centavos <= 0 or not faixas:
@@ -651,6 +707,31 @@ def validar_coerencia_dossie2(conn: Any, empresa_id: int) -> list[dict[str, Any]
                 f"Resíduos encontrados: {lista_res}.",
                 "Remover placeholders ([INSERIR, [cite, XX.XXX, TODO, ???) e substituir Res. CFC 1.555/2018 pela Res. CFC 1.708/2023.",
                 "/emissao#secoes",
+            )
+
+        cur.execute("SELECT * FROM erp.contrato_servico WHERE empresa_id = %s", (empresa_id,))
+        divs_cs = detectar_divergencia_contratos_d2(cur.fetchall())
+        if divs_cs:
+            det = "; ".join(f"{d['rotulo']}: {d['valores']}" for d in divs_cs)
+            add(
+                "D2_PROPOSTA_CONTRATO_DIVERGENTE", "alerta", "governanca", "onboarding",
+                "Divergência comercial/vigência entre Proposta, Contrato e Termo RT",
+                f"Diferenças detectadas — {det}.",
+                "Alinhar honorário, 13º, valor-hora (proposta × contrato × termo RT) e vigência inicial (contrato × termo RT) na Estação 7.",
+                "/onboarding#contratos",
+            )
+
+        cur.execute("SELECT * FROM erp.parametro_legal WHERE empresa_id = %s", (empresa_id,))
+        pars_d2 = cur.fetchall()
+        pisos_err = detectar_salario_abaixo_piso_d2(cts, pars_d2)
+        if pisos_err:
+            sev = "critico" if any(x["severidade"] == "critico" for x in pisos_err) else "alerta"
+            add(
+                "D2_SALARIO_ABAIXO_PISO", sev, "trabalhista", "dp",
+                "Salário contratual abaixo do piso CCT ou referência CCT ausente",
+                " ".join(x["mensagem"] for x in pisos_err),
+                "Conferir salário base, piso CCT e referência normativa na Estação 8 (Departamento Pessoal).",
+                "/dp#contratos-trabalho",
             )
 
         cur.execute("DELETE FROM auditoria.alerta_coerencia WHERE empresa_id = %s AND dossie = 'D2'", (empresa_id,))

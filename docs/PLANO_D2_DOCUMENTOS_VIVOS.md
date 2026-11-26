@@ -83,15 +83,15 @@ Regra geral: no `d2_doc.html`, **depois** do resumo executivo e **antes/depois**
 - [x] Quadro **Quarentena por módulo** (já carregado em `quarentena`) — reaproveitar o padrão do índice do D1.
 
 ### Doc 01 — Diagnóstico societário (P1)
-- [ ] **Identificação do cliente**: razão social, nome fantasia, natureza jurídica; **matriz e filial** (CNPJ, NIRE quando houver em `pessoa_identificador`, endereço, município/UF); sócios com quotas e % (`participacao_societaria`); capital (integralizado × a integralizar).
-- [ ] **Quadro de achados do Anexo I** (`instrumento_societario_clausula`, `empresa_id` do D2, ordem): nº da cláusula, achado (`titulo` + `regra_texto`), risco (`risco_tipo` / `risco_nivel`), fundamento legal, providência.
-- [ ] **Plano de saneamento (3ª alteração contratual)**: mesmas linhas, colunas providência, responsável, prazo, situação.
+- [x] **Identificação do cliente**: razão social, nome fantasia, natureza jurídica; **matriz e filial** (CNPJ, NIRE quando houver em `pessoa_identificador`, endereço, município/UF); sócios com quotas e % (`participacao_societaria`); capital (integralizado × a integralizar).
+- [x] **Quadro de achados do Anexo I** (`instrumento_societario_clausula`, `empresa_id` do D2, ordem): nº da cláusula, achado (`titulo` + `regra_texto`), risco (`risco_tipo` / `risco_nivel`), fundamento legal, providência.
+- [x] **Plano de saneamento (3ª alteração contratual)**: mesmas linhas, colunas providência, responsável, prazo, situação.
 
 ### Docs 02, 03, 04 — Proposta, contrato e procuração, termo RT (P2)
-- [ ] **Qualificação das partes** (em todos): contratada = escritório do D1 (`emp:prisma_jrna_g07`: razão social, CNPJ, CRC da PJ, RT e CRC da RT vindos de `pessoa_identificador`) e contratante = Rota Sul (razão social, CNPJ matriz e filial). **Proibido** placeholder `[INSERIR …]`.
-- [ ] **Condições comerciais** (do `contrato_servico` do próprio documento): honorário mensal, 13º honorário (sim/não e valor), valor-hora, horas/mês, vigência, foro, escopo.
-- [ ] **Memória de custo** (doc 02): tabela a partir de `memoria_horas_json` (atividade, horas, valor-hora, total) com total calculado no template ou no Python — nunca digitado.
-- [ ] Doc 04 (termo RT): **rol de pendências do onboarding** = `diligencia_item` com `tipo='pendencia'` e status ≠ concluído (código, pendência, risco, responsável, prazo).
+- [x] **Qualificação das partes** (em todos): contratada = escritório do D1 (`emp:prisma_jrna_g07`: razão social, CNPJ, CRC da PJ, RT e CRC da RT vindos de `pessoa_identificador`) e contratante = Rota Sul (razão social, CNPJ matriz e filial). **Proibido** placeholder `[INSERIR …]`.
+- [x] **Condições comerciais** (do `contrato_servico` do próprio documento): honorário mensal, 13º honorário (sim/não e valor), valor-hora, horas/mês, vigência, foro, escopo.
+- [x] **Memória de custo** (doc 02): tabela a partir de `memoria_horas_json` (atividade, horas, valor-hora, total) com total calculado no template ou no Python — nunca digitado.
+- [x] Doc 04 (termo RT): **rol de pendências do onboarding** = `diligencia_item` com `tipo='pendencia'` e status ≠ concluído (código, pendência, risco, responsável, prazo).
 
 ### Doc 05 — Onboarding (P3)
 - [x] **Checklist de documentos** (`tipo='documento'`): código, documento/finalidade (`enunciado`), ator, tema, responsável, prazo, status.
@@ -107,14 +107,14 @@ Regra geral: no `d2_doc.html`, **depois** do resumo executivo e **antes/depois**
 - [x] **Ficha gerada de `contrato_trabalho`**: nome (fictício), CPF (fictício), cargo, CBO, departamento, estabelecimento, admissão, salário, **piso da CCT e referência** (`piso_cct_centavos`, `cct_referencia`), jornada (`jornada_descricao`, `jornada_semanal_horas`, `intervalo_minutos` mostrado em h:min), VT, VR, dependentes (IRRF e salário-família), ASO.
 
 ### Docs 08 e 10 — Contratos de experiência (P4)
-- [ ] **Quadro-resumo no topo**, de `contrato_trabalho`: prazos (`experiencia_dias_1` + `experiencia_dias_2`), salário, comissão (% de `comissao_pct_micro`), jornada e intervalo. As cláusulas seguem nas seções narrativas.
+- [x] **Quadro-resumo no topo**, de `contrato_trabalho`: prazos (`experiencia_dias_1` + `experiencia_dias_2`), salário, comissão (% de `comissao_pct_micro`), jornada e intervalo. As cláusulas seguem nas seções narrativas.
 
 ### Docs 11 e 12 — Folha e resumo (P5, P6)
-- [ ] Manter o que existe.
-- [ ] **Remover todas as constantes** de `_marcadores_d2` e do `resumo_exec` (`283333`, `21268`, `22667`, `241630`, **`251065`**, `50400`, `412800`, `23400`, `33000`, `91740`, `423800`): cada marcador vem de `folha_competencia`, de somas de `folha_item` por `codigo_rubrica` ou de `partida`. Se faltar dado → "—".
-- [ ] **Líquido do Cenário B** (sem contribuição negocial) **calculado**: líquido do cenário A + soma das rubricas `NEGOCIAL`.
-- [ ] **Impacto da exclusão do Simples** (`IMPACTO_EXCLUSAO_SIMPLES`): calcular a partir da folha (CPP patronal 20% + RAT + terceiros sobre a base, com alíquotas em `parametro_legal`) ou, se o motor já calcular, ler do motor — registrar na Seção 9 qual caminho.
-- [ ] Doc 12: quadro **Conciliação** folha × resumo × lançamento com a diferença (deve ser R$ 0,00), a partir das somas do banco.
+- [x] Manter o que existe.
+- [x] **Remover todas as constantes** de `_marcadores_d2` e do `resumo_exec` (`283333`, `21268`, `22667`, `241630`, **`251065`**, `50400`, `412800`, `23400`, `33000`, `91740`, `423800`): cada marcador vem de `folha_competencia`, de somas de `folha_item` por `codigo_rubrica` ou de `partida`. Se faltar dado → "—".
+- [x] **Líquido do Cenário B** (sem contribuição negocial) **calculado**: líquido do cenário A + soma das rubricas `NEGOCIAL`.
+- [x] **Impacto da exclusão do Simples** (`IMPACTO_EXCLUSAO_SIMPLES`): calcular a partir da folha (CPP patronal 20% + RAT + terceiros sobre a base, com alíquotas em `parametro_legal`) ou, se o motor já calcular, ler do motor — registrar na Seção 9 qual caminho.
+- [x] Doc 12: quadro **Conciliação** folha × resumo × lançamento com a diferença (deve ser R$ 0,00), a partir das somas do banco.
 
 ### Doc 13 — Auditoria trabalhista (P7)
 - [ ] **Planejamento (PT-01)**: objetivos, população, materialidade, riscos — vindo dos `auditoria_folha` com `tipo_registro='papel_trabalho'`.
@@ -133,9 +133,9 @@ Regra geral: no `d2_doc.html`, **depois** do resumo executivo e **antes/depois**
 ## 5. Motor, regras de auditoria e telas
 
 ### 5.1 Regras novas em `validar_coerencia_dossie2` (motor_folha.py)
-- [ ] `D2_TEXTO_RESIDUO` (crítico): procura em `documento_secao` (D2) e `contrato_servico.conteudo_md` os padrões `[INSERIR`, `[cite`, `1.555/2018`, `XX.XXX`, `TODO`, `???`. Lista documento e trecho.
-- [ ] `D2_PROPOSTA_CONTRATO_DIVERGENTE` (alerta): compara entre proposta, contrato e termo RT: honorário mensal, `tem_decimo_terceiro`, vigência. Divergência = alerta com os valores.
-- [ ] `D2_SALARIO_ABAIXO_PISO` (crítico): `salario_base_centavos < piso_cct_centavos` (considerar garantia do comissionado se houver parâmetro). Também alerta se `piso_cct_centavos` ou `cct_referencia` estiverem vazios.
+- [x] `D2_TEXTO_RESIDUO` (crítico): procura em `documento_secao` (D2) e `contrato_servico.conteudo_md` os padrões `[INSERIR`, `[cite`, `1.555/2018`, `XX.XXX`, `TODO`, `???`. Lista documento e trecho.
+- [x] `D2_PROPOSTA_CONTRATO_DIVERGENTE` (alerta): compara entre proposta, contrato e termo RT: honorário mensal, `tem_decimo_terceiro`, vigência. Divergência = alerta com os valores.
+- [x] `D2_SALARIO_ABAIXO_PISO` (crítico): `salario_base_centavos < piso_cct_centavos` (considerar garantia do comissionado se houver parâmetro). Também alerta se `piso_cct_centavos` ou `cct_referencia` estiverem vazios.
 - [ ] `D2_RECALCULO_DIVERGENTE` (crítico): diferença ≠ 0 entre motor e recálculo independente em qualquer rubrica.
 
 ### 5.2 Ajustes no motor
@@ -146,10 +146,10 @@ Regra geral: no `d2_doc.html`, **depois** do resumo executivo e **antes/depois**
 - [ ] Função `recalcular_folha_independente(conn, competencia_id) -> list[dict]` em `motor_folha.py`, **sem reutilizar** as funções de cálculo do motor (implementação direta e curta a partir de `contrato_trabalho` + `parametro_legal` + `folha_competencia`): salário proporcional, comissão e DSR, INSS progressivo, IRRF, FGTS, VT (6% limitado ao custo), VR, contribuição negocial, salário-família. Retorna por empregado × rubrica: valor do motor, valor recalculado, diferença.
 
 ### 5.4 Telas
-- [ ] Instrumentos (quando dossiê em foco = D2): campos `risco_tipo`, `risco_nivel`, `providencia`, `fundamento_legal`, `responsavel`, `prazo_texto`.
-- [ ] Sustentação → Consultas (quando D2): `responsavel_decisao`, `prazo_decisao`, `impacto_se_alterada`.
-- [ ] Verificar que onboarding, DP e folha já permitem editar todos os campos usados nos quadros; acrescentar os que faltarem.
-- [ ] O D1 não exibe esses campos novos.
+- [x] Instrumentos (quando dossiê em foco = D2): campos `risco_tipo`, `risco_nivel`, `providencia`, `fundamento_legal`, `responsavel`, `prazo_texto`.
+- [x] Sustentação → Consultas (quando D2): `responsavel_decisao`, `prazo_decisao`, `impacto_se_alterada`.
+- [x] Verificar que onboarding, DP e folha já permitem editar todos os campos usados nos quadros; acrescentar os que faltarem.
+- [x] O D1 não exibe esses campos novos.
 
 ## 6. Testes (pytest **puros**, sem banco — ver Seção 0)
 
@@ -157,7 +157,7 @@ Montar no teste um dicionário `dados` no formato de `carregar_dados_dossie2()` 
 
 - [x] `test_d2_documentos_sem_constantes`: nenhum valor das constantes da Seção 4 (Docs 11/12) aparece literalmente em `emissor_dossie2.py`; o resumo usa os dados recebidos.
 - [ ] `test_d2_quadros_por_documento`: para cada doc 00–15, a prévia HTML contém o título da(s) tabela(s) especificada(s) e pelo menos 1 linha vinda dos dados (ex.: PR-01 no doc 14; AUD- no doc 13; DOC- no doc 05; S-2200 no doc 06; CBO 4110-05 no doc 07).
-- [ ] `test_d2_dado_muda_pdf_muda`: alterar um campo no dicionário (ex.: `intervalo_minutos` do E1, ou `honorario_mensal_centavos` da proposta) e verificar que a prévia reflete o novo valor.
+- [x] `test_d2_dado_muda_pdf_muda`: alterar um campo no dicionário (ex.: `intervalo_minutos` do E1, ou `honorario_mensal_centavos` da proposta) e verificar que a prévia reflete o novo valor.
 - [ ] `test_d2_regras_novas`: chamar as funções puras das regras com dados que provocam cada alerta (texto com `[INSERIR`, proposta ≠ contrato, salário < piso, recálculo divergente) e com os falsos positivos do item 4 da Seção 9 (que devem dar zero alertas).
 - [ ] `test_d2_recalculo_independente_bate_com_gabarito`: E1 INSS 90,00 / FGTS 96,00 / VR 330,00 / negocial 39,96; E2 comissão 900,00 / DSR 100,00 / INSS 122,68 / FGTS 130,67 / negocial 54,39; diferença zero contra o motor.
 - [x] `test_d2_cenario_b`: líquido B = líquido A + soma de NEGOCIAL (R$ 2.510,65 com os dados atuais) — sem constante.
@@ -169,7 +169,7 @@ Montar no teste um dicionário `dados` no formato de `carregar_dados_dossie2()` 
 - [ ] **Fase 0 — Pré-requisito do revisor:** aplicar a migração 008 em produção via MCP (colunas novas e opcionais; não afeta o código atual) antes de o executor precisar ler as colunas novas na prévia da Vercel.
 - [x] **Fase 1 — Base:** branch, arquivo da migração 008 (só o arquivo; quem aplica é o revisor), remoção das constantes, cenário B calculado, regra `D2_TEXTO_RESIDUO`. Testes: `test_d2_documentos_sem_constantes`, `test_d2_cenario_b` + suíte existente.
 - [x] **Fase 2 — Docs 00, 05, 06, 07, 09, 14, 15** (dados já completos no banco). Testes de quadros.
-- [ ] **Fase 3 — Docs 01, 02, 03, 04, 08, 10** + regras `D2_PROPOSTA_CONTRATO_DIVERGENTE` e `D2_SALARIO_ABAIXO_PISO` + telas da Seção 5.4.
+- [x] **Fase 3 — Docs 01, 02, 03, 04, 08, 10** + regras `D2_PROPOSTA_CONTRATO_DIVERGENTE` e `D2_SALARIO_ABAIXO_PISO` + telas da Seção 5.4.
 - [ ] **Fase 4 — Doc 13 + recálculo independente + separação férias/1/3 + regra `D2_RECALCULO_DIVERGENTE`** (planilha `.xlsx` ajustada se preciso).
 - [ ] **Fase 5 — Verificação final:** suíte completa (puros passando, de banco pulados), push do branch, conferência na **prévia da Vercel** das prévias dos 16 documentos + `.xlsx` (sem salvar nada), conferência visual de 3 documentos (01, 06, 13), registro no Diário (Seção 11) com o resumo dos commits e a URL da prévia.
 - [ ] **Fase 6 — Produção (revisor + usuária):** com o ok da usuária, merge em `master` (deploy Vercel); o revisor dispara o recálculo da folha (nova rubrica de 1/3) e a revalidação, e confere os alertas `D2_*` via MCP.
@@ -320,7 +320,7 @@ Montar no teste um dicionário `dados` no formato de `carregar_dados_dossie2()` 
 | Fase | Data | Commits | Testes | Observações |
 |---|---|---|---|---|
 | 1 | 26/11/2026 | `87f754f` | `pytest sistema/testes -q`: 29 passed, 23 skipped | Branch `feat/d2-documentos-vivos`, migração 008, remoção de constantes, `impacto_exclusao_simples`, `LIQUIDO_B` dinâmico e `detectar_residuos_texto_d2`. |
-| 2 | 26/11/2026 | `feat(d2): fase 2` (ver hash) | `pytest sistema/testes -q`: 30 passed, 23 skipped | Quadros vivos dos Docs 00, 05, 06, 07, 09, 14 e 15; correção de `dossie_label` em `_m.html`; testes puros `test_d2_quadros_fase2`. |
-| 3 | | | | |
+| 2 | 26/11/2026 | `af97d15` | `pytest sistema/testes -q`: 30 passed, 23 skipped | Quadros vivos dos Docs 00, 05, 06, 07, 09, 14 e 15; correção de `dossie_label` em `_m.html`; testes puros `test_d2_quadros_fase2`. |
+| 3 | 26/11/2026 | `feat(d2): fase 3` (ver hash) | `pytest sistema/testes -q`: 32 passed, 23 skipped | Docs 01–04, 08, 10 e conciliação Doc 12; regras `D2_PROPOSTA_CONTRATO_DIVERGENTE` e `D2_SALARIO_ABAIXO_PISO`; extração de `obter_dados_escritorio_d1`; telas D2 (sem afetar D1) e novos campos editáveis. |
 | 4 | | | | |
 | 5 | | | | |

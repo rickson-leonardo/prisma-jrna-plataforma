@@ -45,6 +45,7 @@
               {% call m.field('Salário base (R$)', 'ct.salario') %}<input class="num-in" type="text" data-fmt="num" name="salario_base_reais" value="{{ ct.salario_base_centavos|reais_in }}">{% endcall %}
               {% call m.field('Piso / Garantia CCT (R$)', 'ct.piso_cct') %}<input class="num-in" type="text" data-fmt="num" name="piso_cct_reais" value="{{ ct.piso_cct_centavos|reais_in }}">{% endcall %}
               {% call m.field('Comissão (%)', 'ct.comissao') %}<input class="num-in" type="text" data-fmt="num" name="comissao_pct" value="{{ ct.comissao_pct_micro|pct_in }}">{% endcall %}
+              {% call m.field('Carga horária semanal (h)', 'ct.jornada_horas') %}<input type="text" data-fmt="int" name="jornada_semanal_horas" value="{{ ct.jornada_semanal_horas }}">{% endcall %}
               {% call m.field('Intervalo (min)', 'ct.intervalo') %}<input type="text" data-fmt="int" name="intervalo_minutos" value="{{ ct.intervalo_minutos }}">{% endcall %}
               {% call m.field('Dep. IRRF', 'ct.deps') %}<input type="text" data-fmt="int" name="qtd_dependentes_ir" value="{{ ct.qtd_dependentes_ir }}">{% endcall %}
               {% call m.field('Dep. Salário-Família', 'ct.deps') %}<input type="text" data-fmt="int" name="qtd_dependentes_sf" value="{{ ct.qtd_dependentes_sf }}">{% endcall %}
@@ -56,6 +57,7 @@
               {% call m.field('Status real do ASO (NR-7)', 'ct.aso') %}{{ m.select_rotulos('aso_status', 'aso_status', ct.aso_status) }}{% endcall %}
               {% call m.field('Observação ASO', 'ct.aso', 'span-2') %}<input type="text" name="aso_observacao" value="{{ ct.aso_observacao }}">{% endcall %}
               {% call m.field('Descrição da jornada', 'ct.jornada', 'span-all') %}<input type="text" name="jornada_descricao" value="{{ ct.jornada_descricao }}">{% endcall %}
+              {% call m.field('Referência da CCT', 'ct.cct_ref', 'span-all') %}<input type="text" name="cct_referencia" value="{{ ct.cct_referencia }}">{% endcall %}
               {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(ct.status_validacao) }}{% endcall %}
               {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ ct.justificativa_contadora or '' }}">{% endcall %}
             </div>
@@ -94,6 +96,7 @@
               {% call m.field('Parcela a deduzir (R$)', 'par.deducao') %}<input class="num-in" type="text" data-fmt="num" name="deducao_reais" value="{{ p.deducao_centavos|reais_in if p.deducao_centavos is not none else '' }}">{% endcall %}
               {% call m.field('Norma / Cláusula CCT', 'par.norma', 'span-2') %}<input type="text" name="norma_citada" value="{{ p.norma_citada }}">{% endcall %}
               {% call m.field('Link oficial', 'q.link', 'span-2') %}<input type="url" name="link_oficial" value="{{ p.link_oficial or '' }}">{% endcall %}
+              {% call m.field('Data da consulta', 'par.data_consulta') %}<input type="date" name="data_consulta" value="{{ p.data_consulta or '' }}">{% endcall %}
               {% call m.field('Regra técnica', 'par.norma', 'span-all') %}<input type="text" name="regra_texto" value="{{ p.regra_texto }}">{% endcall %}
               {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(p.status_validacao) }}{% endcall %}
               {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-2') %}<input type="text" name="justificativa_contadora" value="{{ p.justificativa_contadora or '' }}">{% endcall %}

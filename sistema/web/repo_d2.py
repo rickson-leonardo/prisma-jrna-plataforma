@@ -35,6 +35,29 @@ def _emp_d2(cur: Any) -> dict[str, Any]:
 # =============================================================================
 # ESTACAO 7: ONBOARDING, CONTRATOS (P2) E DILIGENCIA (P3)
 # =============================================================================
+def obter_dados_escritorio_d1(cur: Any) -> dict[str, Any] | None:
+    """Le dados cadastrais oficiais da contratada (PRISMA JRNA) a partir do Dossie 1."""
+    cur.execute(
+        """
+        SELECT e.nome_curto, p.nome_canonico, enq.registro_crc,
+               (SELECT pi.valor FROM erp.pessoa_identificador pi WHERE pi.pessoa_id = e.pessoa_id AND pi.tipo_id = 'CNPJ' LIMIT 1) AS cnpj,
+               (SELECT pi.valor FROM erp.pessoa_identificador pi WHERE pi.pessoa_id = enq.responsavel_tecnico_pessoa_id AND pi.tipo_id = 'CRC' LIMIT 1) AS rt_crc,
+               rt.nome_canonico AS rt_nome,
+               est.endereco AS sede,
+               est.municipio AS sede_municipio,
+               est.uf AS sede_uf
+        FROM erp.empresa e
+        JOIN erp.pessoa p ON p.id = e.pessoa_id
+        LEFT JOIN erp.estabelecimento est ON est.empresa_id = e.id
+        LEFT JOIN erp.enquadramento_historico enq ON enq.empresa_id = e.id
+        LEFT JOIN erp.pessoa rt ON rt.id = enq.responsavel_tecnico_pessoa_id
+        WHERE e.chave = %s LIMIT 1
+        """,
+        (EMPRESA_CHAVE_D1,),
+    )
+    return cur.fetchone()
+
+
 def carregar_onboarding(tipo_filtro: str = "todos") -> dict[str, Any]:
     with conectar_pg() as conn:
         with conn.cursor() as cur:
@@ -52,25 +75,7 @@ def carregar_onboarding(tipo_filtro: str = "todos") -> dict[str, Any]:
                 params.append(tipo_filtro)
             cur.execute(f"SELECT * FROM erp.diligencia_item {where} ORDER BY ordem, id", params)
             diligencias = cur.fetchall()
-
-            # Dados oficiais da contratada (PRISMA JRNA) em leitura do Dossie 1 (zero redigitacao)
-            cur.execute(
-                """
-                SELECT e.nome_curto, p.nome_canonico, enq.registro_crc,
-                       (SELECT pi.valor FROM erp.pessoa_identificador pi WHERE pi.pessoa_id = e.pessoa_id AND pi.tipo_id = 'CNPJ' LIMIT 1) AS cnpj,
-                       (SELECT pi.valor FROM erp.pessoa_identificador pi WHERE pi.pessoa_id = enq.responsavel_tecnico_pessoa_id AND pi.tipo_id = 'CRC' LIMIT 1) AS rt_crc,
-                       rt.nome_canonico AS rt_nome,
-                       est.endereco AS sede
-                FROM erp.empresa e
-                JOIN erp.pessoa p ON p.id = e.pessoa_id
-                LEFT JOIN erp.estabelecimento est ON est.empresa_id = e.id
-                LEFT JOIN erp.enquadramento_historico enq ON enq.empresa_id = e.id
-                LEFT JOIN erp.pessoa rt ON rt.id = enq.responsavel_tecnico_pessoa_id
-                WHERE e.chave = %s LIMIT 1
-                """,
-                (EMPRESA_CHAVE_D1,),
-            )
-            escritorio = cur.fetchone()
+            escritorio = obter_dados_escritorio_d1(cur)
         return {
             "empresa": emp,
             "contratos": contratos,
@@ -233,7 +238,8 @@ def salvar_contrato_trabalho(ct_id: int, form: dict[str, str]) -> None:
                 SET nome_empregado = %s, cpf_ficticio = %s, cargo = %s, departamento = %s, cbo = %s,
                     data_admissao = %s, experiencia_dias_1 = %s, experiencia_dias_2 = %s,
                     salario_base_centavos = %s, piso_cct_centavos = %s, comissao_pct_micro = %s,
-                    intervalo_minutos = %s, jornada_descricao = %s,
+                    jornada_semanal_horas = %s, intervalo_minutos = %s, jornada_descricao = %s,
+                    cct_referencia = %s,
                     vt_optante = %s, vt_passagens_dia = %s, vt_tarifa_centavos = %s,
                     vr_elegivel = %s, vr_valor_dia_centavos = %s,
                     aso_status = %s, aso_observacao = %s,
@@ -245,8 +251,12 @@ def salvar_contrato_trabalho(ct_id: int, form: dict[str, str]) -> None:
                     form["nome_empregado"].strip(), (form.get("cpf_ficticio") or "").strip(),
                     form["cargo"].strip(), form["departamento"], form["cbo"].strip(), form["data_admissao"],
                     parse_int_br(form.get("experiencia_dias_1"), 45), parse_int_br(form.get("experiencia_dias_2"), 45),
-                    sal, piso, com_pct, parse_int_br(form.get("intervalo_minutos"), 60),
-                    form.get("jornada_descricao", "").strip(), form.get("vt_optante") == "on",
+                    sal, piso, com_pct,
+                    parse_int_br(form.get("jornada_semanal_horas"), 44),
+                    parse_int_br(form.get("intervalo_minutos"), 60),
+                    form.get("jornada_descricao", "").strip(),
+                    form.get("cct_referencia", "").strip(),
+                    form.get("vt_optante") == "on",
                     parse_int_br(form.get("vt_passagens_dia"), 4), vt_tar,
                     form.get("vr_elegivel") == "on", vr_dia, form["aso_status"],
                     form.get("aso_observacao", "").strip(), parse_int_br(form.get("qtd_dependentes_ir"), 0),
@@ -271,18 +281,19 @@ def salvar_parametro_legal(par_id: int, form: dict[str, str]) -> None:
             val_val = None if (form.get("valor_reais") or "").strip() == "" else val
             aliq_str = (form.get("aliquota_pct") or "").strip().replace(",", ".")
             aliq_val = None if not aliq_str else round(float(aliq_str) * 10_000)
+            dt_cons = (form.get("data_consulta") or "").strip() or None
             cur.execute(
                 """
                 UPDATE erp.parametro_legal
                 SET descricao = %s, limite_centavos = %s, aliquota_micro = %s, deducao_centavos = %s,
-                    valor_centavos = %s, norma_citada = %s, link_oficial = %s, regra_texto = %s,
-                    status_validacao = %s, justificativa_contadora = %s
+                    valor_centavos = %s, norma_citada = %s, link_oficial = %s, data_consulta = %s,
+                    regra_texto = %s, status_validacao = %s, justificativa_contadora = %s
                 WHERE id = %s AND empresa_id = %s
                 """,
                 (
                     form["descricao"].strip(), lim_val, aliq_val, ded_val, val_val,
                     form.get("norma_citada", "").strip(), (form.get("link_oficial") or "").strip() or None,
-                    form.get("regra_texto", "").strip(), form["status_validacao"],
+                    dt_cons, form.get("regra_texto", "").strip(), form["status_validacao"],
                     (form.get("justificativa_contadora") or "").strip() or None, par_id, emp_id,
                 ),
             )
@@ -419,6 +430,10 @@ def salvar_auditoria_item(aud_id: int | None, form: dict[str, str]) -> int:
         with conn.cursor() as cur:
             emp = _emp_d2(cur)
             emp_id = int(emp["id"])
+            v1_raw = (form.get("valor_v1_reais") or "").strip()
+            v1_val = parse_reais_centavos(v1_raw, 0) if v1_raw else None
+            rec_raw = (form.get("valor_recalculado_reais") or "").strip()
+            rec_val = parse_reais_centavos(rec_raw, 0) if rec_raw else None
             if aud_id is None:
                 cod = form["codigo"].strip().upper()
                 cur.execute("SELECT COALESCE(MAX(ordem), 0) + 1 AS prox FROM erp.auditoria_folha WHERE empresa_id = %s", (emp_id,))
@@ -427,16 +442,17 @@ def salvar_auditoria_item(aud_id: int | None, form: dict[str, str]) -> int:
                     """
                     INSERT INTO erp.auditoria_folha
                         (chave, empresa_id, tipo_registro, codigo, ordem, titulo, norma_referencia,
-                         objetivo_ou_evidencia, procedimento_ou_risco, conclusao_ou_correcao,
-                         responsavel, prazo_texto, situacao_achado, origem_registro, status_validacao, justificativa_contadora)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'usuario', %s, %s)
+                         objetivo_ou_evidencia, procedimento_ou_risco, valor_v1_centavos, valor_recalculado_centavos,
+                         conclusao_ou_correcao, responsavel, prazo_texto, situacao_achado,
+                         origem_registro, status_validacao, justificativa_contadora)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'usuario', %s, %s)
                     RETURNING id
                     """,
                     (
                         f"aud:d2:usr:{_slug(cod)}_{ord_}", emp_id, form.get("tipo_registro", "achado"),
                         cod, ord_, form["titulo"].strip(), form.get("norma_referencia", "").strip(),
                         form.get("objetivo_ou_evidencia", "").strip(), form.get("procedimento_ou_risco", "").strip(),
-                        form.get("conclusao_ou_correcao", "").strip(),
+                        v1_val, rec_val, form.get("conclusao_ou_correcao", "").strip(),
                         (form.get("responsavel") or "").strip() or None,
                         (form.get("prazo_texto") or "").strip() or None,
                         form.get("situacao_achado", "aberto_cliente"), form["status_validacao"],
@@ -449,15 +465,15 @@ def salvar_auditoria_item(aud_id: int | None, form: dict[str, str]) -> int:
                     """
                     UPDATE erp.auditoria_folha
                     SET titulo = %s, norma_referencia = %s, objetivo_ou_evidencia = %s,
-                        procedimento_ou_risco = %s, conclusao_ou_correcao = %s,
-                        responsavel = %s, prazo_texto = %s, situacao_achado = %s,
+                        procedimento_ou_risco = %s, valor_v1_centavos = %s, valor_recalculado_centavos = %s,
+                        conclusao_ou_correcao = %s, responsavel = %s, prazo_texto = %s, situacao_achado = %s,
                         status_validacao = %s, justificativa_contadora = %s
                     WHERE id = %s AND empresa_id = %s
                     """,
                     (
                         form["titulo"].strip(), form.get("norma_referencia", "").strip(),
                         form.get("objetivo_ou_evidencia", "").strip(), form.get("procedimento_ou_risco", "").strip(),
-                        form.get("conclusao_ou_correcao", "").strip(),
+                        v1_val, rec_val, form.get("conclusao_ou_correcao", "").strip(),
                         (form.get("responsavel") or "").strip() or None,
                         (form.get("prazo_texto") or "").strip() or None,
                         form.get("situacao_achado", "aberto_cliente"), form["status_validacao"],
