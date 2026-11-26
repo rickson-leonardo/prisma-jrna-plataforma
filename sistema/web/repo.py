@@ -264,9 +264,12 @@ def carregar_cadastro() -> dict[str, Any]:
                 SELECT p.id, p.chave, p.tipo_pessoa, p.nome_canonico, p.status_validacao, p.apontamento_auditoria
                 FROM erp.pessoa p
                 WHERE p.id = ANY(%s)
+                   -- RT gravada no enquadramento (no D2 é a contadora da PRISMA, não sócia do cliente):
+                   -- sem ela na lista, o select aparece vazio e salvar apagaria a RT
+                   OR p.id IN (SELECT responsavel_tecnico_pessoa_id FROM erp.enquadramento_historico WHERE empresa_id = %s)
                 ORDER BY p.tipo_pessoa DESC, p.nome_canonico
                 """,
-                (pessoa_ids,),
+                (pessoa_ids, emp_id),
             )
             pessoas = cur.fetchall()
 
