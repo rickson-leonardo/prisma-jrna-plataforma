@@ -50,7 +50,7 @@
 <p class="fonte">Fonte: erp.orcamento_demonstrativo_anual (Abertura M0). Capital vinculado ao QSA: {{ brl(capital_qsa_centavos) }}.</p>
 <p>Receita segregada em {{ pct(cenario.pct_cnae_principal_micro, 1) }} no CNAE 6920-6/01 (Anexo III) e o restante no 6920-6/02, sujeito ao Fator R (LC 123/2006, art. 18, §§ 5º-J e 5º-M).
 {% for y in (1, 2, 3) %}{% set a = anos.get(y) %}No ano {{ y }} ({{ a.porte_estimado }}), o Fator R anual é de {{ pct(a.fator_r_anual_micro) }} ({{ 'abaixo' if a.fator_r_anual_micro < 280000 else 'acima' }} de 28%) e a alíquota efetiva média do DAS é de {{ pct(a.aliquota_efetiva_anual_micro) }}. {% endfor %}
-{% if indicadores.mes_transicao_epp %}A receita acumulada ultrapassa o limite de R$ 360 mil da microempresa no mês {{ indicadores.mes_transicao_epp }} da projeção (LC 123/2006, art. 3º, § 9º).{% endif %}</p>
+{% if indicadores.mes_transicao_epp %}A empresa passa à condição de EPP no mês {{ indicadores.mes_transicao_epp }} da projeção: 1º de janeiro do ano-calendário seguinte àquele em que a receita bruta ultrapassa o limite de R$ 360 mil da microempresa, proporcional aos meses de atividade no ano de início (LC 123/2006, art. 3º, §§ 2º e 9º).{% endif %}</p>
 
 <section class="land">
 <h2>8.2 Fluxo de caixa mensal do ano 1 e ponto de equilíbrio</h2>

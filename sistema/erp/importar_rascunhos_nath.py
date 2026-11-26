@@ -3,8 +3,11 @@
 Regras de governanca:
 - Le apenas dados reais existentes em D1/ (via lab_contabil) e G:\\Meu Drive\\Nath\\Trabalho 01.
 - Nenhuma suposicao ou dado ficticio de rascunho_v2 entra como "homologado".
-- Registros editados ou homologados pela contadora (origem_registro = 'usuario' ou
-  status_validacao = 'homologado_contadora') nunca sao sobrescritos por re-execucoes.
+- Registros criados pela contadora (origem_registro = 'usuario') ou homologados
+  (status_validacao = 'homologado_contadora') nunca sao sobrescritos por re-execucoes.
+  A tela preserva origem_registro ao editar; a protecao vem de INSERT ... ON CONFLICT DO NOTHING.
+  # ponytail: os 2 UPDATEs de complemento (empresa/enquadramento) nao protegem registro editado e
+  # ainda pendente (so preenchem COALESCE/placeholder); se surgir sobrescrita real, criar coluna editado_em.
 """
 
 from __future__ import annotations
@@ -484,7 +487,7 @@ def importar_dossie1_quarentena(nath_dir: Path = DEFAULT_NATH_DIR) -> dict[str, 
                     END,
                     referencia_v1_original = COALESCE(referencia_v1_original, 'PRISMA JRNA AUDITORIA E CONTABILIDADE LTDA. (Contrato Atualizado 15/09/2026 sem CNPJ/endereco completo)'),
                     apontamento_auditoria = COALESCE(apontamento_auditoria, 'Validar dados cadastrais didaticos herdados do rascunho v2 e confirmar objeto social (Contabilidade + Auditoria).')
-                WHERE id = %s AND origem_registro <> 'usuario'
+                WHERE id = %s AND origem_registro <> 'usuario' AND status_validacao <> 'homologado_contadora'
                 """,
                 (emp_id,),
             )
@@ -586,7 +589,7 @@ def importar_dossie1_quarentena(nath_dir: Path = DEFAULT_NATH_DIR) -> dict[str, 
                     END,
                     referencia_v1_original = COALESCE(referencia_v1_original, %s),
                     apontamento_auditoria = COALESCE(apontamento_auditoria, %s)
-                WHERE chave = 'enq:g07:2026' AND origem_registro <> 'usuario'
+                WHERE chave = 'enq:g07:2026' AND origem_registro <> 'usuario' AND status_validacao <> 'homologado_contadora'
                 """,
                 (
                     pid_by_chave["pes:pf:nathalia_peres_araujo"],

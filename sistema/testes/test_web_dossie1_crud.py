@@ -77,6 +77,9 @@ def test_web_crud_clausula_etapa_cenario_e_exportacao(tmp_path: Path) -> None:
         with conn.cursor() as cur:
             cur.execute("SELECT id FROM erp.instrumento_societario_clausula WHERE numero_clausula = 'Cláusula Teste Temporária'")
             cl_id = int(cur.fetchone()["id"])
+            # Simula registro importado: a edicao na tela deve preservar o rastro de origem
+            cur.execute("UPDATE erp.instrumento_societario_clausula SET origem_registro = 'importado_rascunho_v2' WHERE id = %s", (cl_id,))
+        conn.commit()
 
     r_upd = client.post(
         f"/instrumentos/clausula/{cl_id}/salvar",
@@ -97,6 +100,10 @@ def test_web_crud_clausula_etapa_cenario_e_exportacao(tmp_path: Path) -> None:
     )
     assert r_upd.status_code == 200
     assert b"Clausula CRUD Homologada" in r_upd.data
+    with conectar_pg() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT origem_registro FROM erp.instrumento_societario_clausula WHERE id = %s", (cl_id,))
+            assert cur.fetchone()["origem_registro"] == "importado_rascunho_v2"
 
     r_del = client.post(f"/instrumentos/clausula/{cl_id}/excluir", follow_redirects=True)
     assert r_del.status_code == 200

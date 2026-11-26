@@ -119,7 +119,7 @@ def salvar_contrato_servico(cs_id: int | None, form: dict[str, str]) -> int:
                     SET titulo = %s, honorario_mensal_centavos = %s, tem_decimo_terceiro = %s,
                         valor_hora_centavos = %s, horas_mes_estimadas = %s, vigencia_inicio = %s,
                         foro = %s, escopo_resumo = %s, conteudo_md = %s,
-                        origem_registro = 'usuario', status_validacao = %s, justificativa_contadora = %s
+                        status_validacao = %s, justificativa_contadora = %s
                     WHERE id = %s AND empresa_id = %s
                     """,
                     (
@@ -171,7 +171,7 @@ def salvar_diligencia(dil_id: int | None, form: dict[str, str]) -> int:
                     UPDATE erp.diligencia_item
                     SET ator = %s, tema = %s, enunciado = %s, resposta_literal = %s, fonte_evidencia = %s,
                         data_interacao = %s, responsavel = %s, prazo_texto = %s, risco = %s, status_item = %s,
-                        origem_registro = 'usuario', status_validacao = %s, justificativa_contadora = %s
+                        status_validacao = %s, justificativa_contadora = %s
                     WHERE id = %s AND empresa_id = %s
                     """,
                     (
@@ -238,7 +238,7 @@ def salvar_contrato_trabalho(ct_id: int, form: dict[str, str]) -> None:
                     vr_elegivel = %s, vr_valor_dia_centavos = %s,
                     aso_status = %s, aso_observacao = %s,
                     qtd_dependentes_ir = %s, qtd_dependentes_sf = %s,
-                    origem_registro = 'usuario', status_validacao = %s, justificativa_contadora = %s
+                    status_validacao = %s, justificativa_contadora = %s
                 WHERE id = %s AND empresa_id = %s
                 """,
                 (
@@ -276,7 +276,7 @@ def salvar_parametro_legal(par_id: int, form: dict[str, str]) -> None:
                 UPDATE erp.parametro_legal
                 SET descricao = %s, limite_centavos = %s, aliquota_micro = %s, deducao_centavos = %s,
                     valor_centavos = %s, norma_citada = %s, link_oficial = %s, regra_texto = %s,
-                    origem_registro = 'usuario', status_validacao = %s, justificativa_contadora = %s
+                    status_validacao = %s, justificativa_contadora = %s
                 WHERE id = %s AND empresa_id = %s
                 """,
                 (
@@ -305,7 +305,7 @@ def salvar_esocial_evento(ev_id: int, form: dict[str, str]) -> None:
                 """
                 UPDATE erp.esocial_evento
                 SET prazo_legal = %s, status_envio = %s, numero_recibo = %s, observacao = %s,
-                    origem_registro = 'usuario', status_validacao = %s, justificativa_contadora = %s
+                    status_validacao = %s, justificativa_contadora = %s
                 WHERE id = %s AND empresa_id = %s
                 """,
                 (
@@ -385,7 +385,7 @@ def salvar_competencia_e_recalcular(comp_id: int, form: dict[str, str]) -> dict[
                 SET vendas_liquidas_e2_centavos = %s, dias_trabalhados_e1 = %s, dias_trabalhados_e2 = %s,
                     dias_uteis_comissao_e2 = %s, domingos_feriados_e2 = %s, dias_uteis_vt_e1 = %s,
                     dias_uteis_vt_e2 = %s, dias_uteis_vr_e1 = %s, cenario_negocial = %s,
-                    data_pagamento = %s, origem_registro = 'usuario',
+                    data_pagamento = %s,
                     status_validacao = %s, justificativa_contadora = %s
                 WHERE id = %s AND empresa_id = %s
                 """,
@@ -451,7 +451,7 @@ def salvar_auditoria_item(aud_id: int | None, form: dict[str, str]) -> int:
                     SET titulo = %s, norma_referencia = %s, objetivo_ou_evidencia = %s,
                         procedimento_ou_risco = %s, conclusao_ou_correcao = %s,
                         responsavel = %s, prazo_texto = %s, situacao_achado = %s,
-                        origem_registro = 'usuario', status_validacao = %s, justificativa_contadora = %s
+                        status_validacao = %s, justificativa_contadora = %s
                     WHERE id = %s AND empresa_id = %s
                     """,
                     (

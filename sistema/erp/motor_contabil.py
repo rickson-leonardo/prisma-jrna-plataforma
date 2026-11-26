@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import math
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Mapping
 
@@ -42,6 +43,25 @@ FAIXAS_ANEXO_V: tuple[tuple[int, Decimal, int], ...] = (
 
 LIMITE_ME_CENTAVOS = 36_000_000
 LIMITE_EPP_CENTAVOS = 480_000_000
+MESES_ABREV = ("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")
+
+
+def _brl(centavos: int) -> str:
+    return f"{centavos / 100:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def porte_por_receita(rb_ano_centavos: int, meses_atividade: int = 12) -> str:
+    """Porte do ano-calendario SEGUINTE dada a receita do ano (LC 123/2006, art. 3o, par. 2o e 9o).
+
+    No ano de inicio os limites sao proporcionais aos meses de atividade (fracao de mes = mes inteiro).
+    # ponytail: nao modela o excesso > 20% no ano de inicio (par. 12, efeito retroativo a abertura);
+    # se precisar, aplicar o porte retroativo quando rb > 1,2 x limite proporcional.
+    """
+    if rb_ano_centavos <= LIMITE_ME_CENTAVOS * meses_atividade // 12:
+        return "ME"
+    if rb_ano_centavos <= LIMITE_EPP_CENTAVOS * meses_atividade // 12:
+        return "EPP"
+    return "Demais"
 
 
 def _r_centavos(val: Decimal) -> int:
@@ -153,8 +173,12 @@ def simular_cenario(
     inadimplencia_override_micro: int | None = None,
     ticket_override_centavos: int | None = None,
     incluir_derivados: bool = True,
+    inicio: date | None = None,
 ) -> ResultadoSimulacao:
-    """Executa simulacao contabil e tributaria completa (M0..M36 + Anos 0..3)."""
+    """Executa simulacao contabil e tributaria completa (M0..M36 + Anos 0..3).
+
+    `inicio` = data de inicio das atividades (M1). Sem ela, o ano do plano e tratado como ano-calendario.
+    """
     horizonte = int(cenario.get("horizonte_meses") or 36)
     anos_total = max(1, horizonte // 12)
     regime = str(cenario["regime_simulacao"])
@@ -296,8 +320,12 @@ def simular_cenario(
 
     fator_dec = Decimal(str(clientes_fator))
     clientes_acum_nominal = 0
-    acum_rec_ano = 0
     ano_atual = 1
+    # Porte por ano-calendario: receita e meses de atividade de cada ano civil
+    ano0, mes0 = (inicio.year, inicio.month) if inicio else (1, 1)
+    rec_cal: dict[int, int] = {}
+    meses_cal: dict[int, int] = {}
+    porte_atual = "ME"
 
     # Variaveis por ano
     meses_por_ano: dict[int, list[dict[str, Any]]] = {y: [] for y in range(1, anos_total + 1)}
@@ -305,10 +333,25 @@ def simular_cenario(
     for m in range(1, horizonte + 1):
         y = ((m - 1) // 12) + 1
         mes_do_ano = ((m - 1) % 12) + 1
-        if mes_do_ano == 1:
-            acum_rec_ano = 0
-            if y > 1:
-                imob_bruto_corrente += capex_por_ano.get(y, 0)
+        if mes_do_ano == 1 and y > 1:
+            imob_bruto_corrente += capex_por_ano.get(y, 0)
+
+        idx_cal = mes0 - 1 + (m - 1)
+        ano_cal, mes_cal = ano0 + idx_cal // 12, idx_cal % 12 + 1
+        rot_mes = f"{MESES_ABREV[mes_cal - 1]}/{ano_cal}" if inicio else f"A{y}-M{mes_do_ano:02d}"
+        alerta_porte = None
+        if ano_cal not in rec_cal:
+            if rec_cal:  # virada de ano-calendario: porte do novo ano depende da receita do anterior
+                porte_novo = porte_por_receita(rec_cal[ano_cal - 1], meses_cal[ano_cal - 1])
+                if porte_novo != porte_atual:
+                    rot_ano_ant = str(ano_cal - 1) if inicio else f"do Ano {ano_cal - 1}"
+                    alerta_porte = (
+                        f"{porte_novo} desde {rot_mes}: receita {'de ' if inicio else ''}{rot_ano_ant} = "
+                        f"R$ {_brl(rec_cal[ano_cal - 1])} (LC 123/2006, art. 3º, § 9º)"
+                    )
+                    porte_atual = porte_novo
+            rec_cal[ano_cal] = 0
+            meses_cal[ano_cal] = 0
 
         # Carteira por coortes: cada cliente permanece `retencao_meses` meses (coerente com LTV = MC x retencao).
         # Coortes ativas no mes m: as adquiridas em [m - retencao + 1, m].
@@ -319,7 +362,8 @@ def simular_cenario(
         novos_int = int(round(novos_eff_float))
 
         rec_bruta = _r_centavos(Decimal(clientes_acum_nominal * ticket) * fator_dec)
-        acum_rec_ano += rec_bruta
+        rec_cal[ano_cal] += rec_bruta
+        meses_cal[ano_cal] += 1
         rec_pri = _r_centavos(Decimal(rec_bruta) * pct_pri) if regime == "simples_segregado" else 0
         rec_sec = rec_bruta - rec_pri
 
@@ -402,7 +446,7 @@ def simular_cenario(
         row_m = {
             "mes_ordem": m,
             "ano_num": y,
-            "competencia_ym": f"A{y}-M{mes_do_ano:02d}",
+            "competencia_ym": f"A{y}-M{mes_do_ano:02d}" + (f" · {rot_mes}" if inicio else ""),
             "novos_clientes": novos_int,
             "clientes_ativos": clientes_int,
             "receita_bruta_centavos": rec_bruta,
@@ -433,11 +477,8 @@ def simular_cenario(
             "distribuicao_lucros_centavos": 0,
             "fluxo_liquido_caixa_centavos": fco_m - capex_saida_m,
             "saldo_caixa_centavos": 0,
-            "alerta_porte": (
-                f"Transicao ME -> EPP (receita anual acumulada {acum_rec_ano/100:.2f} > R$ 360.000,00)"
-                if acum_rec_ano > LIMITE_ME_CENTAVOS and (acum_rec_ano - rec_bruta) <= LIMITE_ME_CENTAVOS
-                else None
-            ),
+            "alerta_porte": alerta_porte,
+            "porte_vigente": porte_atual,  # so em memoria (rotulo anual); nao persistido
         }
 
         rec_hist.append(rec_bruta)
@@ -502,7 +543,8 @@ def simular_cenario(
             fc_livre_y = lucro_y + dep_y + (passivo_y - passivo_anterior_total) - capex_por_ano.get(y, 0)
             passivo_anterior_total = passivo_y
 
-            porte_y = "ME" if rb_y <= LIMITE_ME_CENTAVOS else ("EPP" if rb_y <= LIMITE_EPP_CENTAVOS else "Demais")
+            p_ini, p_fim = ms[0]["porte_vigente"], ms[-1]["porte_vigente"]
+            porte_y = p_ini if p_ini == p_fim else f"{p_ini}→{p_fim}"
             fator_r_y = (Decimal(pro_y + folha_y) / Decimal(rb_y)) if rb_y > 0 else Decimal("0")
             aliq_y = (Decimal(das_y) / Decimal(rb_y)) if rb_y > 0 else Decimal("0")
             cli_med_micro = _r_micro(Decimal(sum(x["clientes_ativos"] for x in ms)) / Decimal("12"))
@@ -607,7 +649,7 @@ def simular_cenario(
             ("base", "Provavel (Base 100% / Premissa Atual)", 1.0, None),
             ("otimista", "Otimista (+20% Clientes / 3% Inad.)", 1.2, 30_000),
         ):
-            r_sub = simular_cenario(cenario, clientes_fator=f_cli, inadimplencia_override_micro=in_m, incluir_derivados=False)
+            r_sub = simular_cenario(cenario, clientes_fator=f_cli, inadimplencia_override_micro=in_m, incluir_derivados=False, inicio=inicio)
             cenarios_estrat.append({
                 "codigo": cod_e,
                 "nome": nome_e,
@@ -633,6 +675,7 @@ def simular_cenario(
                     inadimplencia_override_micro=inad_m_s,
                     ticket_override_centavos=tk,
                     incluir_derivados=False,
+                    inicio=inicio,
                 )
                 linha["valores_vpl_centavos"].append(rs_m.indicadores["vpl_centavos"])
             matriz.append(linha)
@@ -656,7 +699,10 @@ def recalcular_cenario_no_banco(conn: Any, cenario_id: int) -> ResultadoSimulaca
         cen = cur.fetchone()
         if not cen:
             raise KeyError(f"Cenario id={cenario_id} nao encontrado.")
-        res = simular_cenario(cen)
+        # Fonte unica do M1: inicio do enquadramento no Cadastro (Estacao 1)
+        cur.execute("SELECT MIN(vigente_de) AS inicio FROM erp.enquadramento_historico WHERE empresa_id = %s", (cen["empresa_id"],))
+        row_ini = cur.fetchone()
+        res = simular_cenario(cen, inicio=row_ini["inicio"] if row_ini else None)
 
         cur.execute("DELETE FROM erp.orcamento_projecao_mensal WHERE cenario_id = %s", (cenario_id,))
         cur.execute("DELETE FROM erp.orcamento_demonstrativo_anual WHERE cenario_id = %s", (cenario_id,))
@@ -788,6 +834,15 @@ def validar_coerencia_dossie1(conn: Any, empresa_id: int) -> list[dict[str, Any]
             (empresa_id,),
         )
         enq = cur.fetchone()
+        inicio_socias = min((s["vigente_de"] for s in socias if s["vigente_de"]), default=None)
+        if enq and inicio_socias and enq["vigente_de"] < inicio_socias:
+            add_alerta(
+                "ENQUADRAMENTO_ANTES_DO_CONTRATO", "alerta", "societario", "cadastro",
+                "Enquadramento vigente antes do contrato social",
+                f"Enquadramento desde {enq['vigente_de']:%d/%m/%Y}, mas as participacoes societarias so comecam em {inicio_socias:%d/%m/%Y}.",
+                "Alinhar a vigencia do enquadramento a data de registro/abertura do CNPJ (posterior ao contrato) em /cadastro.",
+                ancora="/cadastro#enquadramento",
+            )
         if not enq or not enq["responsavel_tecnico_pessoa_id"] or not enq["crc_rt"]:
             add_alerta(
                 "RT_CRC_OBRIGATORIO", "critico", "regulatorio", "cadastro",
@@ -940,6 +995,7 @@ def validar_coerencia_dossie1(conn: Any, empresa_id: int) -> list[dict[str, Any]
                 (cen_of["id"],),
             )
             dems = cur.fetchall()
+            epp_checado = False
             for d in dems:
                 if d["ano_ordem"] == 1 and d["fator_r_anual_micro"] < 280_000 and cen_of["regime_simulacao"] != "v1_fixo_6_erro":
                     add_alerta(
@@ -957,20 +1013,20 @@ def validar_coerencia_dossie1(conn: Any, empresa_id: int) -> list[dict[str, Any]
                         "Reforcar capital inicial, postergar CAPEX ou ajustar custos fixos no cenario oficial.",
                         ancora=anc_cen,
                     )
-                if d["ano_ordem"] >= 2 and d["receita_bruta_centavos"] > LIMITE_ME_CENTAVOS and enq and enq["porte"] == "ME":
+                if not epp_checado and "EPP" in (d["porte_estimado"] or "") and enq and enq["porte"] == "ME":
+                    epp_checado = True
                     menciona_epp = any("epp" in (c["regra_texto"] or "").lower() for c in clausulas if c["aplica_contrato"])
                     if not menciona_epp:
                         add_alerta(
                             "TRANSICAO_ME_EPP_OMISSA", "alerta", "tributario", "instrumentos",
-                            "Receita Anos 2-3 ultrapassa teto ME sem previsao contratual de EPP",
-                            f"Ano {d['ano_ordem']} projeta R$ {d['receita_bruta_centavos']/100:,.2f} (> R$ 360k), mas Contrato Cl. 3ª nao menciona migracao ME -> EPP.",
+                            "Projecao passa a EPP sem previsao contratual",
+                            f"{d['rotulo_periodo']}: a receita do ano-calendario anterior ultrapassa R$ 360 mil, mas o Contrato Cl. 3ª nao menciona migracao ME -> EPP.",
                             "Registrar ciencia da transicao automatica (LC 123 art. 3º § 9º) na Cl. 3ª.",
                             ancora=next(
                                 (f"/instrumentos#clausula-{c['id']}" for c in clausulas if c["aplica_contrato"] and "enquadramento" in (c["titulo"] or "").lower()),
                                 "/instrumentos",
                             ),
                         )
-                    break
 
         # 5. Backlog de Quarentena Anti-Enviesamento
         cur.execute(
@@ -1016,9 +1072,16 @@ def validar_coerencia_dossie1(conn: Any, empresa_id: int) -> list[dict[str, Any]
     return alertas
 
 
+def recalcular_cenarios_empresa(conn: Any, emp_id: int) -> dict[str, Any]:
+    """Recalcula todos os cenarios de uma empresa (sem commit). Retorna indicadores por codigo_cenario."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT id, codigo_cenario FROM erp.orcamento_cenario WHERE empresa_id = %s ORDER BY id", (emp_id,))
+        cenarios = cur.fetchall()
+    return {str(c["codigo_cenario"]): recalcular_cenario_no_banco(conn, int(c["id"])).indicadores for c in cenarios}
+
+
 def recalcular_todos_cenarios_d1() -> dict[str, Any]:
     """Recalcula todos os cenarios da Prisma JRNA e atualiza os alertas de coerencia."""
-    resultados: dict[str, Any] = {}
     with conectar_pg() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT id FROM erp.empresa WHERE chave = 'emp:prisma_jrna_g07'")
@@ -1026,12 +1089,7 @@ def recalcular_todos_cenarios_d1() -> dict[str, Any]:
             if not row:
                 raise RuntimeError("Empresa emp:prisma_jrna_g07 nao encontrada.")
             emp_id = int(row["id"])
-            cur.execute("SELECT id, codigo_cenario FROM erp.orcamento_cenario WHERE empresa_id = %s ORDER BY id", (emp_id,))
-            cenarios = cur.fetchall()
-
-        for c in cenarios:
-            r = recalcular_cenario_no_banco(conn, int(c["id"]))
-            resultados[str(c["codigo_cenario"])] = r.indicadores
+        resultados = recalcular_cenarios_empresa(conn, emp_id)
         alertas = validar_coerencia_dossie1(conn, emp_id)
         conn.commit()
     return {"cenarios": resultados, "qtd_alertas": len(alertas)}

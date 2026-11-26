@@ -202,7 +202,7 @@ def montar_abas(d: dict[str, Any]) -> list[Aba]:
         vi("Receita acumulada 3 anos", _r(ind.get("receita_3_anos_centavos")), "brl", "R$", "Σ receita bruta A1–A3"),
         vi("DAS acumulado 3 anos", _r(ind.get("das_3_anos_centavos")), "brl", "R$", "Σ DAS A1–A3"),
         vi("Alíquota média do DAS em 3 anos", ou0(ind.get("das_medio_3_anos_pct")) / 100.0, "pct", "%", "DAS ÷ receita"),
-        vi("Mês de transição ME → EPP", int(ind.get("mes_transicao_epp") or 0), "int", "mês", "Receita acumulada > R$ 360 mil (0 = não ocorre)"),
+        vi("Mês de transição ME → EPP", int(ind.get("mes_transicao_epp") or 0), "int", "mês", "1º jan. do ano seguinte ao excesso de R$ 360 mil — LC 123, art. 3º, § 9º (0 = não ocorre)"),
     ]
     aba_viab = Aba("Viabilidade", "Viabilidade, ponto de equilíbrio e unit economics", rot, [
         Bloco("", ["Indicador", "Valor", "Unidade", "Fórmula / critério"], viab, "Fonte: indicadores_json do cenário oficial (motor_contabil.simular_cenario).")

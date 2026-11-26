@@ -248,7 +248,7 @@
     <tbody>
       {% for mm in mensais %}
         <tr>
-          <td class="mono">{{ mm.competencia_ym }}{% if mm.alerta_porte %} <span class="badge b-at">Passa a EPP</span>{% endif %}</td>
+          <td class="mono">{{ mm.competencia_ym }}{% if mm.alerta_porte %} <span class="badge b-at" title="{{ mm.alerta_porte }}">Passa a {{ mm.alerta_porte.split(' ')[0] }}</span>{% endif %}</td>
           <td class="num">{{ mm.clientes_ativos }}</td><td class="num">{{ mm.receita_bruta_centavos|brl_tab }}</td>
           <td class="num">{{ mm.rbt12_proporcional_centavos|brl_tab }}</td><td class="num">{{ mm.fator_r_micro|pct_micro }}</td>
           <td>{{ mm.anexo_cnae_secundario|rotulo('anexo') }}</td><td class="num">{{ mm.aliquota_efetiva_micro|pct_micro }}</td>

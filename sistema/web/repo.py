@@ -7,7 +7,7 @@ import re
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from sistema.erp.motor_contabil import recalcular_cenario_no_banco, validar_coerencia_dossie1
+from sistema.erp.motor_contabil import recalcular_cenario_no_banco, recalcular_cenarios_empresa, validar_coerencia_dossie1
 from sistema.pg.db import conectar_pg
 
 EMPRESA_CHAVE_D1 = "emp:prisma_jrna_g07"
@@ -215,6 +215,9 @@ def carregar_painel_geral() -> dict[str, Any]:
 def revalidar_coerencia() -> list[dict[str, Any]]:
     with conectar_pg() as conn:
         emp = empresa_em_foco(conn)
+        if emp.get("chave") != EMPRESA_CHAVE_D2:
+            # D1: o M1 dos cenarios vem do enquadramento (Cadastro); recalcula antes de auditar
+            recalcular_cenarios_empresa(conn, int(emp["id"]))
         alertas = _validar_coerencia(conn, int(emp["id"]))
         conn.commit()
     return alertas
@@ -304,7 +307,6 @@ def salvar_empresa(form: dict[str, str]) -> None:
                 """
                 UPDATE erp.empresa
                 SET nome_curto = %s,
-                    origem_registro = 'usuario',
                     status_validacao = %s,
                     justificativa_contadora = %s
                 WHERE id = %s
@@ -313,7 +315,7 @@ def salvar_empresa(form: dict[str, str]) -> None:
             )
             if razao:
                 cur.execute(
-                    "UPDATE erp.pessoa SET nome_canonico = %s, origem_registro = 'usuario', status_validacao = %s WHERE id = %s",
+                    "UPDATE erp.pessoa SET nome_canonico = %s, status_validacao = %s WHERE id = %s",
                     (razao, form["status_validacao"], int(emp["pessoa_id"])),
                 )
         _validar_coerencia(conn, emp_id)
@@ -344,7 +346,7 @@ def criar_ou_salvar_estabelecimento(est_id: int | None, form: dict[str, str]) ->
                     """
                     UPDATE erp.estabelecimento
                     SET tipo = %s, cnpj = %s, uf = %s, municipio = %s, endereco = %s,
-                        origem_registro = 'usuario', status_validacao = %s, justificativa_contadora = %s
+                        status_validacao = %s, justificativa_contadora = %s
                     WHERE id = %s AND empresa_id = %s
                     """,
                     (
@@ -392,7 +394,7 @@ def salvar_identificador(pid_id: int | None, form: dict[str, str]) -> None:
                 cur.execute(
                     """
                     UPDATE erp.pessoa_identificador
-                    SET tipo_id = %s, valor = %s, eh_ficticio = %s, origem_registro = 'usuario',
+                    SET tipo_id = %s, valor = %s, eh_ficticio = %s,
                         status_validacao = %s, justificativa_contadora = %s
                     WHERE id = %s AND pessoa_id = ANY(%s)
                     """,
@@ -455,7 +457,7 @@ def salvar_socio(ps_id: int | None, form: dict[str, str]) -> None:
                     """
                     UPDATE erp.participacao_societaria
                     SET quotas = %s, valor_centavos = %s, percentual_micro = %s, papel = %s,
-                        origem_registro = 'usuario', status_validacao = %s, justificativa_contadora = %s
+                        status_validacao = %s, justificativa_contadora = %s
                     WHERE id = %s AND empresa_id = %s
                     """,
                     (quotas, valor_cent, pct_micro, form["papel"].strip(), form["status_validacao"], form.get("justificativa_contadora", "").strip() or None, ps_id, emp_id),
@@ -490,7 +492,6 @@ def salvar_enquadramento(enq_id: int, form: dict[str, str]) -> None:
                     cnaes_secundarios = %s::jsonb,
                     registro_crc = %s,
                     responsavel_tecnico_pessoa_id = %s,
-                    origem_registro = 'usuario',
                     status_validacao = %s,
                     justificativa_contadora = %s
                 WHERE id = %s AND empresa_id = %s
@@ -601,7 +602,6 @@ def salvar_clausula(cl_id: int, form: dict[str, str]) -> None:
                     quorum_tipo = %s,
                     alcada_centavos = %s,
                     versao = versao + 1,
-                    origem_registro = 'usuario',
                     status_validacao = %s,
                     justificativa_contadora = %s
                 WHERE id = %s AND empresa_id = %s
@@ -691,7 +691,7 @@ def salvar_etapa_legalizacao(etapa_id: int, form: dict[str, str]) -> None:
                 SET ordem = %s, bloco = %s, codigo = %s, nome_etapa = %s, raia_responsavel = %s,
                     orgao = %s, portal_url = %s, data_consulta = %s, entrada_docs = %s, saida_doc = %s,
                     prazo_legal = %s, regra_retorno_exigencia = %s, classificacao_risco = %s,
-                    status = %s, protocolo_simulado = %s, origem_registro = 'usuario',
+                    status = %s, protocolo_simulado = %s,
                     status_validacao = %s, justificativa_contadora = %s
                 WHERE id = %s AND empresa_id = %s
                 """,
@@ -874,7 +874,7 @@ def salvar_cenario(cenario_id: int | None, form: dict[str, str]) -> int:
                         opex_fixo_ano3_mensal_centavos = %s, prolabore_m1_3_mensal_centavos = %s, prolabore_m4_12_mensal_centavos = %s,
                         prolabore_ano2_mensal_centavos = %s, prolabore_ano3_mensal_centavos = %s,
                         folha_clt_ano2_mensal_centavos = %s, folha_clt_ano3_mensal_centavos = %s, encargos_clt_micro = %s,
-                        origem_registro = 'usuario', status_validacao = %s, justificativa_contadora = %s
+                        status_validacao = %s, justificativa_contadora = %s
                     WHERE id = %s AND empresa_id = %s
                     """,
                     (
@@ -951,7 +951,7 @@ def definir_cenario_oficial(cenario_id: int) -> None:
             if cur.fetchone() is None:
                 raise ValueError(f"Cenario id={cenario_id} nao encontrado para esta empresa.")
             cur.execute("UPDATE erp.orcamento_cenario SET eh_oficial = false WHERE empresa_id = %s", (emp_id,))
-            cur.execute("UPDATE erp.orcamento_cenario SET eh_oficial = true, origem_registro = 'usuario' WHERE id = %s AND empresa_id = %s", (cenario_id, emp_id))
+            cur.execute("UPDATE erp.orcamento_cenario SET eh_oficial = true WHERE id = %s AND empresa_id = %s", (cenario_id, emp_id))
         _validar_coerencia(conn, emp_id)
         conn.commit()
 
@@ -1111,7 +1111,7 @@ def salvar_consulta(cons_id: int | None, form: dict[str, str]) -> None:
                     """
                     UPDATE erp.consulta_normativa
                     SET enunciado = %s, resposta_autoral = %s, norma_citada = %s, link_oficial = %s,
-                        data_acesso = %s, decisao_impactada = %s, origem_registro = 'usuario',
+                        data_acesso = %s, decisao_impactada = %s,
                         status_validacao = %s, justificativa_contadora = %s
                     WHERE id = %s AND empresa_id = %s
                     """,
@@ -1151,7 +1151,6 @@ def salvar_avaliacao_criterio(av_id: int, form: dict[str, str]) -> None:
                     nao_aplicavel = %s,
                     referencia_localizacao = %s,
                     justificativa_sustentacao = %s,
-                    origem_registro = 'usuario',
                     status_validacao = %s
                 WHERE id = %s AND empresa_id = %s
                 """,
@@ -1193,7 +1192,7 @@ def salvar_diario_ia(ia_id: int | None, form: dict[str, str]) -> None:
                     """
                     UPDATE auditoria.diario_ia
                     SET entregavel = %s, ferramenta = %s, finalidade = %s, fonte_oficial = %s,
-                        revisao_humana = %s, origem_registro = 'usuario', status_validacao = %s
+                        revisao_humana = %s, status_validacao = %s
                     WHERE id = %s AND empresa_id = %s
                     """,
                     (
@@ -1322,7 +1321,7 @@ def salvar_secao(sec_id: int | None, form: dict[str, str]) -> int:
                 cur.execute(
                     """
                     UPDATE erp.documento_secao
-                    SET ordem = %s, titulo = %s, conteudo_md = %s, origem_registro = 'usuario',
+                    SET ordem = %s, titulo = %s, conteudo_md = %s,
                         status_validacao = %s, justificativa_contadora = %s
                     WHERE id = %s AND empresa_id = %s
                     """,

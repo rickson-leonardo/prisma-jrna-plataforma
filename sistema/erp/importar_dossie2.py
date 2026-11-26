@@ -3,7 +3,8 @@
 Regras de governanca:
 - Nunca mistura emp:rota_sul_d4 (Joinville/D4) com emp:rota_sul_d2 (Goiania/Itajai, id=1).
 - Re-execucoes sao idempotentes (ON CONFLICT DO NOTHING) e nunca sobrescrevem registros
-  editados pela contadora (origem_registro = 'usuario' ou status_validacao = 'homologado_contadora').
+  editados pela contadora. A tela preserva origem_registro ao editar; os UPDATEs corretivos abaixo
+  so trocam valores-placeholder conhecidos ou atingem tabelas que a tela nao edita (evento/fato).
 - Importa secoes narrativas de G:\\Meu Drive\\Nath\\Trabalho 01\\_entrega_limpa\\editaveis\\
   quando acessivel localmente; em ambientes sem G:\\ (ex.: Vercel), opera normalmente com o banco.
 """

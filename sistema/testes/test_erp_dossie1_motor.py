@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -11,6 +12,7 @@ from sistema.erp.motor_contabil import (
     aliquota_efetiva_simples,
     calcular_tir,
     calcular_vpl,
+    porte_por_receita,
     recalcular_todos_cenarios_d1,
     simular_cenario,
     validar_coerencia_dossie1,
@@ -108,6 +110,20 @@ def test_fechamento_patrimonial_zero_centavos_e_cenarios() -> None:
     assert res.demonstrativo_anual[3]["clientes_fim"] == 48
     res_r12 = simular_cenario(dict(cen_base, retencao_meses=12), incluir_derivados=False)
     assert res_r12.projecao_mensal[13]["clientes_ativos"] == 24
+
+    # Porte ME -> EPP por ano-calendario (LC 123 art. 3o par. 9o): EPP so no ano SEGUINTE ao excesso
+    assert [d["porte_estimado"] for d in res.demonstrativo_anual[1:]] == ["ME", "ME", "EPP"]  # sem inicio: ano do plano = ano civil
+    assert [x["mes_ordem"] for x in res.projecao_mensal if x["alerta_porte"]] == [25]
+    res_out = simular_cenario(cen_base, incluir_derivados=False, inicio=date(2026, 10, 1))
+    assert [d["porte_estimado"] for d in res_out.demonstrativo_anual[1:]] == ["ME", "ME", "ME→EPP"]
+    alertas_porte = [x for x in res_out.projecao_mensal if x["alerta_porte"]]
+    assert [x["mes_ordem"] for x in alertas_porte] == [28]  # jan/2029 (2027 = R$ 342 mil; 2028 = R$ 756 mil)
+    assert alertas_porte[0]["competencia_ym"] == "A3-M04 · jan/2029"
+    assert "756.000,00" in alertas_porte[0]["alerta_porte"]
+    # Porte nao altera o DAS (aliquota depende do RBT12)
+    assert [x["das_apurado_centavos"] for x in res_out.projecao_mensal] == [x["das_apurado_centavos"] for x in res.projecao_mensal]
+    # Limite proporcional no ano de inicio: 3 meses -> R$ 90 mil
+    assert porte_por_receita(9_000_000, 3) == "ME" and porte_por_receita(9_000_001, 3) == "EPP"
 
 
 def test_tir_fluxo_nao_convencional() -> None:
