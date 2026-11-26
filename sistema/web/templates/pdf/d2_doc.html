@@ -566,4 +566,73 @@
   </table>
   <p class="fonte">Fonte: erp.folha_competencia, erp.folha_item, erp.lancamento e erp.partida.</p>
 {% endif %}
+
+{# ==================== DOC 13 — AUDITORIA TRABALHISTA ==================== #}
+{% if doc == 'd2_13_auditoria' %}
+  <h2>Planejamento, Papéis de Trabalho, Recálculo 100% e Achados (Banco de Dados)</h2>
+  {% if aud_pts %}
+    <p class="tt">Tabela 1 — Planejamento e Papéis de Trabalho de Auditoria (PT-01 a PT-05)</p>
+    <table>
+      <thead><tr><th>Cód.</th><th>Papel de trabalho</th><th>Norma</th><th>Objetivo / Evidência</th><th>Procedimento / Risco</th><th>Conclusão</th><th>Situação</th></tr></thead>
+      <tbody>
+        {% for pt in aud_pts %}
+          <tr>
+            <td class="mono">{{ pt.codigo }}</td>
+            <td>{{ pt.titulo }}</td>
+            <td>{{ pt.norma_referencia or '—' }}</td>
+            <td>{{ pt.objetivo_ou_evidencia or '—' }}</td>
+            <td>{{ pt.procedimento_ou_risco or '—' }}</td>
+            <td>{{ pt.conclusao_ou_correcao or '—' }}</td>
+            <td>{{ m.badge(pt.status_validacao) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="fonte">Fonte: erp.auditoria_folha (tipo_registro = 'papel_trabalho').</p>
+  {% endif %}
+
+  {% if recalculo_ind %}
+    <p class="tt">Tabela 2 — Recálculo Independente da Folha (100% dos empregados × rubricas)</p>
+    <table>
+      <thead><tr><th>Emp.</th><th>Rubrica</th><th class="num">Base (R$)</th><th class="num">Motor (R$)</th><th class="num">Recálculo (R$)</th><th class="num">Diferença (R$)</th><th>Situação</th></tr></thead>
+      <tbody>
+        {% for r in recalculo_ind %}
+          <tr>
+            <td class="mono">{{ r.codigo_empregado }}</td>
+            <td><span class="mono">{{ r.codigo_rubrica }}</span> · {{ r.nome_rubrica }}</td>
+            <td class="num">{{ brl_tab(r.base_centavos) }}</td>
+            <td class="num">{{ brl_tab(r.valor_motor_centavos) }}</td>
+            <td class="num">{{ brl_tab(r.valor_recalculado_centavos) }}</td>
+            <td class="num">{{ brl(r.diferenca_centavos) if r.diferenca_centavos == 0 else brl_tab(r.diferenca_centavos) }}</td>
+            <td>{% if r.diferenca_centavos == 0 %}<span class="badge b-ok">Conforme</span>{% else %}<span class="badge b-cr">Divergente</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="fonte">Fonte: recálculo independente (erp.contrato_trabalho + erp.parametro_legal + erp.folha_competencia) × erp.folha_item.</p>
+  {% endif %}
+
+  {% if aud_achados %}
+    <p class="tt">Tabela 3 — Quadro Consolidado de Achados de Auditoria (AUD-01 a AUD-10)</p>
+    <table>
+      <thead><tr><th>Cód.</th><th>Achado</th><th>Evidência / Norma</th><th>Risco</th><th class="num">Valor V1 (R$)</th><th class="num">Recalculado (R$)</th><th>Correção proposta</th><th>Responsável / Prazo</th><th>Situação</th></tr></thead>
+      <tbody>
+        {% for a in aud_achados %}
+          <tr>
+            <td class="mono">{{ a.codigo }}</td>
+            <td>{{ a.titulo }}</td>
+            <td>{{ a.objetivo_ou_evidencia or '—' }}{% if a.norma_referencia %}<br><span class="mono">{{ a.norma_referencia }}</span>{% endif %}</td>
+            <td>{{ a.procedimento_ou_risco or '—' }}</td>
+            <td class="num">{{ brl_tab(a.valor_v1_centavos) if a.valor_v1_centavos is not none else '—' }}</td>
+            <td class="num">{{ brl_tab(a.valor_recalculado_centavos) if a.valor_recalculado_centavos is not none else '—' }}</td>
+            <td>{{ a.conclusao_ou_correcao or '—' }}</td>
+            <td>{{ a.responsavel or '—' }}<br>{{ a.prazo_texto or '—' }}</td>
+            <td>{{ rot(a.situacao_achado, 'situacao_achado') }}<br>{{ m.badge(a.status_validacao) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="fonte">Fonte: erp.auditoria_folha (tipo_registro = 'achado').</p>
+  {% endif %}
+{% endif %}
 {% endblock %}

@@ -13,16 +13,19 @@ import pytest
 
 from sistema.erp.motor_folha import (
     detectar_divergencia_contratos_d2,
+    detectar_recalculo_divergente_d2,
     detectar_residuos_texto_d2,
     detectar_salario_abaixo_piso_d2,
     impacto_exclusao_simples,
     recalcular_folha_d2,
+    recalcular_folha_independente_dados,
 )
 from sistema.pg.db import ENV_PATH, conectar_pg, obter_database_url
 from sistema.web import ajuda as ajuda_mod
 from sistema.web import texto
 from sistema.web.app import create_app
 from sistema.web.emissor_dossie2 import DOCUMENTOS, _marcadores_d2, html_documento
+from sistema.web.planilha_dossie2 import _montar_workbook_d2
 
 
 def _pg_disponivel() -> bool:
@@ -226,9 +229,37 @@ def _fixture_dados_d2() -> dict[str, Any]:
                 "memoria_horas_json": [], "conteudo_md": "Termo RT.", "status_validacao": "pendente_revisao",
             },
         ],
+        "auditoria": [
+            {
+                "id": 1, "tipo_registro": "papel_trabalho", "codigo": "PT-01",
+                "titulo": "Planejamento de Auditoria Trabalhista", "norma_referencia": "NBC TA 300 / 315",
+                "objetivo_ou_evidencia": "100% da folha 09/2026 (E1 e E2)", "procedimento_ou_risco": "Recálculo integral e conferência documental",
+                "conclusao_ou_correcao": "Materialidade total aplicada.", "responsavel": "Auditoria PRISMA", "prazo_texto": "30/09/2026",
+                "situacao_achado": "conforme", "status_validacao": "pendente_revisao",
+            },
+            {
+                "id": 2, "tipo_registro": "achado", "codigo": "AUD-03",
+                "titulo": "Salário-Família pago indevidamente na V1", "norma_referencia": "Portaria MPS/MF nº 13/2026",
+                "objetivo_ou_evidencia": "Salário contratual E1 = R$ 2.400,00 > teto R$ 1.980,38",
+                "procedimento_ou_risco": "Alto risco trabalhista/previdenciário",
+                "valor_v1_centavos": 6_204, "valor_recalculado_centavos": 0,
+                "conclusao_ou_correcao": "Estornar pagamento indevido na folha recalculada.",
+                "responsavel": "DP PRISMA", "prazo_texto": "Concluído",
+                "situacao_achado": "saneado_v2", "status_validacao": "homologado_contadora",
+            },
+        ],
         "comp": {
             "id": 1,
             "competencia": "2026-09",
+            "dias_mes_padrao": 30,
+            "vendas_liquidas_e2_centavos": 6_000_000,
+            "dias_trabalhados_e1": 15,
+            "dias_trabalhados_e2": 10,
+            "dias_uteis_comissao_e2": 9,
+            "domingos_feriados_e2": 1,
+            "dias_uteis_vt_e1": 11,
+            "dias_uteis_vt_e2": 9,
+            "dias_uteis_vr_e1": 11,
             "cenario_negocial": "A_desconta",
             "bruto_total_centavos": 283_333,
             "inss_total_centavos": 21_268,
@@ -240,19 +271,24 @@ def _fixture_dados_d2() -> dict[str, Any]:
         },
         "itens": [
             {"codigo_empregado": "E1", "nome_empregado": "Mariana Alves Costa", "codigo_rubrica": "SAL-PROP", "nome_rubrica": "Salário Proporcional (15/30)", "tipo_rubrica": "provento", "referencia_texto": "15 dias", "base_centavos": 240_000, "valor_centavos": 120_000},
+            {"codigo_empregado": "E1", "nome_empregado": "Mariana Alves Costa", "codigo_rubrica": "SAL-FAMILIA", "nome_rubrica": "Salário-Família", "tipo_rubrica": "informativo", "referencia_texto": "Inelegível", "base_centavos": 240_000, "valor_centavos": 0},
             {"codigo_empregado": "E1", "nome_empregado": "Mariana Alves Costa", "codigo_rubrica": "INSS-RET", "nome_rubrica": "INSS Retido", "tipo_rubrica": "desconto", "referencia_texto": "Progressivo", "base_centavos": 120_000, "valor_centavos": 9_000},
+            {"codigo_empregado": "E1", "nome_empregado": "Mariana Alves Costa", "codigo_rubrica": "IRRF", "nome_rubrica": "IRRF 2026", "tipo_rubrica": "desconto", "referencia_texto": "Isento", "base_centavos": 59_280, "valor_centavos": 0},
             {"codigo_empregado": "E1", "nome_empregado": "Mariana Alves Costa", "codigo_rubrica": "VT-DESC", "nome_rubrica": "Desconto VT (6%)", "tipo_rubrica": "desconto", "referencia_texto": "6%", "base_centavos": 120_000, "valor_centavos": 7_200},
             {"codigo_empregado": "E1", "nome_empregado": "Mariana Alves Costa", "codigo_rubrica": "VT-SUBS", "nome_rubrica": "Subsídio VT Empresa", "tipo_rubrica": "informativo", "referencia_texto": "11d x 4/d", "base_centavos": 18_920, "valor_centavos": 11_720},
             {"codigo_empregado": "E1", "nome_empregado": "Mariana Alves Costa", "codigo_rubrica": "VR-PAT", "nome_rubrica": "Vale-Refeição (PAT)", "tipo_rubrica": "informativo", "referencia_texto": "11d x R$ 30,00", "base_centavos": 33_000, "valor_centavos": 33_000},
             {"codigo_empregado": "E1", "nome_empregado": "Mariana Alves Costa", "codigo_rubrica": "NEGOCIAL", "nome_rubrica": "Contribuição Negocial CCT", "tipo_rubrica": "desconto", "referencia_texto": "3,33%", "base_centavos": 120_000, "valor_centavos": 3_996},
             {"codigo_empregado": "E1", "nome_empregado": "Mariana Alves Costa", "codigo_rubrica": "FGTS-8", "nome_rubrica": "FGTS 8%", "tipo_rubrica": "encargo", "referencia_texto": "8,00%", "base_centavos": 120_000, "valor_centavos": 9_600},
             {"codigo_empregado": "E1", "nome_empregado": "Mariana Alves Costa", "codigo_rubrica": "PROV-13", "nome_rubrica": "Provisão 13º Salário", "tipo_rubrica": "provisao", "referencia_texto": "1/12 avo", "base_centavos": 240_000, "valor_centavos": 20_000},
-            {"codigo_empregado": "E1", "nome_empregado": "Mariana Alves Costa", "codigo_rubrica": "PROV-FER", "nome_rubrica": "Provisão Férias + 1/3", "tipo_rubrica": "provisao", "referencia_texto": "1/12 avo", "base_centavos": 240_000, "valor_centavos": 26_667},
+            {"codigo_empregado": "E1", "nome_empregado": "Mariana Alves Costa", "codigo_rubrica": "PROV-FER", "nome_rubrica": "Provisão Férias (1/12 avo)", "tipo_rubrica": "provisao", "referencia_texto": "1/12 avo", "base_centavos": 240_000, "valor_centavos": 20_000},
+            {"codigo_empregado": "E1", "nome_empregado": "Mariana Alves Costa", "codigo_rubrica": "PROV-1/3", "nome_rubrica": "Provisão 1/3 Constitucional de Férias", "tipo_rubrica": "provisao", "referencia_texto": "1/12 avo", "base_centavos": 20_000, "valor_centavos": 6_667},
             {"codigo_empregado": "E1", "nome_empregado": "Mariana Alves Costa", "codigo_rubrica": "PROV-FGTS", "nome_rubrica": "FGTS s/ Provisões", "tipo_rubrica": "provisao", "referencia_texto": "8%", "base_centavos": 46_667, "valor_centavos": 3_733},
             {"codigo_empregado": "E2", "nome_empregado": "Rafael Souza Lima", "codigo_rubrica": "SAL-PROP", "nome_rubrica": "Salário Fixo Proporcional (10/30)", "tipo_rubrica": "provento", "referencia_texto": "10 dias", "base_centavos": 190_000, "valor_centavos": 63_333},
             {"codigo_empregado": "E2", "nome_empregado": "Rafael Souza Lima", "codigo_rubrica": "COMISSAO", "nome_rubrica": "Comissão sobre Vendas (1,5%)", "tipo_rubrica": "provento", "referencia_texto": "1,50%", "base_centavos": 6_000_000, "valor_centavos": 90_000},
             {"codigo_empregado": "E2", "nome_empregado": "Rafael Souza Lima", "codigo_rubrica": "DSR-COM", "nome_rubrica": "DSR sobre Comissões", "tipo_rubrica": "provento", "referencia_texto": "1/9", "base_centavos": 90_000, "valor_centavos": 10_000},
+            {"codigo_empregado": "E2", "nome_empregado": "Rafael Souza Lima", "codigo_rubrica": "SAL-FAMILIA", "nome_rubrica": "Salário-Família", "tipo_rubrica": "informativo", "referencia_texto": "0 dep.", "base_centavos": 190_000, "valor_centavos": 0},
             {"codigo_empregado": "E2", "nome_empregado": "Rafael Souza Lima", "codigo_rubrica": "INSS-RET", "nome_rubrica": "INSS Retido", "tipo_rubrica": "desconto", "referencia_texto": "Progressivo", "base_centavos": 163_333, "valor_centavos": 12_268},
+            {"codigo_empregado": "E2", "nome_empregado": "Rafael Souza Lima", "codigo_rubrica": "IRRF", "nome_rubrica": "IRRF 2026", "tipo_rubrica": "desconto", "referencia_texto": "Isento", "base_centavos": 102_613, "valor_centavos": 0},
             {"codigo_empregado": "E2", "nome_empregado": "Rafael Souza Lima", "codigo_rubrica": "VT-DESC", "nome_rubrica": "Desconto VT (6%)", "tipo_rubrica": "desconto", "referencia_texto": "6%", "base_centavos": 63_333, "valor_centavos": 3_800},
             {"codigo_empregado": "E2", "nome_empregado": "Rafael Souza Lima", "codigo_rubrica": "VT-SUBS", "nome_rubrica": "Subsídio VT Empresa", "tipo_rubrica": "informativo", "referencia_texto": "9d x 4/d", "base_centavos": 15_480, "valor_centavos": 11_680},
             {"codigo_empregado": "E2", "nome_empregado": "Rafael Souza Lima", "codigo_rubrica": "NEGOCIAL", "nome_rubrica": "Contribuição Negocial CCT", "tipo_rubrica": "desconto", "referencia_texto": "3,33%", "base_centavos": 163_333, "valor_centavos": 5_439},
@@ -446,6 +482,101 @@ def test_d2_regras_contrato_e_piso_puras() -> None:
         "q.impacto_alt", "dil.data", "ct.jornada_horas", "ct.cct_ref", "par.data_consulta",
     ):
         assert ajuda_mod.ajuda(chave), f"Chave de ajuda ausente: {chave}"
+
+
+def test_d2_quadros_por_documento() -> None:
+    dados = _fixture_dados_d2()
+    verificacoes = {
+        "d2_00_indice": ("Tabela 1 — Produtos", "D2-P1"),
+        "d2_01_diagnostico": ("Tabela 3 — Quadro de achados", "52900000015"),
+        "d2_02_proposta": ("Tabela 3 — Memória de custo", "48.123.456/0001-90"),
+        "d2_03_contrato": ("Tabela 2 — Condições comerciais", "4.000,00"),
+        "d2_04_termo_rt": ("Tabela 3 — Rol de pendências", "PEND-01"),
+        "d2_05_onboarding": ("Tabela 1 — Checklist", "DOC-01"),
+        "d2_06_prontuario": ("Tabela 2 — Roteiro de eventos eSocial", "S-2200"),
+        "d2_07_ficha_e1": ("Tabela 1 — Dados de registro do empregado E1", "4110-05"),
+        "d2_08_exp_e1": ("Tabela 1 — Parâmetros contratuais de E1", "45 + 45 dias"),
+        "d2_09_ficha_e2": ("Tabela 1 — Dados de registro do empregado E2", "5211-10"),
+        "d2_10_exp_e2": ("Tabela 1 — Parâmetros contratuais de E2", "30 + 60 dias"),
+        "d2_11_folha": ("Espelho dinâmico do Motor Contábil", "PROV-1/3"),
+        "d2_12_resumo_contab": ("Tabela 2 — Conciliação integral", "Conciliado"),
+        "d2_13_auditoria": ("Tabela 1 — Planejamento e Papéis de Trabalho", "PT-01", "Tabela 2 — Recálculo Independente", "AUD-03"),
+        "d2_14_premissas": ("Tabela 1 — Premissas adotadas", "PR-01"),
+        "d2_15_ia": ("Tabela 1 — Diário transparente de uso de IA", "Tabular DOC-01..13"),
+    }
+    assert set(verificacoes) == set(DOCUMENTOS)
+    for doc, trechos in verificacoes.items():
+        html = html_documento(doc, para_web=True, dados=dados)
+        for tr in trechos:
+            assert tr in html, f"{doc}: trecho esperado ausente: {tr!r}"
+
+
+def test_d2_recalculo_independente_bate_com_gabarito() -> None:
+    dados = _fixture_dados_d2()
+    comp = recalcular_folha_independente_dados(dados["comp"], dados["contratos"], dados["parametros"], dados["itens"])
+    mapa = {(r["codigo_empregado"], r["codigo_rubrica"]): r for r in comp}
+
+    # Gabarito E1
+    assert mapa[("E1", "INSS-RET")]["valor_recalculado_centavos"] == 9_000
+    assert mapa[("E1", "FGTS-8")]["valor_recalculado_centavos"] == 9_600
+    assert mapa[("E1", "VR-PAT")]["valor_recalculado_centavos"] == 33_000
+    assert mapa[("E1", "NEGOCIAL")]["valor_recalculado_centavos"] == 3_996
+    assert mapa[("E1", "PROV-FER")]["valor_recalculado_centavos"] == 20_000
+    assert mapa[("E1", "PROV-1/3")]["valor_recalculado_centavos"] == 6_667
+    assert mapa[("E1", "PROV-FGTS")]["valor_recalculado_centavos"] == 3_733
+
+    # Gabarito E2
+    assert mapa[("E2", "COMISSAO")]["valor_recalculado_centavos"] == 90_000
+    assert mapa[("E2", "DSR-COM")]["valor_recalculado_centavos"] == 10_000
+    assert mapa[("E2", "INSS-RET")]["valor_recalculado_centavos"] == 12_268
+    assert mapa[("E2", "FGTS-8")]["valor_recalculado_centavos"] == 13_067
+    assert mapa[("E2", "NEGOCIAL")]["valor_recalculado_centavos"] == 5_439
+
+    # Diferenca zero em 100% das rubricas contra o motor
+    assert len(comp) == len(dados["itens"])
+    assert detectar_recalculo_divergente_d2(comp) == []
+
+
+def test_d2_regras_novas() -> None:
+    dados = _fixture_dados_d2()
+    # 1. D2_TEXTO_RESIDUO (sujo -> alerta; falso positivo -> 0)
+    assert detectar_residuos_texto_d2([{"documento": "d2_01", "codigo_secao": "s1", "conteudo_md": "Campo [INSERIR CNPJ]"}], [])
+    assert detectar_residuos_texto_d2([{"documento": "d2_01", "codigo_secao": "s1", "conteudo_md": "Eliminados `[INSERIR]` em todos os docs."}], []) == []
+    # 2. D2_PROPOSTA_CONTRATO_DIVERGENTE
+    cs_div = [dict(x) for x in dados["contratos_servico"]]
+    cs_div[0]["valor_hora_centavos"] = 15_000
+    assert detectar_divergencia_contratos_d2(cs_div)
+    # 3. D2_SALARIO_ABAIXO_PISO
+    cts_div = [dict(x) for x in dados["contratos"]]
+    cts_div[1]["salario_base_centavos"] = 100_000
+    assert any(a["severidade"] == "critico" for a in detectar_salario_abaixo_piso_d2(cts_div))
+    # 4. D2_RECALCULO_DIVERGENTE (forcar divergencia no motor)
+    itens_div = [dict(x) for x in dados["itens"]]
+    itens_div[0]["valor_centavos"] += 100
+    comp_div = recalcular_folha_independente_dados(dados["comp"], dados["contratos"], dados["parametros"], itens_div)
+    divs = detectar_recalculo_divergente_d2(comp_div)
+    assert len(divs) == 1 and divs[0]["codigo_rubrica"] == "SAL-PROP" and divs[0]["diferenca_centavos"] == 100
+
+
+def test_d2_planilha_provisoes_separadas() -> None:
+    dados = _fixture_dados_d2()
+    wb = _montar_workbook_d2(dados)
+    ws_prov = wb["Provisoes_e_Integracao"]
+    ws_mem = wb["Memoria_Calculo"]
+
+    assert ws_prov["A7"].value == "Férias (1/12)"
+    assert ws_prov["A8"].value == "1/3 Constitucional s/ Férias"
+    assert ws_prov["C9"].value == "=SUM(C6:C8)"
+    assert ws_prov["E29"].value == "=E7+E8"
+    assert ws_prov["E34"].value == "=SUM(E13:E33)"
+    assert "Provisoes_e_Integracao!E10" in str(ws_mem["C11"].value)
+    assert "Provisoes_e_Integracao!E9" in str(ws_mem["C12"].value)
+
+    formulas = [
+        v for s in wb.worksheets for row in s.iter_rows(values_only=True) for v in row
+        if isinstance(v, str) and v.startswith("=")
+    ]
+    assert len(formulas) >= 100
 
 
 @pytest.mark.skipif(not _pg_disponivel(), reason=f"PostgreSQL indisponivel ({ENV_PATH}).")

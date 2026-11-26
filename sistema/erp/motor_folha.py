@@ -145,6 +145,229 @@ def detectar_salario_abaixo_piso_d2(
     return achados
 
 
+def recalcular_folha_independente_dados(
+    comp: dict[str, Any],
+    contratos: list[dict[str, Any]],
+    parametros: list[dict[str, Any]],
+    itens_motor: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Recalculo independente (sem reutilizar funcoes do motor) de 100% das rubricas da folha D2."""
+    if not comp or not contratos:
+        return []
+
+    def rnd(val: Decimal) -> int:
+        return int(val.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+    por_cat: dict[str, list[dict[str, Any]]] = {}
+    for p in parametros or []:
+        por_cat.setdefault(str(p.get("categoria") or ""), []).append(p)
+
+    faixas_inss = sorted(por_cat.get("inss", []), key=lambda x: int(x.get("ordem") or 0))
+    pars_irrf = por_cat.get("irrf", [])
+    pars_red = por_cat.get("reducao_irrf_2026", [])
+    par_sf = (por_cat.get("salario_familia") or [{}])[0]
+    teto_sf = int(par_sf.get("limite_centavos") or 198_038)
+    cota_sf = int(par_sf.get("valor_centavos") or 6_754)
+    par_fgts = (por_cat.get("fgts") or [{}])[0]
+    aliq_fgts = Decimal(int(par_fgts.get("aliquota_micro") or 80_000)) / Decimal("1000000")
+    ccts = por_cat.get("cct_clausula", [])
+    par_vt_misto = next((p for p in ccts if p.get("codigo") == "CCT-VT-MISTO"), {})
+    teto_vt_misto = int(par_vt_misto.get("limite_centavos") or 225_750)
+    par_neg = next((p for p in ccts if p.get("codigo") == "CCT-NEGOCIAL"), {})
+    aliq_neg = Decimal(int(par_neg.get("aliquota_micro") or 33_300)) / Decimal("1000000")
+    teto_neg = int(par_neg.get("limite_centavos") or 14_800)
+
+    dias_mes = max(int(comp.get("dias_mes_padrao") or 30), 1)
+    vendas_e2 = int(comp.get("vendas_liquidas_e2_centavos") or 0)
+    dias_uteis_com = max(int(comp.get("dias_uteis_comissao_e2") or 9), 1)
+    dom_e2 = int(comp.get("domingos_feriados_e2") or 1)
+    cenario_neg = str(comp.get("cenario_negocial") or "A_desconta")
+
+    motor_idx: dict[tuple[str, str], dict[str, Any]] = {
+        (str(it.get("codigo_empregado") or ""), str(it.get("codigo_rubrica") or "")): it
+        for it in (itens_motor or [])
+    }
+    vistos: set[tuple[str, str]] = set()
+    resultado: list[dict[str, Any]] = []
+
+    for ct in sorted(contratos, key=lambda x: str(x.get("codigo_empregado") or "")):
+        cod = str(ct.get("codigo_empregado") or "")
+        nome_emp = str(ct.get("nome_empregado") or cod)
+        sal_base = int(ct.get("salario_base_centavos") or 0)
+        dias_trab = int(comp.get("dias_trabalhados_e1") if cod == "E1" else comp.get("dias_trabalhados_e2") or 0)
+        dias_vt = int(comp.get("dias_uteis_vt_e1") if cod == "E1" else comp.get("dias_uteis_vt_e2") or 0)
+        dias_vr = int(comp.get("dias_uteis_vr_e1") or 0) if cod == "E1" else 0
+
+        sal_prop = rnd(Decimal(sal_base) * Decimal(dias_trab) / Decimal(dias_mes))
+        rubricas_emp: list[tuple[str, str, int, int]] = [
+            ("SAL-PROP", f"Salário Proporcional ({dias_trab}/{dias_mes})", sal_base, sal_prop),
+        ]
+
+        comissao = 0
+        dsr = 0
+        if int(ct.get("comissao_pct_micro") or 0) > 0:
+            pct_com = Decimal(int(ct["comissao_pct_micro"])) / Decimal("1000000")
+            comissao = rnd(Decimal(vendas_e2) * pct_com)
+            dsr = rnd(Decimal(comissao) / Decimal(dias_uteis_com) * Decimal(dom_e2))
+            rubricas_emp.append(("COMISSAO", "Comissão sobre Vendas Líquidas", vendas_e2, comissao))
+            rubricas_emp.append(("DSR-COM", "DSR sobre Comissões", comissao, dsr))
+
+        bruto = sal_prop + comissao + dsr
+        deps_sf = int(ct.get("qtd_dependentes_sf") or 0)
+        sf_val = cota_sf * deps_sf if (sal_base <= teto_sf and deps_sf > 0) else 0
+        rubricas_emp.append(("SAL-FAMILIA", "Salário-Família", sal_base, sf_val))
+
+        # INSS progressivo independente
+        ant = 0
+        inss_acc = Decimal("0")
+        for fx in faixas_inss:
+            teto_fx = int(fx.get("limite_centavos") or 847_555)
+            aliq_fx = Decimal(int(fx.get("aliquota_micro") or 0)) / Decimal("1000000")
+            if bruto <= ant:
+                break
+            fatia = min(bruto, teto_fx) - ant
+            if fatia > 0:
+                inss_acc += Decimal(fatia) * aliq_fx
+            ant = teto_fx
+        inss = rnd(inss_acc) if faixas_inss else 0
+        rubricas_emp.append(("INSS-RET", "INSS Retido", bruto, inss))
+
+        # IRRF 2026 independente
+        simplif = next((int(p["valor_centavos"] or 60_720) for p in pars_irrf if p.get("codigo") == "IRRF-SIMPLIF"), 60_720)
+        val_dep = next((int(p["valor_centavos"] or 18_959) for p in pars_irrf if p.get("codigo") == "IRRF-DEP"), 18_959)
+        ded_ir = max(inss + int(ct.get("qtd_dependentes_ir") or 0) * val_dep, simplif)
+        base_ir = max(0, bruto - ded_ir)
+        imp_tab = 0
+        for fx in sorted((p for p in pars_irrf if str(p.get("codigo") or "").startswith("IRRF-F")), key=lambda x: int(x.get("ordem") or 0)):
+            lim = fx.get("limite_centavos")
+            if lim is None or base_ir <= int(lim):
+                aliq_ir = Decimal(int(fx.get("aliquota_micro") or 0)) / Decimal("1000000")
+                ded_fx = int(fx.get("deducao_centavos") or 0)
+                imp_tab = max(0, rnd(Decimal(base_ir) * aliq_ir) - ded_fx)
+                break
+        teto_isento = next((int(p["limite_centavos"] or 500_000) for p in pars_red if p.get("codigo") == "RED-ISENTO"), 500_000)
+        teto_trans = next((int(p["limite_centavos"] or 735_000) for p in pars_red if p.get("codigo") == "RED-TRANS"), 735_000)
+        red = 0
+        if bruto <= teto_isento:
+            red = imp_tab
+        elif bruto <= teto_trans:
+            p_tr = next((p for p in pars_red if p.get("codigo") == "RED-TRANS"), {})
+            fixo = int(p_tr.get("deducao_centavos") or 97_862)
+            fator = Decimal(int(p_tr.get("aliquota_micro") or 133_145)) / Decimal("1000000")
+            red = max(0, fixo - rnd(Decimal(bruto) * fator))
+        irrf = max(0, imp_tab - red)
+        rubricas_emp.append(("IRRF", "IRRF 2026", base_ir, irrf))
+
+        # VT (6% limitado ao custo) e subsidio
+        tarifa = int(ct.get("vt_tarifa_centavos") or 430)
+        passagens = int(ct.get("vt_passagens_dia") or 4)
+        vt_bruto = dias_vt * passagens * tarifa if ct.get("vt_optante") else 0
+        base_vt = min(sal_prop, rnd(Decimal(teto_vt_misto) * Decimal(dias_trab) / Decimal(dias_mes))) if cod == "E2" else sal_prop
+        vt_desc = min(rnd(Decimal(base_vt) * Decimal("0.06")), vt_bruto) if ct.get("vt_optante") else 0
+        vt_subs = max(0, vt_bruto - vt_desc)
+        rubricas_emp.append(("VT-DESC", "Desconto Vale-Transporte (6%)", base_vt, vt_desc))
+        rubricas_emp.append(("VT-SUBS", "Subsídio Vale-Transporte Empresa", vt_bruto, vt_subs))
+
+        # VR
+        vr_val = dias_vr * int(ct.get("vr_valor_dia_centavos") or 0) if ct.get("vr_elegivel") else 0
+        if vr_val > 0:
+            rubricas_emp.append(("VR-PAT", "Vale-Refeição (PAT)", vr_val, vr_val))
+
+        # Contribuicao Negocial e FGTS
+        neg_a = min(rnd(Decimal(bruto) * aliq_neg), teto_neg)
+        neg_ativo = neg_a if cenario_neg == "A_desconta" else 0
+        rubricas_emp.append(("NEGOCIAL", "Contribuição Negocial CCT", bruto, neg_ativo))
+        fgts = rnd(Decimal(bruto) * aliq_fgts)
+        rubricas_emp.append(("FGTS-8", "FGTS (8%)", bruto, fgts))
+
+        # Provisoes (>= 15 dias)
+        if dias_trab >= 15:
+            p13 = rnd(Decimal(sal_base) / Decimal("12"))
+            pfer = rnd(Decimal(sal_base) / Decimal("12"))
+            pter = rnd(Decimal(pfer) / Decimal("3"))
+            pfgts = rnd(Decimal(p13 + pfer + pter) * aliq_fgts)
+            rubricas_emp.extend([
+                ("PROV-13", "Provisão 13º Salário (1/12 avo)", sal_base, p13),
+                ("PROV-FER", "Provisão Férias (1/12 avo)", sal_base, pfer),
+                ("PROV-1/3", "Provisão 1/3 Constitucional de Férias", pfer, pter),
+                ("PROV-FGTS", "FGTS s/ Provisões (8%)", p13 + pfer + pter, pfgts),
+            ])
+
+        for cod_rub, nome_rub, base_rec, val_rec in rubricas_emp:
+            vistos.add((cod, cod_rub))
+            it_m = motor_idx.get((cod, cod_rub))
+            val_mot = int(it_m.get("valor_centavos") or 0) if it_m else 0
+            resultado.append({
+                "codigo_empregado": cod,
+                "nome_empregado": nome_emp,
+                "codigo_rubrica": cod_rub,
+                "nome_rubrica": str(it_m.get("nome_rubrica") or nome_rub) if it_m else nome_rub,
+                "base_centavos": int(it_m.get("base_centavos") or base_rec) if it_m else base_rec,
+                "valor_motor_centavos": val_mot,
+                "valor_recalculado_centavos": val_rec,
+                "diferenca_centavos": val_mot - val_rec,
+            })
+
+    for (cod, cod_rub), it_m in motor_idx.items():
+        if (cod, cod_rub) not in vistos:
+            val_mot = int(it_m.get("valor_centavos") or 0)
+            resultado.append({
+                "codigo_empregado": cod,
+                "nome_empregado": str(it_m.get("nome_empregado") or cod),
+                "codigo_rubrica": cod_rub,
+                "nome_rubrica": str(it_m.get("nome_rubrica") or cod_rub),
+                "base_centavos": int(it_m.get("base_centavos") or 0),
+                "valor_motor_centavos": val_mot,
+                "valor_recalculado_centavos": 0,
+                "diferenca_centavos": val_mot,
+            })
+
+    return resultado
+
+
+def detectar_recalculo_divergente_d2(comparativo: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Retorna rubricas com diferenca diferente de zero entre motor e recalculo independente."""
+    return [r for r in (comparativo or []) if int(r.get("diferenca_centavos") or 0) != 0]
+
+
+def recalcular_folha_independente(conn: Any, competencia_id: int | None = None) -> list[dict[str, Any]]:
+    """Le competencia, contratos, parametros e folha_item no PostgreSQL e executa o recalculo independente."""
+    with conn.cursor() as cur:
+        if competencia_id is None:
+            cur.execute(
+                """
+                SELECT fc.*
+                FROM erp.folha_competencia fc
+                JOIN erp.empresa e ON e.id = fc.empresa_id
+                WHERE e.chave = %s
+                ORDER BY fc.competencia DESC LIMIT 1
+                """,
+                (EMPRESA_CHAVE_D2,),
+            )
+        else:
+            cur.execute("SELECT * FROM erp.folha_competencia WHERE id = %s", (competencia_id,))
+        fc = cur.fetchone()
+        if not fc:
+            return []
+        emp_id = int(fc["empresa_id"])
+        cur.execute("SELECT * FROM erp.contrato_trabalho WHERE empresa_id = %s ORDER BY codigo_empregado, id", (emp_id,))
+        cts = cur.fetchall()
+        cur.execute("SELECT * FROM erp.parametro_legal WHERE empresa_id = %s ORDER BY categoria, ordem, id", (emp_id,))
+        pars = cur.fetchall()
+        cur.execute(
+            """
+            SELECT fi.*, ct.codigo_empregado, ct.nome_empregado
+            FROM erp.folha_item fi
+            JOIN erp.contrato_trabalho ct ON ct.id = fi.contrato_trabalho_id
+            WHERE fi.competencia_id = %s
+            ORDER BY ct.codigo_empregado, fi.ordem, fi.id
+            """,
+            (fc["id"],),
+        )
+        itens = cur.fetchall()
+    return recalcular_folha_independente_dados(dict(fc), [dict(c) for c in cts], [dict(p) for p in pars], [dict(i) for i in itens])
+
+
 def _calc_inss_progressivo(base_centavos: int, faixas: list[dict[str, Any]]) -> tuple[int, str]:
     """INSS progressivo por faixas (Portaria MPS/MF no 13/2026)."""
     if base_centavos <= 0 or not faixas:
@@ -431,8 +654,9 @@ def recalcular_folha_d2(conn: Any, competencia_id: int | None = None) -> dict[st
                 ptot = p13 + pfer + pter + pfgts
                 for o_p, cp, np, vp, fp in (
                     (12, "PROV-13", "Provisão 13º Salário (1/12 avo)", p13, f"{sal_base/100:.2f} / 12"),
-                    (13, "PROV-FER", "Provisão Férias + 1/3 Constitucional (1/12 avo)", pfer + pter, f"{pfer/100:.2f} + {pter/100:.2f}"),
-                    (14, "PROV-FGTS", "FGTS s/ Provisões (8%)", pfgts, f"8% * {(p13+pfer+pter)/100:.2f}"),
+                    (13, "PROV-FER", "Provisão Férias (1/12 avo)", pfer, f"{sal_base/100:.2f} / 12"),
+                    (14, "PROV-1/3", "Provisão 1/3 Constitucional de Férias", pter, f"{pfer/100:.2f} / 3"),
+                    (15, "PROV-FGTS", "FGTS s/ Provisões (8%)", pfgts, f"8% * {(p13+pfer+pter)/100:.2f}"),
                 ):
                     itens.append((
                         f"fi:{fc['competencia']}:{cod}:{cp}", fc_id, ct_id, o_p, cp, np, "provisao",
@@ -733,6 +957,32 @@ def validar_coerencia_dossie2(conn: Any, empresa_id: int) -> list[dict[str, Any]
                 "Conferir salário base, piso CCT e referência normativa na Estação 8 (Departamento Pessoal).",
                 "/dp#contratos-trabalho",
             )
+
+        cur.execute("SELECT * FROM erp.folha_competencia WHERE empresa_id = %s ORDER BY competencia DESC LIMIT 1", (empresa_id,))
+        fc_d2 = cur.fetchone()
+        if fc_d2:
+            cur.execute(
+                """
+                SELECT fi.*, ct.codigo_empregado, ct.nome_empregado
+                FROM erp.folha_item fi
+                JOIN erp.contrato_trabalho ct ON ct.id = fi.contrato_trabalho_id
+                WHERE fi.competencia_id = %s
+                ORDER BY ct.codigo_empregado, fi.ordem, fi.id
+                """,
+                (fc_d2["id"],),
+            )
+            itens_d2 = cur.fetchall()
+            comp_rec = recalcular_folha_independente_dados(dict(fc_d2), [dict(c) for c in cts], [dict(p) for p in pars_d2], [dict(i) for i in itens_d2])
+            divs_rec = detectar_recalculo_divergente_d2(comp_rec)
+            if divs_rec:
+                resumo_div = "; ".join(f"{d['codigo_empregado']}/{d['codigo_rubrica']} (dif {d['diferenca_centavos']/100:.2f})" for d in divs_rec[:5])
+                add(
+                    "D2_RECALCULO_DIVERGENTE", "critico", "trabalhista", "folha",
+                    f"Divergência entre motor da folha e recálculo independente ({len(divs_rec)} rubrica(s))",
+                    f"Diferenças encontradas: {resumo_div}.",
+                    "Executar 'Recalcular folha e partidas dobradas' na Estação 9 e conferir parâmetros 2026.",
+                    "/folha#rubricas",
+                )
 
         cur.execute("DELETE FROM auditoria.alerta_coerencia WHERE empresa_id = %s AND dossie = 'D2'", (empresa_id,))
         if alertas:

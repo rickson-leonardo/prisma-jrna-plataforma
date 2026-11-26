@@ -244,8 +244,8 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
         ("INSS TOT", "Total INSS Retido (DCTFWeb)", "=ROUND(C6+C7,2)", "=ROUND(D6+D7,2)", "=C8+D8"),
         ("IRRF BASE", "Base ótima IRRF (Bruto − max(INSS+Dep, Simplif.))", "=MAX(0,Folha_Set2026!G6-MAX(Folha_Set2026!I6+Parametros!C23*Parametros!D25,Parametros!C24))", "=MAX(0,Folha_Set2026!G7-Parametros!C24)", "Abaixo de R$ 2.428,80 e R$ 5.000,00"),
         ("CCT PISO", "Margem acima do Piso / Garantia CCT", "=Folha_Set2026!C6-Parametros!C28", "=Folha_Set2026!C7-Parametros!D28", "Ambos acima do mínimo normativo"),
-        ("CUSTO SIMP", "Custo Mensal no Simples Nacional (com Provisões E1)", "=Folha_Set2026!G6+Folha_Set2026!O6+Folha_Set2026!E11+Folha_Set2026!F11+Provisoes_e_Integracao!E9", "=Folha_Set2026!G7+Folha_Set2026!O7+Folha_Set2026!E12", "=C11+D11"),
-        ("EXCL SIMP", "Adicional Patronal se Excluído do Simples (+27,8%)", "=ROUND((Folha_Set2026!G6+Provisoes_e_Integracao!E8)*Parametros!D29,2)", "=ROUND(Folha_Set2026!G7*Parametros!D29,2)", "=C12+D12"),
+        ("CUSTO SIMP", "Custo Mensal no Simples Nacional (com Provisões E1)", "=Folha_Set2026!G6+Folha_Set2026!O6+Folha_Set2026!E11+Folha_Set2026!F11+Provisoes_e_Integracao!E10", "=Folha_Set2026!G7+Folha_Set2026!O7+Folha_Set2026!E12", "=C11+D11"),
+        ("EXCL SIMP", "Adicional Patronal se Excluído do Simples (+27,8%)", "=ROUND((Folha_Set2026!G6+Provisoes_e_Integracao!E9)*Parametros!D29,2)", "=ROUND(Folha_Set2026!G7*Parametros!D29,2)", "=C12+D12"),
         ("CUSTO FORA", "Custo Total Fora do Simples (Lucro Presumido/Real)", "=C11+C12", "=D11+D12", "=C13+D13"),
     ]
     rr = 6
@@ -264,8 +264,7 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
     # =========================================================================
     r = _estilizar_cab_aba(ws_prov, "PROVISÕES, INTEGRAÇÃO CONTÁBIL (L1–L4) E CONCILIAÇÃO", "Regime de Competência (NBC TG 33) · Segregação DRE (NBC TG 26) · Diferença obrigatória = R$ 0,00", 6)
     _hdr(ws_prov, r, ["Provisão (09/2026)", "Regra (1/12 avo se >= 15d)", "E1 (15d)", "E2 (10d)", "Total", "Observação"])
-    # Rows 6..9: 13o, Ferias+1/3, Subtotal, FGTS 8%, Total Prov = row 10? Let's place rows 6..9 neatly:
-    # row 6: 13o; row 7: Ferias + 1/3; row 8: Subtotal Brutas; row 9: FGTS + Total Provisoes
+    # Rows 6..10: 13o (6), Ferias 1/12 (7), 1/3 Ferias (8), Subtotal Brutas (9), Total + FGTS 8% (10)
     _cell(ws_prov, 6, 1, "13º Salário (1/12)", TXT, "txt")
     _cell(ws_prov, 6, 2, "Salário / 12 se >= 15 dias", TXT, "txt")
     _cell(ws_prov, 6, 3, "=IF(Parametros!C9>=15,ROUND(Parametros!C6/12,2),0)", FX, "brl")
@@ -273,29 +272,36 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
     _cell(ws_prov, 6, 5, "=C6+D6", FX, "brl")
     _cell(ws_prov, 6, 6, "Lei 4.090/1962 art. 1º § 2º", TXT, "txt")
 
-    _cell(ws_prov, 7, 1, "Férias + 1/3 Const.", TXT, "txt")
-    _cell(ws_prov, 7, 2, "(Salário/12) + 1/3 se >= 15 dias", TXT, "txt")
-    _cell(ws_prov, 7, 3, "=IF(Parametros!C9>=15,ROUND(Parametros!C6/12,2)+ROUND(ROUND(Parametros!C6/12,2)/3,2),0)", FX, "brl")
-    _cell(ws_prov, 7, 4, "=IF(Parametros!C10>=15,ROUND(Parametros!C7/12,2)+ROUND(ROUND(Parametros!C7/12,2)/3,2),0)", FX, "brl")
+    _cell(ws_prov, 7, 1, "Férias (1/12)", TXT, "txt")
+    _cell(ws_prov, 7, 2, "Salário / 12 se >= 15 dias", TXT, "txt")
+    _cell(ws_prov, 7, 3, "=IF(Parametros!C9>=15,ROUND(Parametros!C6/12,2),0)", FX, "brl")
+    _cell(ws_prov, 7, 4, "=IF(Parametros!C10>=15,ROUND(Parametros!C7/12,2),0)", FX, "brl")
     _cell(ws_prov, 7, 5, "=C7+D7", FX, "brl")
-    _cell(ws_prov, 7, 6, "CLT art. 146; CF art. 7º XVII", TXT, "txt")
+    _cell(ws_prov, 7, 6, "CLT art. 146", TXT, "txt")
 
-    _cell(ws_prov, 8, 1, "Subtotal Provisões", TXT, "txt", True)
-    _cell(ws_prov, 8, 2, "Base para FGTS s/ Provisões", TXT, "txt")
-    _cell(ws_prov, 8, 3, "=C6+C7", FX, "brl", True)
-    _cell(ws_prov, 8, 4, "=D6+D7", FX, "brl", True)
-    _cell(ws_prov, 8, 5, "=C8+D8", FX, "brl", True)
-    _cell(ws_prov, 8, 6, "R$ 466,67 (somente E1)", TXT, "txt")
+    _cell(ws_prov, 8, 1, "1/3 Constitucional s/ Férias", TXT, "txt")
+    _cell(ws_prov, 8, 2, "Férias (1/12) / 3 se >= 15 dias", TXT, "txt")
+    _cell(ws_prov, 8, 3, "=IF(Parametros!C9>=15,ROUND(C7/3,2),0)", FX, "brl")
+    _cell(ws_prov, 8, 4, "=IF(Parametros!C10>=15,ROUND(D7/3,2),0)", FX, "brl")
+    _cell(ws_prov, 8, 5, "=C8+D8", FX, "brl")
+    _cell(ws_prov, 8, 6, "CF art. 7º XVII", TXT, "txt")
 
-    _cell(ws_prov, 9, 1, "Total Provisões + FGTS 8%", TXT, "txt", True)
-    _cell(ws_prov, 9, 2, "Subtotal + ROUND(8% * Subtotal, 2)", TXT, "txt")
-    _cell(ws_prov, 9, 3, "=C8+ROUND(C8*Parametros!D26,2)", FX, "brl", True)
-    _cell(ws_prov, 9, 4, "=D8+ROUND(D8*Parametros!D26,2)", FX, "brl", True)
+    _cell(ws_prov, 9, 1, "Subtotal Provisões", TXT, "txt", True)
+    _cell(ws_prov, 9, 2, "Base para FGTS s/ Provisões", TXT, "txt")
+    _cell(ws_prov, 9, 3, "=SUM(C6:C8)", FX, "brl", True)
+    _cell(ws_prov, 9, 4, "=SUM(D6:D8)", FX, "brl", True)
     _cell(ws_prov, 9, 5, "=C9+D9", FX, "brl", True)
-    _cell(ws_prov, 9, 6, "R$ 504,00 (466,67 + 37,33 FGTS)", TXT, "txt")
+    _cell(ws_prov, 9, 6, "R$ 466,67 (somente E1)", TXT, "txt")
 
-    # Partidas Dobradas L1..L4 (rows 12..30)
-    _hdr(ws_prov, 11, ["Lote", "D/C", "Conta Contábil", "Histórico Resumido", "Débito (R$)", "Crédito (R$)"], freezes=False)
+    _cell(ws_prov, 10, 1, "Total Provisões + FGTS 8%", TXT, "txt", True)
+    _cell(ws_prov, 10, 2, "Subtotal + ROUND(8% * Subtotal, 2)", TXT, "txt")
+    _cell(ws_prov, 10, 3, "=C9+ROUND(C9*Parametros!D26,2)", FX, "brl", True)
+    _cell(ws_prov, 10, 4, "=D9+ROUND(D9*Parametros!D26,2)", FX, "brl", True)
+    _cell(ws_prov, 10, 5, "=C10+D10", FX, "brl", True)
+    _cell(ws_prov, 10, 6, "R$ 504,00 (466,67 + 37,33 FGTS)", TXT, "txt")
+
+    # Partidas Dobradas L1..L4 (rows 13..33)
+    _hdr(ws_prov, 12, ["Lote", "D/C", "Conta Contábil", "Histórico Resumido", "Débito (R$)", "Crédito (R$)"], freezes=False)
     lotes_fx = [
         ("L1", "D", "4.1.1.01", "Desp. Adm. — Salários (E1)", "=Folha_Set2026!D6", 0.0),
         ("L1", "D", "4.2.1.01", "Desp. Com. — Salários (E2)", "=Folha_Set2026!D7", 0.0),
@@ -313,13 +319,13 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
         ("L3", "D", "4.1.1.06", "Desp. Adm. — Vale-Refeição PAT (E1)", "=Folha_Set2026!F11", 0.0),
         ("L3", "C", "1.1.4.01", "Adiantamentos / Fornecedores VT e VR", 0.0, "=Folha_Set2026!C13+Folha_Set2026!F13"),
         ("L4", "D", "4.1.1.07", "Desp. Adm. — Provisão 13º Salário", "=E6", 0.0),
-        ("L4", "D", "4.1.1.08", "Desp. Adm. — Provisão Férias + 1/3", "=E7", 0.0),
-        ("L4", "D", "4.1.1.09", "Desp. Adm. — FGTS s/ Provisões", "=ROUND(E8*Parametros!D26,2)", 0.0),
+        ("L4", "D", "4.1.1.08", "Desp. Adm. — Provisão Férias + 1/3", "=E7+E8", 0.0),
+        ("L4", "D", "4.1.1.09", "Desp. Adm. — FGTS s/ Provisões", "=ROUND(E9*Parametros!D26,2)", 0.0),
         ("L4", "C", "2.1.2.10", "Provisão para 13º Salário", 0.0, "=E6"),
-        ("L4", "C", "2.1.2.11", "Provisão para Férias e 1/3", 0.0, "=E7"),
-        ("L4", "C", "2.1.2.12", "Provisão de FGTS s/ 13º e Férias", 0.0, "=ROUND(E8*Parametros!D26,2)"),
+        ("L4", "C", "2.1.2.11", "Provisão para Férias e 1/3", 0.0, "=E7+E8"),
+        ("L4", "C", "2.1.2.12", "Provisão de FGTS s/ 13º e Férias", 0.0, "=ROUND(E9*Parametros!D26,2)"),
     ]
-    rp = 12
+    rp = 13
     for lt, dc, cc, hist, deb, cred in lotes_fx:
         _cell(ws_prov, rp, 1, lt, TXT, "txt", True)
         _cell(ws_prov, rp, 2, dc, TXT, "txt", True)
@@ -332,21 +338,21 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
     _cell(ws_prov, rp, 2, "D=C", TXT, "txt", True)
     _cell(ws_prov, rp, 3, "CHECK", TXT, "txt", True)
     _cell(ws_prov, rp, 4, "VERIFICAÇÃO DE PARTIDAS DOBRADAS (D = C)", TXT, "txt", True)
-    _cell(ws_prov, rp, 5, f"=SUM(E12:E{rp-1})", FX, "brl", True)
-    _cell(ws_prov, rp, 6, f"=SUM(F12:F{rp-1})", FX, "brl", True)
+    _cell(ws_prov, rp, 5, f"=SUM(E13:E{rp-1})", FX, "brl", True)
+    _cell(ws_prov, rp, 6, f"=SUM(F13:F{rp-1})", FX, "brl", True)
 
     # Quadro de Conciliacao (9 linhas = 0,00)
     rc_hdr = rp + 2
     _hdr(ws_prov, rc_hdr, ["#", "Rubrica Conciliada", "Folha (Set/2026)", "Contabilidade (L1–L4)", "Diferença (R$)", "Status"], freezes=False)
     conc_rows = [
-        ("1", "Total Proventos Brutos", "=Folha_Set2026!G8", "=E12+E13+E14"),
-        ("2", "Líquido a Pagar (Cenário A)", "=Folha_Set2026!M8", "=F15"),
-        ("3", "INSS Retido (DCTFWeb)", "=Folha_Set2026!I8", "=F16"),
-        ("4", "Contribuição Negocial (CCT)", "=Folha_Set2026!L8", "=F17"),
-        ("5", "FGTS da Folha (FGTS Digital)", "=Folha_Set2026!O8", "=F22"),
-        ("6", "Desconto VT (6% Empregados)", "=Folha_Set2026!K8", "=F18+F19"),
-        ("7", "Subsídio Líquido VT Empresa", "=Folha_Set2026!E13", "=E23+E24-F18-F19"),
-        ("8", "Vale-Refeição Empresa (PAT)", "=Folha_Set2026!F13", "=E25"),
+        ("1", "Total Proventos Brutos", "=Folha_Set2026!G8", "=E13+E14+E15"),
+        ("2", "Líquido a Pagar (Cenário A)", "=Folha_Set2026!M8", "=F16"),
+        ("3", "INSS Retido (DCTFWeb)", "=Folha_Set2026!I8", "=F17"),
+        ("4", "Contribuição Negocial (CCT)", "=Folha_Set2026!L8", "=F18"),
+        ("5", "FGTS da Folha (FGTS Digital)", "=Folha_Set2026!O8", "=F23"),
+        ("6", "Desconto VT (6% Empregados)", "=Folha_Set2026!K8", "=F19+F20"),
+        ("7", "Subsídio Líquido VT Empresa", "=Folha_Set2026!E13", "=E24+E25-F19-F20"),
+        ("8", "Vale-Refeição Empresa (PAT)", "=Folha_Set2026!F13", "=E26"),
         ("9", "Partidas Dobradas (Débitos − Créditos)", f"=E{rp}", f"=F{rp}"),
     ]
     rc = rc_hdr + 1

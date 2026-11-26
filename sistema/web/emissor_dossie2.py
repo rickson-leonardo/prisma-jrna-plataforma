@@ -14,7 +14,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from markupsafe import Markup
 
 from sistema.config import PLATAFORMA_DIR
-from sistema.erp.motor_folha import impacto_exclusao_simples
+from sistema.erp.motor_folha import impacto_exclusao_simples, recalcular_folha_independente_dados
 from sistema.pg.db import conectar_pg
 from sistema.web import rotulos, texto
 from sistema.web.emissor_dossie1 import BRAND_DIR, CSS, JS_ORIENTACAO, WEB_DIR, verificar_pdf
@@ -587,6 +587,14 @@ def html_documento(doc: str, para_web: bool = False, dados: dict[str, Any] | Non
         ctx_extra["exp_ct"] = next((c for c in (d.get("contratos") or []) if c.get("codigo_empregado") == alvo), None)
     elif doc == "d2_12_resumo_contab":
         ctx_extra["conciliacao_d2"] = _conciliacao_doc12(d)
+    elif doc == "d2_13_auditoria":
+        aud = d.get("auditoria") or []
+        ctx_extra["aud_pts"] = [a for a in aud if a.get("tipo_registro") == "papel_trabalho"]
+        ctx_extra["aud_achados"] = [a for a in aud if a.get("tipo_registro") == "achado"]
+        ctx_extra["recalculo_ind"] = (
+            recalcular_folha_independente_dados(comp, d.get("contratos") or [], d.get("parametros") or [], d.get("itens") or [])
+            if comp else []
+        )
 
     return _jinja().get_template("d2_doc.html").render(
         doc=doc, info=info, css=Markup(css), brand=brand, para_web=para_web,
