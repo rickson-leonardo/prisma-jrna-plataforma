@@ -1140,11 +1140,15 @@ def carregar_sustentacao(matriz: str | None = None, apenas_pendentes: bool = Fal
             cur.execute("SELECT * FROM auditoria.diario_ia WHERE empresa_id = %s AND dossie = %s ORDER BY id", (emp_id, cod))
             diario_ia = cur.fetchall()
 
+            cur.execute("SELECT COUNT(*) AS total FROM auditoria.criterio_conformidade WHERE dossie = %s", (cod,))
+            total_criterios = int(cur.fetchone()["total"])
+
         return {
             "empresa": emp,
             "consultas": consultas,
             "decisoes": decisoes,
             "placar": placar,
+            "total_criterios": total_criterios,
             "criterios": criterios,
             "diario_ia": diario_ia,
             "matriz_ativa": matriz,

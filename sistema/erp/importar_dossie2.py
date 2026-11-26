@@ -95,7 +95,7 @@ DOCUMENTOS_D2_ARQUIVOS: tuple[tuple[str, str], ...] = (
     ("d2_15_ia", "15_Declaracao_Uso_Inteligencia_Artificial_e_LGPD.md"),
 )
 
-# 47 criterios oficiais da Devolutiva D2 (P1..P9) — REVISAO_ENTREGA_LIMPA_2026-11-24.md
+# Critérios D2 alinhados à devolutiva oficial no banco (48, incl. C-48); não reimportar.
 CRITERIOS_D2: tuple[tuple[str, str, str, int, str, int, str, str], ...] = (
     # (matriz, bloco, codigo, nota_v1, critica_v1, bloco_peso, descricao, referencia_localizacao)
     ("d2_p1", "P1", "C-01", 2, "CNAEs genericos na v1 e divergencia Matriz x Filial SC nao apontada.", 100, "Objeto, CNAE, denominacao e filial (18x17 CNAEs, 4530-7/02 e 05, risco 4541-2/01, Distribuidora x Distribuicao, Sala 223 x 223 A 32).", "Doc. 01 §1, §3.1, §3.2"),

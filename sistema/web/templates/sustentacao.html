@@ -5,7 +5,8 @@
 <div class="topbar">
   <div>
     <div class="kicker">Estação 5 · Sustentação do {{ 'Dossiê 2' if empresa.dossie == 'D2' else 'Dossiê 1' }}</div>
-    <h2>Sustentação normativa, Matriz IABP ({{ '47 critérios' if empresa.dossie == 'D2' else '200 critérios' }}) e diário de IA</h2>
+    {% set _tot_crit = total_criterios if total_criterios is defined and total_criterios is not none else (placar|sum(attribute='total_itens_aplicaveis') if placar else 0) %}
+    <h2>Sustentação normativa, Matriz IABP ({{ _tot_crit }} critérios) e diário de IA</h2>
     <div class="subtitle">Fundamentação da contadora, autoavaliação das {{ 'matrizes P1–P9' if empresa.dossie == 'D2' else '4 matrizes da disciplina' }} e uso transparente de IA.</div>
   </div>
   <a class="btn btn-primary" href="{{ url_for('emissao') }}">Emitir documentos do {{ 'Dossiê 2' if empresa.dossie == 'D2' else 'Dossiê 1' }}</a>

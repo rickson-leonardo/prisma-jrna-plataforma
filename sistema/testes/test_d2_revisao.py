@@ -209,5 +209,35 @@ def test_historico_lote_l3_dinamico() -> None:
     assert _historico_lote_l3(cts_misto, "2026-09") == "L3 — Apropriação de Benefícios VT (E1 4/dia, E2 2/dia) e VR PAT 09/2026"
 
 
+def test_regua_d2_sem_47_fixo() -> None:
+    sust_html = (TEMPLATES / "sustentacao.html").read_text(encoding="utf-8")
+    base_html = (TEMPLATES / "base.html").read_text(encoding="utf-8")
+    assert "47" not in sust_html
+    assert "47" not in base_html
+
+    imp_src = (Path(__file__).resolve().parents[1] / "erp" / "importar_dossie2.py").read_text(encoding="utf-8")
+    assert "REVISAO_ENTREGA_LIMPA_2026-11-24.md" not in imp_src
+    assert "Critérios D2 alinhados à devolutiva oficial no banco (48, incl. C-48); não reimportar." in imp_src
+
+    app = create_app()
+    app.jinja_env.globals["progresso_estacoes"] = lambda: {}
+    app.jinja_env.globals["dossie_ativo"] = lambda: "D2"
+    with app.test_request_context("/sustentacao"):
+        rendered = app.jinja_env.get_template("sustentacao.html").render(
+            empresa={"dossie": "D2"},
+            placar=[],
+            total_criterios=48,
+            criterios=[],
+            matriz_ativa="d2_p1",
+            apenas_pendentes=False,
+            matrizes_disponiveis=("d2_p1",),
+            consultas=[],
+            decisoes=[],
+            diario_ia=[],
+        )
+    assert "48 critérios" in rendered
+
+
+
 
 
