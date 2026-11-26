@@ -13,7 +13,7 @@
 {% if pend_doc or pendencias_total %}
 <div class="caixa at"><span class="rot">Atenção — pré-visualização com itens não homologados</span>
   <p>Este documento foi emitido diretamente do banco em {{ emitido_em.strftime('%d/%m/%Y às %H:%M') }} com
-  <strong>{{ pend_doc }}</strong> registro(s) deste documento e <strong>{{ pendencias_total }}</strong> registro(s) do Dossiê 1
+  <strong>{{ pend_doc }}</strong> registro(s) deste documento e <strong>{{ pendencias_total }}</strong> registro(s) do {{ info.get('dossie_label', 'Dossiê 1') }}
   ainda em quarentena (pendentes de revisão ou com inconsistência). Os itens afetados estão marcados no corpo do texto.
   Não utilizar como versão final até a homologação pela contadora responsável.</p></div>
 {% else %}
@@ -24,7 +24,7 @@
 {% macro ficha(extra=None) -%}
 <table class="ficha keep">
   <tbody>
-    <tr><td>Documento</td><td>Doc. <span class="mono">{{ info.nn }}</span> — {{ info.curto }} (Dossiê 1)</td></tr>
+    <tr><td>Documento</td><td>Doc. <span class="mono">{{ info.nn }}</span> — {{ info.curto }} ({{ info.get('dossie_label', 'Dossiê 1') }})</td></tr>
     <tr><td>Sociedade</td><td>{{ empresa.razao_social }} {{ marca(empresa.status_validacao) }}</td></tr>
     <tr><td>CNPJ</td><td>{% if cnpj %}<span class="mono">{{ cnpj.valor }}</span>{% if cnpj.eh_ficticio %} — dado didático fictício{% endif %}{% else %}Não cadastrado{% endif %}</td></tr>
     <tr><td>Sede</td><td>{{ sede_txt }}</td></tr>

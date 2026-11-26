@@ -127,7 +127,42 @@ def _fixture_dados_d2() -> dict[str, Any]:
                 "status_validacao": "pendente_revisao",
             },
         ],
-        "parametros": [],
+        "parametros": [
+            {"codigo": "INSS-F1", "categoria": "inss", "ordem": 1, "descricao": "Faixa 1 INSS", "limite_centavos": 162_100, "aliquota_micro": 75_000, "deducao_centavos": None, "valor_centavos": None, "norma_citada": "Portaria MPS/MF nº 13/2026", "link_oficial": "https://www.gov.br/previdencia", "data_consulta": "2026-09-20", "status_validacao": "pendente_revisao"},
+            {"codigo": "INSS-F2", "categoria": "inss", "ordem": 2, "descricao": "Faixa 2 INSS", "limite_centavos": 290_284, "aliquota_micro": 90_000, "deducao_centavos": None, "valor_centavos": None, "norma_citada": "Portaria MPS/MF nº 13/2026", "link_oficial": "https://www.gov.br/previdencia", "data_consulta": "2026-09-20", "status_validacao": "pendente_revisao"},
+            {"codigo": "INSS-F3", "categoria": "inss", "ordem": 3, "descricao": "Faixa 3 INSS", "limite_centavos": 435_427, "aliquota_micro": 120_000, "deducao_centavos": None, "valor_centavos": None, "norma_citada": "Portaria MPS/MF nº 13/2026", "link_oficial": "https://www.gov.br/previdencia", "data_consulta": "2026-09-20", "status_validacao": "pendente_revisao"},
+            {"codigo": "INSS-F4", "categoria": "inss", "ordem": 4, "descricao": "Faixa 4 INSS", "limite_centavos": 847_555, "aliquota_micro": 140_000, "deducao_centavos": None, "valor_centavos": None, "norma_citada": "Portaria MPS/MF nº 13/2026", "link_oficial": "https://www.gov.br/previdencia", "data_consulta": "2026-09-20", "status_validacao": "pendente_revisao"},
+            {"codigo": "IRRF-SIMPLIF", "categoria": "irrf", "ordem": 1, "descricao": "Desconto simplificado mensal", "limite_centavos": None, "aliquota_micro": None, "deducao_centavos": None, "valor_centavos": 60_720, "norma_citada": "Lei nº 14.848/2024", "link_oficial": "https://www.planalto.gov.br", "data_consulta": "2026-09-21", "status_validacao": "pendente_revisao"},
+            {"codigo": "IRRF-DEP", "categoria": "irrf", "ordem": 2, "descricao": "Dedução por dependente", "limite_centavos": None, "aliquota_micro": None, "deducao_centavos": None, "valor_centavos": 18_959, "norma_citada": "RFB 2026", "link_oficial": "https://www.gov.br/receitafederal", "data_consulta": "2026-09-21", "status_validacao": "pendente_revisao"},
+            {"codigo": "IRRF-F1", "categoria": "irrf", "ordem": 3, "descricao": "Faixa isenta IRRF", "limite_centavos": 242_880, "aliquota_micro": 0, "deducao_centavos": 0, "valor_centavos": None, "norma_citada": "RFB 2026", "link_oficial": "https://www.gov.br/receitafederal", "data_consulta": "2026-09-21", "status_validacao": "pendente_revisao"},
+            {"codigo": "RED-ISENTO", "categoria": "reducao_irrf_2026", "ordem": 1, "descricao": "Redução total até R$ 5.000,00", "limite_centavos": 500_000, "aliquota_micro": None, "deducao_centavos": None, "valor_centavos": None, "norma_citada": "Lei nº 15.270/2025", "link_oficial": "https://www.planalto.gov.br", "data_consulta": "2026-09-22", "status_validacao": "pendente_revisao"},
+            {"codigo": "SF-2026", "categoria": "salario_familia", "ordem": 1, "descricao": "Cota Salário-Família 2026", "limite_centavos": 198_038, "aliquota_micro": None, "deducao_centavos": None, "valor_centavos": 6_754, "norma_citada": "Portaria MPS/MF nº 13/2026", "link_oficial": "https://www.gov.br/previdencia", "data_consulta": "2026-09-20", "status_validacao": "pendente_revisao"},
+            {"codigo": "FGTS-8", "categoria": "fgts", "ordem": 1, "descricao": "Alíquota mensal FGTS", "limite_centavos": None, "aliquota_micro": 80_000, "deducao_centavos": None, "valor_centavos": None, "norma_citada": "Lei nº 8.036/1990", "link_oficial": "https://www.planalto.gov.br", "data_consulta": "2026-09-20", "status_validacao": "pendente_revisao"},
+            {"codigo": "CCT-VT-MISTO", "categoria": "cct_clausula", "ordem": 1, "descricao": "Teto base salário misto VT", "limite_centavos": 225_750, "aliquota_micro": None, "deducao_centavos": None, "valor_centavos": None, "norma_citada": "CCT SRT00189/2025 Cl. 6ª", "link_oficial": None, "data_consulta": "2026-09-23", "status_validacao": "pendente_revisao"},
+            {"codigo": "CCT-NEGOCIAL", "categoria": "cct_clausula", "ordem": 2, "descricao": "Contribuição Negocial CCT", "limite_centavos": 14_800, "aliquota_micro": 33_300, "deducao_centavos": None, "valor_centavos": None, "norma_citada": "CCT Adit. 2026/2027 Cl. 11ª", "link_oficial": None, "data_consulta": "2026-09-23", "status_validacao": "pendente_revisao"},
+        ],
+        "requisitos": [
+            {"codigo": "D2-P1", "ordem": 1, "descricao": "Diagnóstico Societário e Análise da 2ª Alteração", "documentos_json": ["d2_00_indice", "d2_01_diagnostico"]},
+            {"codigo": "D2-P3", "ordem": 3, "descricao": "Comunicação de Onboarding, Checklist DOC-01..13, Q1..Q9 e PEND-01..08", "documentos_json": ["d2_05_onboarding"]},
+            {"codigo": "D2-P4", "ordem": 4, "descricao": "Prontuários E1 e E2, eSocial e Fichas", "documentos_json": ["d2_06_prontuario", "d2_07_ficha_e1", "d2_09_ficha_e2"]},
+            {"codigo": "D2-P8", "ordem": 8, "descricao": "Premissas Adotadas PR-01..18", "documentos_json": ["d2_14_premissas"]},
+            {"codigo": "D2-P9", "ordem": 9, "descricao": "Declaração de Uso de IA e LGPD", "documentos_json": ["d2_15_ia"]},
+        ],
+        "diligencias": [
+            {"id": 1, "tipo": "documento", "codigo": "DOC-01", "ator": "cliente", "tema": "Societário", "enunciado": "2ª Alteração Contratual consolidada", "resposta_literal": None, "fonte_evidencia": "Anexo I", "data_interacao": "2026-09-14", "responsavel": "Sócios Rota Sul", "prazo_texto": "Imediato", "risco": "alto", "status_item": "concluido", "status_validacao": "homologado_contadora"},
+            {"id": 2, "tipo": "pergunta", "codigo": "Q1", "ator": "cliente", "tema": "Capital", "enunciado": "Houve integralização dos R$ 500 mil?", "resposta_literal": "Não houve integralização até o momento.", "fonte_evidencia": "Solicitação_JRNA.pdf", "data_interacao": "2026-09-18", "responsavel": "Helena Duarte", "prazo_texto": "Respondido", "risco": "critico", "status_item": "concluido", "status_validacao": "pendente_revisao"},
+            {"id": 3, "tipo": "pendencia", "codigo": "PEND-01", "ator": "cliente", "tema": "SST / eSocial", "enunciado": "Coleta dos ASOs admissionais E1 e E2", "resposta_literal": "Agendar exame clínico NR-7", "fonte_evidencia": "Onboarding", "data_interacao": None, "responsavel": "Diretoria Rota Sul", "prazo_texto": "05/10/2026", "risco": "critico", "status_item": "pendente_critico", "status_validacao": "alerta_inconsistencia"},
+        ],
+        "esocial": [
+            {"id": 1, "codigo_evento": "S-2200", "codigo_empregado": "E1", "nome_evento": "Admissão E1 (Mariana)", "competencia": "2026-09", "prazo_legal": "Até 15/09/2026", "status_envio": "aguardando_insumo", "numero_recibo": None, "status_validacao": "pendente_revisao"},
+            {"id": 2, "codigo_evento": "S-2220", "codigo_empregado": "E1", "nome_evento": "ASO Admissional E1", "competencia": "2026-09", "prazo_legal": "Até 15/10/2026", "status_envio": "pendente", "numero_recibo": None, "status_validacao": "alerta_inconsistencia"},
+        ],
+        "consultas": [
+            {"id": 1, "numero_questao": 1, "enunciado": "PR-01 — Enquadramento Simples Nacional", "resposta_autoral": "Anexo I sem CPP em folha.", "decisao_impactada": "Docs. 11, 12, 13", "norma_citada": "LC 123/2006", "link_oficial": "https://www.planalto.gov.br", "data_acesso": "2026-09-20", "responsavel_decisao": "RT PRISMA", "prazo_decisao": "30/09/2026", "impacto_se_alterada": "Altera encargos da folha", "status_validacao": "pendente_revisao"},
+        ],
+        "diario_ia": [
+            {"id": 1, "entregavel": "Doc. 05", "ferramenta": "Antigravity (Gemini 4)", "finalidade": "Organização de checklist e respostas literais", "prompt_resumo": "Tabular DOC-01..13 e Q1..Q9 sem inventar evidência.", "fonte_oficial": "Estudo de Caso 02 e respostas da diretoria", "revisao_humana": "Conferido item a item pela contadora.", "status_validacao": "pendente_revisao"},
+        ],
         "comp": {
             "id": 1,
             "competencia": "2026-09",
@@ -273,6 +308,25 @@ def test_d2_regra_texto_residuo_pura() -> None:
     achados = detectar_residuos_texto_d2(secoes_sujas, [])
     padroes = {a["padrao"] for a in achados}
     assert {"[INSERIR", "[cite", "1.555/2018", "TODO", "XX.XXX", "???"} <= padroes
+
+
+def test_d2_quadros_fase2() -> None:
+    dados = _fixture_dados_d2()
+    esperados = {
+        "d2_00_indice": ("Tabela 1 — Produtos do Estudo de Caso", "D2-P1", "Tabela 2 — Quarentena"),
+        "d2_05_onboarding": ("Tabela 1 — Checklist de documentos", "DOC-01", "Não houve integralização", "PEND-01"),
+        "d2_06_prontuario": ("Tabela 1 — Índice do prontuário", "S-2200", "Não transmitido", "Pendente crítico (sem ASO)"),
+        "d2_07_ficha_e1": ("Tabela 1 — Dados de registro do empregado E1", "4110-05", "1h48", "1.722,25"),
+        "d2_09_ficha_e2": ("Tabela 1 — Dados de registro do empregado E2", "5211-10", "2h00", "1.863,00"),
+        "d2_14_premissas": ("Tabela 1 — Premissas adotadas", "PR-01", "Tabela 2 — Quadro de decisões", "Tabela 3 — Tabelas oficiais"),
+        "d2_15_ia": ("Tabela 1 — Diário transparente de uso de IA", "Tabular DOC-01..13", "Conferido item a item pela contadora."),
+    }
+    for doc, trechos in esperados.items():
+        html = html_documento(doc, para_web=True, dados=dados)
+        assert "Dossiê 2" in html, doc
+        assert "(Dossiê 1)" not in html and "do Dossiê 1" not in html, doc
+        for tr in trechos:
+            assert tr in html, f"{doc}: trecho esperado ausente: {tr!r}"
 
 
 @pytest.mark.skipif(not _pg_disponivel(), reason=f"PostgreSQL indisponivel ({ENV_PATH}).")

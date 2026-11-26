@@ -79,8 +79,8 @@ Usar `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`. Não alterar CHECKs existentes.
 Regra geral: no `d2_doc.html`, **depois** do resumo executivo e **antes/depois** das seções narrativas conforme indicado, renderizar os quadros abaixo com `<p class="tt">Tabela N — …</p>`, `<table>` e `<p class="fonte">Fonte: <tabela do banco></p>` (padrão do D1). Valores monetários com `brl_tab`; vazio = "—". Cada quadro mostra o `badge(status_validacao)` por linha quando a tabela tiver esse campo.
 
 ### Doc 00 — Índice (`d2_00_indice`)
-- [ ] Quadro **Produtos 1–9 × documentos**: produto (texto do Estudo de Caso), documentos que o atendem (de `erp.requisito.documentos_json`), nº de registros homologados / total por documento.
-- [ ] Quadro **Quarentena por módulo** (já carregado em `quarentena`) — reaproveitar o padrão do índice do D1.
+- [x] Quadro **Produtos 1–9 × documentos**: produto (texto do Estudo de Caso), documentos que o atendem (de `erp.requisito.documentos_json`), nº de registros homologados / total por documento.
+- [x] Quadro **Quarentena por módulo** (já carregado em `quarentena`) — reaproveitar o padrão do índice do D1.
 
 ### Doc 01 — Diagnóstico societário (P1)
 - [ ] **Identificação do cliente**: razão social, nome fantasia, natureza jurídica; **matriz e filial** (CNPJ, NIRE quando houver em `pessoa_identificador`, endereço, município/UF); sócios com quotas e % (`participacao_societaria`); capital (integralizado × a integralizar).
@@ -94,17 +94,17 @@ Regra geral: no `d2_doc.html`, **depois** do resumo executivo e **antes/depois**
 - [ ] Doc 04 (termo RT): **rol de pendências do onboarding** = `diligencia_item` com `tipo='pendencia'` e status ≠ concluído (código, pendência, risco, responsável, prazo).
 
 ### Doc 05 — Onboarding (P3)
-- [ ] **Checklist de documentos** (`tipo='documento'`): código, documento/finalidade (`enunciado`), ator, tema, responsável, prazo, status.
-- [ ] **Perguntas e respostas** (`tipo='pergunta'`): código, pergunta, **resposta literal**, **origem** (`fonte_evidencia`), data da interação, status.
-- [ ] **Quadro de pendências** (`tipo='pendencia'`): código, pendência, risco, responsável, prazo, providência, status.
+- [x] **Checklist de documentos** (`tipo='documento'`): código, documento/finalidade (`enunciado`), ator, tema, responsável, prazo, status.
+- [x] **Perguntas e respostas** (`tipo='pergunta'`): código, pergunta, **resposta literal**, **origem** (`fonte_evidencia`), data da interação, status.
+- [x] **Quadro de pendências** (`tipo='pendencia'`): código, pendência, risco, responsável, prazo, providência, status.
 
 ### Doc 06 — Prontuário e eSocial (P4)
-- [ ] **Índice do prontuário por empregado**: para E1 e E2, cada item de `docs_admissionais_json` com status real (entregue / pendente / não aplicável). ASO com `aso_status` e `aso_observacao` — **nunca** marcado como entregue se o banco disser pendente.
-- [ ] **Roteiro eSocial** (`esocial_evento`, por empregado): evento, nome, competência, prazo legal, status de envio, **nº do recibo ou "não transmitido"**. Proibido exibir recibo inexistente.
-- [ ] **Termos de VT e VR**: optante, passagens/dia, tarifa, elegível VR, valor/dia (de `contrato_trabalho`).
+- [x] **Índice do prontuário por empregado**: para E1 e E2, cada item de `docs_admissionais_json` com status real (entregue / pendente / não aplicável). ASO com `aso_status` e `aso_observacao` — **nunca** marcado como entregue se o banco disser pendente.
+- [x] **Roteiro eSocial** (`esocial_evento`, por empregado): evento, nome, competência, prazo legal, status de envio, **nº do recibo ou "não transmitido"**. Proibido exibir recibo inexistente.
+- [x] **Termos de VT e VR**: optante, passagens/dia, tarifa, elegível VR, valor/dia (de `contrato_trabalho`).
 
 ### Docs 07 e 09 — Fichas de registro (P4)
-- [ ] **Ficha gerada de `contrato_trabalho`**: nome (fictício), CPF (fictício), cargo, CBO, departamento, estabelecimento, admissão, salário, **piso da CCT e referência** (`piso_cct_centavos`, `cct_referencia`), jornada (`jornada_descricao`, `jornada_semanal_horas`, `intervalo_minutos` mostrado em h:min), VT, VR, dependentes (IRRF e salário-família), ASO.
+- [x] **Ficha gerada de `contrato_trabalho`**: nome (fictício), CPF (fictício), cargo, CBO, departamento, estabelecimento, admissão, salário, **piso da CCT e referência** (`piso_cct_centavos`, `cct_referencia`), jornada (`jornada_descricao`, `jornada_semanal_horas`, `intervalo_minutos` mostrado em h:min), VT, VR, dependentes (IRRF e salário-família), ASO.
 
 ### Docs 08 e 10 — Contratos de experiência (P4)
 - [ ] **Quadro-resumo no topo**, de `contrato_trabalho`: prazos (`experiencia_dias_1` + `experiencia_dias_2`), salário, comissão (% de `comissao_pct_micro`), jornada e intervalo. As cláusulas seguem nas seções narrativas.
@@ -123,12 +123,12 @@ Regra geral: no `d2_doc.html`, **depois** do resumo executivo e **antes/depois**
 - [ ] **Achados AUD-01…AUD-10** (`tipo_registro='achado'`): código, achado, evidência, risco, valor (V1 × recalculado), correção, responsável, prazo, situação.
 
 ### Doc 14 — Premissas (P8)
-- [ ] **Registro numerado PR-01…PR-18** (`consulta_normativa`, `dossie='D2'`, ordem por `numero_questao`): premissa (`enunciado`), decisão e motivo (`resposta_autoral`), documentos impactados (`decisao_impactada`), fonte (`norma_citada`), link e data de acesso.
-- [ ] **Quadro de decisões e pendências**: premissa, quem decide (`responsavel_decisao`), prazo (`prazo_decisao`), impacto se alterada (`impacto_se_alterada`).
-- [ ] **Tabelas oficiais usadas** (`parametro_legal` por categoria): INSS (faixas e alíquotas), IRRF (faixas, deduções, redução 2026), salário-família, FGTS, cláusulas da CCT — cada linha com norma, link e data de consulta.
+- [x] **Registro numerado PR-01…PR-18** (`consulta_normativa`, `dossie='D2'`, ordem por `numero_questao`): premissa (`enunciado`), decisão e motivo (`resposta_autoral`), documentos impactados (`decisao_impactada`), fonte (`norma_citada`), link e data de acesso.
+- [x] **Quadro de decisões e pendências**: premissa, quem decide (`responsavel_decisao`), prazo (`prazo_decisao`), impacto se alterada (`impacto_se_alterada`).
+- [x] **Tabelas oficiais usadas** (`parametro_legal` por categoria): INSS (faixas e alíquotas), IRRF (faixas, deduções, redução 2026), salário-família, FGTS, cláusulas da CCT — cada linha com norma, link e data de consulta.
 
 ### Doc 15 — Declaração de IA e LGPD (P9)
-- [ ] Mesmo padrão do `ia.html` do D1, filtrando `diario_ia` por `dossie='D2'`: entregável, ferramenta, **finalidade**, **comandos resumidos** (`prompt_resumo`), **verificação em fonte oficial** (`fonte_oficial`), **revisão humana**, situação. Manter as seções narrativas (LGPD) e as assinaturas.
+- [x] Mesmo padrão do `ia.html` do D1, filtrando `diario_ia` por `dossie='D2'`: entregável, ferramenta, **finalidade**, **comandos resumidos** (`prompt_resumo`), **verificação em fonte oficial** (`fonte_oficial`), **revisão humana**, situação. Manter as seções narrativas (LGPD) e as assinaturas.
 
 ## 5. Motor, regras de auditoria e telas
 
@@ -168,7 +168,7 @@ Montar no teste um dicionário `dados` no formato de `carregar_dados_dossie2()` 
 
 - [ ] **Fase 0 — Pré-requisito do revisor:** aplicar a migração 008 em produção via MCP (colunas novas e opcionais; não afeta o código atual) antes de o executor precisar ler as colunas novas na prévia da Vercel.
 - [x] **Fase 1 — Base:** branch, arquivo da migração 008 (só o arquivo; quem aplica é o revisor), remoção das constantes, cenário B calculado, regra `D2_TEXTO_RESIDUO`. Testes: `test_d2_documentos_sem_constantes`, `test_d2_cenario_b` + suíte existente.
-- [ ] **Fase 2 — Docs 00, 05, 06, 07, 09, 14, 15** (dados já completos no banco). Testes de quadros.
+- [x] **Fase 2 — Docs 00, 05, 06, 07, 09, 14, 15** (dados já completos no banco). Testes de quadros.
 - [ ] **Fase 3 — Docs 01, 02, 03, 04, 08, 10** + regras `D2_PROPOSTA_CONTRATO_DIVERGENTE` e `D2_SALARIO_ABAIXO_PISO` + telas da Seção 5.4.
 - [ ] **Fase 4 — Doc 13 + recálculo independente + separação férias/1/3 + regra `D2_RECALCULO_DIVERGENTE`** (planilha `.xlsx` ajustada se preciso).
 - [ ] **Fase 5 — Verificação final:** suíte completa (puros passando, de banco pulados), push do branch, conferência na **prévia da Vercel** das prévias dos 16 documentos + `.xlsx` (sem salvar nada), conferência visual de 3 documentos (01, 06, 13), registro no Diário (Seção 11) com o resumo dos commits e a URL da prévia.
@@ -319,8 +319,8 @@ Montar no teste um dicionário `dados` no formato de `carregar_dados_dossie2()` 
 
 | Fase | Data | Commits | Testes | Observações |
 |---|---|---|---|---|
-| 1 | 26/11/2026 | `feat(d2): fase 1` (ver hash) | `pytest sistema/testes -q`: 29 passed, 23 skipped | Branch `feat/d2-documentos-vivos`, migração 008, remoção de constantes, `impacto_exclusao_simples`, `LIQUIDO_B` dinâmico e `detectar_residuos_texto_d2`. |
-| 2 | | | | |
+| 1 | 26/11/2026 | `87f754f` | `pytest sistema/testes -q`: 29 passed, 23 skipped | Branch `feat/d2-documentos-vivos`, migração 008, remoção de constantes, `impacto_exclusao_simples`, `LIQUIDO_B` dinâmico e `detectar_residuos_texto_d2`. |
+| 2 | 26/11/2026 | `feat(d2): fase 2` (ver hash) | `pytest sistema/testes -q`: 30 passed, 23 skipped | Quadros vivos dos Docs 00, 05, 06, 07, 09, 14 e 15; correção de `dossie_label` em `_m.html`; testes puros `test_d2_quadros_fase2`. |
 | 3 | | | | |
 | 4 | | | | |
 | 5 | | | | |

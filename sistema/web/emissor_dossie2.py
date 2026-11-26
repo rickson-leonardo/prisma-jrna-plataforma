@@ -115,6 +115,37 @@ def carregar_dados_dossie2() -> dict[str, Any]:
 
         cur.execute(
             """
+            SELECT * FROM erp.requisito
+            WHERE dossie_id = (SELECT id FROM erp.dossie WHERE codigo = 'D2')
+              AND documentos_json IS NOT NULL
+            ORDER BY ordem, id
+            """
+        )
+        requisitos = cur.fetchall()
+
+        cur.execute("SELECT * FROM erp.diligencia_item WHERE empresa_id = %s ORDER BY ordem, id", (emp_id,))
+        diligencias = cur.fetchall()
+
+        cur.execute(
+            """
+            SELECT ev.*, ct.codigo_empregado, ct.nome_empregado
+            FROM erp.esocial_evento ev
+            LEFT JOIN erp.contrato_trabalho ct ON ct.id = ev.contrato_trabalho_id
+            WHERE ev.empresa_id = %s
+            ORDER BY ev.ordem, ev.id
+            """,
+            (emp_id,),
+        )
+        esocial = cur.fetchall()
+
+        cur.execute("SELECT * FROM erp.consulta_normativa WHERE empresa_id = %s AND dossie = 'D2' ORDER BY numero_questao, id", (emp_id,))
+        consultas = cur.fetchall()
+
+        cur.execute("SELECT * FROM auditoria.diario_ia WHERE empresa_id = %s AND dossie = 'D2' ORDER BY id", (emp_id,))
+        diario_ia = cur.fetchall()
+
+        cur.execute(
+            """
             SELECT rt.nome_canonico AS rt_nome,
                    (SELECT pi.valor FROM erp.pessoa_identificador pi WHERE pi.pessoa_id = rt.id AND pi.tipo_id = 'CRC' LIMIT 1) AS rt_crc
             FROM erp.empresa e
@@ -138,6 +169,11 @@ def carregar_dados_dossie2() -> dict[str, Any]:
         "quarentena": quarentena,
         "pendencias_total": sum(int(q["pendentes"]) + int(q["inconsistencias"]) for q in quarentena),
         "secoes": secoes,
+        "requisitos": requisitos,
+        "diligencias": diligencias,
+        "esocial": esocial,
+        "consultas": consultas,
+        "diario_ia": diario_ia,
         "rt": {"nome": rt["rt_nome"], "crc": rt["rt_crc"]},
     }
 
@@ -200,6 +236,127 @@ def _md_vivo_d2(d: dict[str, Any]):
 _env: Environment | None = None
 
 
+def _fmt_hhmm(minutos: int | None) -> str:
+    if minutos is None:
+        return "—"
+    m = int(minutos)
+    return f"{m // 60}h{m % 60:02d}"
+
+
+def _fmt_data(val: Any) -> str:
+    if not val:
+        return "—"
+    if hasattr(val, "strftime"):
+        return val.strftime("%d/%m/%Y")
+    s = str(val).strip()
+    m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", s[:10])
+    return f"{m.group(3)}/{m.group(2)}/{m.group(1)}" if m else s
+
+
+def _normalizar_docs_admissao(ct: dict[str, Any]) -> list[dict[str, str]]:
+    pecas: list[dict[str, str]] = []
+    tem_aso = False
+    for raw in ct.get("docs_admissionais_json") or []:
+        if isinstance(raw, dict):
+            nome = str(raw.get("documento") or raw.get("nome") or raw.get("peca") or "Documento")
+            if "aso" in nome.lower():
+                tem_aso = True
+                continue
+            st = str(raw.get("status") or "entregue")
+            obs = str(raw.get("observacao") or "—")
+            pecas.append({"peca": nome, "status": st, "observacao": obs})
+        else:
+            nome = str(raw)
+            if "aso" in nome.lower():
+                tem_aso = True
+                continue
+            obs = "Série didática (PR-18)" if "fict" in nome.lower() else "Listada no prontuário"
+            pecas.append({"peca": nome, "status": "Entregue (prontuário)", "observacao": obs})
+    aso_st = str(ct.get("aso_status") or "pendente_critico")
+    pecas.append({
+        "peca": "ASO Admissional (NR-7 / eSocial S-2220)",
+        "status": rotulos.rotulo(aso_st, "aso_status"),
+        "observacao": str(ct.get("aso_observacao") or "—") if (tem_aso or aso_st != "apto" or ct.get("aso_observacao")) else "—",
+    })
+    return pecas
+
+
+def _registros_por_doc(doc: str, d: dict[str, Any]) -> list[dict[str, Any]]:
+    regs: list[dict[str, Any]] = list(d.get("secoes", {}).get(doc, []))
+    if doc == "d2_01_diagnostico":
+        regs.extend(d.get("clausulas_d2") or [])
+    elif doc == "d2_02_proposta":
+        regs.extend(c for c in (d.get("contratos_servico") or []) if c.get("codigo_documento") == "proposta")
+    elif doc == "d2_03_contrato":
+        regs.extend(c for c in (d.get("contratos_servico") or []) if c.get("codigo_documento") in ("contrato", "procuracao"))
+    elif doc == "d2_04_termo_rt":
+        regs.extend(c for c in (d.get("contratos_servico") or []) if c.get("codigo_documento") == "termo_rt")
+    elif doc == "d2_05_onboarding":
+        regs.extend(d.get("diligencias") or [])
+    elif doc == "d2_06_prontuario":
+        regs.extend(d.get("contratos") or [])
+        regs.extend(d.get("esocial") or [])
+    elif doc in ("d2_07_ficha_e1", "d2_08_exp_e1"):
+        regs.extend(c for c in (d.get("contratos") or []) if c.get("codigo_empregado") == "E1")
+    elif doc in ("d2_09_ficha_e2", "d2_10_exp_e2"):
+        regs.extend(c for c in (d.get("contratos") or []) if c.get("codigo_empregado") == "E2")
+    elif doc == "d2_11_folha":
+        if d.get("comp"):
+            regs.append(d["comp"])
+        regs.extend(d.get("itens") or [])
+    elif doc == "d2_12_resumo_contab":
+        if d.get("comp"):
+            regs.append(d["comp"])
+    elif doc == "d2_13_auditoria":
+        regs.extend(d.get("auditoria") or [])
+    elif doc == "d2_14_premissas":
+        regs.extend(d.get("consultas") or [])
+        regs.extend(d.get("parametros") or [])
+    elif doc == "d2_15_ia":
+        regs.extend(d.get("diario_ia") or [])
+    return regs
+
+
+def _contagem_doc(doc: str, d: dict[str, Any]) -> tuple[int, int, int]:
+    regs = _registros_por_doc(doc, d)
+    homol = sum(1 for r in regs if r.get("status_validacao") == "homologado_contadora")
+    pend = sum(1 for r in regs if r.get("status_validacao") not in ("homologado_contadora", "acervo_referencia"))
+    return homol, len(regs), pend
+
+
+def _produtos_doc00(d: dict[str, Any]) -> list[dict[str, Any]]:
+    saida: list[dict[str, Any]] = []
+    for req in d.get("requisitos") or []:
+        docs_lista = []
+        homol_p = 0
+        total_p = 0
+        for dk in req.get("documentos_json") or []:
+            info = DOCUMENTOS.get(dk)
+            if not info:
+                continue
+            h, t, _ = _contagem_doc(dk, d)
+            homol_p += h
+            total_p += t
+            docs_lista.append({"doc": dk, "nn": info["nn"], "curto": info["curto"], "homologados": h, "total": t})
+        saida.append({
+            "codigo": req.get("codigo") or "—",
+            "descricao": req.get("descricao") or "—",
+            "docs": docs_lista,
+            "homologados_total": homol_p,
+            "total_registros": total_p,
+        })
+    return saida
+
+
+def _parametros_por_categoria(parametros: list[dict[str, Any]]) -> list[tuple[str, list[dict[str, Any]]]]:
+    ordem_cats = ("inss", "irrf", "reducao_irrf_2026", "salario_familia", "fgts", "cct_clausula")
+    grupos: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for p in parametros:
+        grupos[str(p.get("categoria") or "outros")].append(p)
+    cats = [c for c in ordem_cats if c in grupos] + [c for c in grupos if c not in ordem_cats]
+    return [(c, grupos[c]) for c in cats]
+
+
 def _jinja() -> Environment:
     global _env
     if _env is None:
@@ -236,17 +393,52 @@ def html_documento(doc: str, para_web: bool = False, dados: dict[str, Any] | Non
             "custo": mk["CUSTO_SIMPLES"],
             "partidas": mk["PARTIDAS_DOBRADAS"],
         }
+
+    _, _, pend_doc_calc = _contagem_doc(doc, d)
+    pend_doc = d["pendencias_total"] if doc == "d2_00_indice" else pend_doc_calc
+    cnpj_info = {"valor": sede["cnpj"], "eh_ficticio": True} if sede.get("cnpj") else None
+
+    ctx_extra: dict[str, Any] = {}
+    if doc == "d2_00_indice":
+        ctx_extra["produtos_d2"] = _produtos_doc00(d)
+        ctx_extra["quarentena"] = d.get("quarentena") or []
+    elif doc == "d2_05_onboarding":
+        dils = d.get("diligencias") or []
+        ctx_extra["dil_docs"] = [x for x in dils if x.get("tipo") == "documento"]
+        ctx_extra["dil_pergs"] = [x for x in dils if x.get("tipo") == "pergunta"]
+        ctx_extra["dil_pends"] = [x for x in dils if x.get("tipo") == "pendencia"]
+    elif doc == "d2_06_prontuario":
+        cts = d.get("contratos") or []
+        ctx_extra["prontuarios"] = [{"ct": ct, "pecas": _normalizar_docs_admissao(ct)} for ct in cts]
+        ctx_extra["esocial"] = d.get("esocial") or []
+        ctx_extra["contratos_dp"] = cts
+    elif doc in ("d2_07_ficha_e1", "d2_09_ficha_e2"):
+        alvo = "E1" if doc == "d2_07_ficha_e1" else "E2"
+        ct = next((c for c in (d.get("contratos") or []) if c.get("codigo_empregado") == alvo), None)
+        est = None
+        if ct and ct.get("estabelecimento_id"):
+            est = next((e for e in (d.get("estabelecimentos") or []) if e.get("id") == ct.get("estabelecimento_id")), None)
+        ctx_extra["ficha_ct"] = ct
+        ctx_extra["ficha_estab"] = est or sede
+    elif doc == "d2_14_premissas":
+        ctx_extra["premissas"] = d.get("consultas") or []
+        ctx_extra["parametros_grupos"] = _parametros_por_categoria(d.get("parametros") or [])
+    elif doc == "d2_15_ia":
+        ctx_extra["diario_ia"] = d.get("diario_ia") or []
+
     return _jinja().get_template("d2_doc.html").render(
         doc=doc, info=info, css=Markup(css), brand=brand, para_web=para_web,
-        js_orientacao=Markup(JS_ORIENTACAO), empresa=d["empresa"], rt=d["rt"],
-        pend_doc=d["pendencias_total"], pendencias_total=d["pendencias_total"],
+        js_orientacao=Markup(JS_ORIENTACAO), empresa=d["empresa"], rt=d["rt"], cnpj=cnpj_info,
+        pend_doc=pend_doc, pendencias_total=d["pendencias_total"],
         emitido_em=d["emitido_em"], socios=[],
         sede_txt=f"{sede.get('endereco') or '—'} — {sede.get('municipio') or 'Goiânia'}/{sede.get('uf') or 'GO'}",
         secoes=d["secoes"].get(doc, []), md=_md_vivo_d2(d), rot=rotulos.rotulo,
         brl=texto.brl, brl_tab=texto.brl_tab, pct=texto.pct_micro, num=texto.num_br,
+        fmt_hhmm=_fmt_hhmm, fmt_data=_fmt_data,
         resumo_executivo=resumo_exec,
         extra_rubricas=d["itens"] if doc == "d2_11_folha" else None,
         extra_partidas=d["partidas"] if doc == "d2_12_resumo_contab" else None,
+        **ctx_extra,
     )
 
 
