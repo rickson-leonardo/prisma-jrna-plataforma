@@ -4,7 +4,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from sistema.erp.motor_folha import detectar_residuos_texto_d2
+from sistema.testes.test_web_dossie2 import _fixture_dados_d2
 from sistema.web.app import create_app
+from sistema.web.emissor_dossie2 import html_documento
 
 TEMPLATES = Path(__file__).resolve().parents[1] / "web" / "templates"
 
@@ -48,3 +50,21 @@ def test_instrumentos_d2_sem_risco_pre_selecionado() -> None:
     assert "or 'formal'" not in html and "or 'medio'" not in html
     assert "'risco_tipo', 'formal')" not in html and "'risco_nivel', 'medio')" not in html
     assert html.count("'— não classificado —'") == 4
+
+
+def test_pdf_sem_fallback_providencia_e_impacto() -> None:
+    dados = _fixture_dados_d2()
+    dados["clausulas_d2"][0]["providencia"] = None
+    dados["clausulas_d2"][0]["apontamento_auditoria"] = "NOTA-X"
+    html_doc01 = html_documento("d2_01_diagnostico", para_web=True, dados=dados)
+    assert "NOTA-X" not in html_doc01
+
+    dados["consultas"][0]["impacto_se_alterada"] = None
+    dados["consultas"][0]["decisao_impactada"] = "DEC-Y"
+    html_doc14 = html_documento("d2_14_premissas", para_web=True, dados=dados)
+    ini_t2 = html_doc14.index("Tabela 2 — Quadro de decisões")
+    fim_t2 = html_doc14.index("Tabela 3 — Tabelas oficiais")
+    tabela2 = html_doc14[ini_t2:fim_t2]
+    assert "DEC-Y" in html_doc14[:ini_t2]
+    assert "DEC-Y" not in tabela2
+

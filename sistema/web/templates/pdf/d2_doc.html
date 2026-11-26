@@ -115,7 +115,7 @@
             <td><strong>{{ cl.titulo }}</strong><br>{{ cl.regra_texto }}</td>
             <td>{{ rot(cl.get('risco_tipo'), 'risco_tipo') if cl.get('risco_tipo') else '—' }} / {{ rot(cl.get('risco_nivel'), 'risco_nivel') if cl.get('risco_nivel') else '—' }}</td>
             <td>{{ cl.get('fundamento_legal') or '—' }}</td>
-            <td>{{ cl.get('providencia') or cl.apontamento_auditoria or '—' }}</td>
+            <td>{{ cl.get('providencia') or '—' }}</td>
             <td>{{ m.badge(cl.status_validacao) }}</td>
           </tr>
         {% endfor %}
@@ -130,7 +130,7 @@
         {% for cl in clausulas_d2 %}
           <tr>
             <td class="mono">{{ cl.numero_clausula }}</td>
-            <td>{{ cl.get('providencia') or cl.apontamento_auditoria or '—' }}</td>
+            <td>{{ cl.get('providencia') or '—' }}</td>
             <td>{{ cl.get('responsavel') or '—' }}</td>
             <td>{{ cl.get('prazo_texto') or '—' }}</td>
             <td>{{ m.badge(cl.status_validacao) }}</td>
@@ -438,7 +438,7 @@
             <td>{{ q.enunciado }}</td>
             <td>{{ q.get('responsavel_decisao') or '—' }}</td>
             <td>{{ q.get('prazo_decisao') or '—' }}</td>
-            <td>{{ q.get('impacto_se_alterada') or q.decisao_impactada or '—' }}</td>
+            <td>{{ q.get('impacto_se_alterada') or '—' }}</td>
             <td>{{ m.badge(q.status_validacao) }}</td>
           </tr>
         {% endfor %}
