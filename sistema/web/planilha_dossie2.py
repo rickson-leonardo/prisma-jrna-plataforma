@@ -137,8 +137,8 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
         ("DIAS-E2", "Dias trabalhados na competência — E2 (21 a 30/09)", int(fc.get("dias_trabalhados_e2") or 10), None, "int", None, "Admissão 21/09/2026"),  # row 10
         ("VENDAS-E2", "Vendas líquidas de E2 em 09/2026 (premissa PR-07)", _r(fc.get("vendas_liquidas_e2_centavos")), _p(e2.get("comissao_pct_micro")), "brl", "pct", "Contrato E2 Cl. 3ª (1,50%)"),  # row 11
         ("DSR-E2", "Dias úteis comissão (9) / Domingos no período (1)", int(fc.get("dias_uteis_comissao_e2") or 9), int(fc.get("domingos_feriados_e2") or 1), "int", "int", "Lei 605/1949; Súmula 27 TST (27/09)"),  # row 12
-        ("VT-E1", "VT E1: dias úteis / passagens por dia", int(fc.get("dias_uteis_vt_e1") or 11), int(e1.get("vt_passagens_dia") or 4), "int", "int", "PR-08 (4/dia = 2 ida + 2 volta; sensib. 2/dia)"),  # row 13
-        ("VT-E2", "VT E2: dias úteis / passagens por dia", int(fc.get("dias_uteis_vt_e2") or 9), int(e2.get("vt_passagens_dia") or 4), "int", "int", "PR-08 (4/dia = 2 ida + 2 volta; sensib. 2/dia)"),  # row 14
+        ("VT-E1", "VT E1: dias úteis / passagens por dia", fc.get("dias_uteis_vt_e1"), e1.get("vt_passagens_dia"), "int", "int", "PR-08 (Estudo de Caso 02, p. 3; aula de DP, p. 24)"),  # row 13
+        ("VT-E2", "VT E2: dias úteis / passagens por dia", fc.get("dias_uteis_vt_e2"), e2.get("vt_passagens_dia"), "int", "int", "PR-08 (Estudo de Caso 02, p. 3; aula de DP, p. 24)"),  # row 14
         ("VT-TAR", "Tarifa unitária VT RMTC Goiânia / Pct desconto", _r(e1.get("vt_tarifa_centavos", 430)), 0.06, "brl", "pct", "Lei 7.418/1985 art. 4º"),  # row 15
         ("VT-MISTO", "CCT Cl. 6ª — Teto base salário misto", _r(pars.get("CCT-VT-MISTO", {}).get("limite_centavos", 225750)), None, "brl", None, "CCT SRT00189/2025 Cl. 6ª"),  # row 16
         ("VR-E1", "VR E1: dias úteis / valor diário PAT", int(fc.get("dias_uteis_vr_e1") or 11), _r(e1.get("vr_valor_dia_centavos", 3000)), "int", "brl", "PR-09 (CLT art. 457 § 2º; E2 sem VR)"),  # row 17
@@ -214,15 +214,15 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
         _cell(ws_folha, 8, col, f"=SUM({ltr}6:{ltr}7)", FX, "brl", True)
 
     # Quadro de Beneficios VT/VR na aba Folha_Set2026 (rows 11..14)
-    _hdr(ws_folha, 10, ["Cód.", "Benefício / Custo Empresa", "VT Bruto (4/dia)", "Desc. VT (6%)", "Subsídio VT (4/dia)", "VR (PAT)", "Sensib. VT (2/dia)", "Obs."], freezes=False)
+    # Viagens/dia vêm do contrato (PR-08); a comparação com outra quantidade fica no simulador de VT (plano, item 12.3)
+    _hdr(ws_folha, 10, ["Cód.", "Benefício / Custo Empresa", "VT Bruto", "Desc. VT (6%)", "Subsídio VT", "VR (PAT)", "Obs."], freezes=False)
     _cell(ws_folha, 11, 1, "E1", TXT, "txt", True)
     _cell(ws_folha, 11, 2, "Mariana Alves Costa (11d úteis)", TXT, "txt")
     _cell(ws_folha, 11, 3, "=Parametros!C13*Parametros!D13*Parametros!C15", FX, "brl")
     _cell(ws_folha, 11, 4, "=K6", FX, "brl")
     _cell(ws_folha, 11, 5, "=MAX(0,C11-D11)", FX, "brl")
     _cell(ws_folha, 11, 6, "=Parametros!C17*Parametros!D17", FX, "brl")
-    _cell(ws_folha, 11, 7, "=MAX(0,Parametros!C13*2*Parametros!C15-D11)", FX, "brl")
-    _cell(ws_folha, 11, 8, "VR 100% empresa; VT 4/dia vs 2/dia", TXT, "txt")
+    _cell(ws_folha, 11, 7, "VR 100% empresa", TXT, "txt")
 
     _cell(ws_folha, 12, 1, "E2", TXT, "txt", True)
     _cell(ws_folha, 12, 2, "Rafael Souza Lima (9d úteis)", TXT, "txt")
@@ -230,15 +230,14 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
     _cell(ws_folha, 12, 4, "=K7", FX, "brl")
     _cell(ws_folha, 12, 5, "=MAX(0,C12-D12)", FX, "brl")
     _cell(ws_folha, 12, 6, 0.0, FX, "brl")
-    _cell(ws_folha, 12, 7, "=MAX(0,Parametros!C14*2*Parametros!C15-D12)", FX, "brl")
-    _cell(ws_folha, 12, 8, "E2 sem VR em 09/2026 (PR-09)", TXT, "txt")
+    _cell(ws_folha, 12, 7, "E2 sem VR em 09/2026 (PR-09)", TXT, "txt")
 
     _cell(ws_folha, 13, 1, "TOT", TXT, "txt", True)
     _cell(ws_folha, 13, 2, "TOTAL BENEFÍCIOS SETEMBRO/2026", TXT, "txt", True)
-    for col in range(3, 8):
+    for col in range(3, 7):
         ltr = get_column_letter(col)
         _cell(ws_folha, 13, col, f"=SUM({ltr}11:{ltr}12)", FX, "brl", True)
-    _cell(ws_folha, 13, 8, "Líquido dos empregados não muda com 2/dia vs 4/dia", TXT, "txt")
+    _cell(ws_folha, 13, 7, "Viagens/dia conforme contrato (PR-08)", TXT, "txt")
     _ajustar_impressao(ws_folha, {1: 8, 2: 34, 3: 13, 4: 13, 5: 13, 6: 13, 7: 14, 8: 14, 9: 13, 10: 11, 11: 13, 12: 15, 13: 14, 14: 14, 15: 13})
 
     # =========================================================================

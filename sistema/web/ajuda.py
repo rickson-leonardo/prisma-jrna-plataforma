@@ -69,7 +69,7 @@ ESTACOES: dict[str, dict[str, str]] = {
     "folha": {
         "titulo": "Estação 9 — Folha 09/2026, Partidas Dobradas e Auditoria Trabalhista (Dossiê 2)",
         "pratica": "Recalcular a folha 09/2026 pelo motor (comissão + DSR, INSS 4 faixas, IRRF 2026, VT 4×2, VR, Negocial A/B, provisões R$ 504 e lotes L1–L4) e gerenciar PT-01..05 e AUD-01..10.",
-        "desenviesar": "Todos os números vêm do motor em centavos exatos com trava de partidas dobradas (D = C = R$ 4.238,00) no PostgreSQL. Sensibilidades Simples (+R$ 917,40) e VT (2/dia = R$ 62,00) são comparadas ao vivo.",
+        "desenviesar": "Todos os números vêm do motor em centavos exatos com trava de partidas dobradas (débitos = créditos) no PostgreSQL. A sensibilidade de exclusão do Simples é calculada ao vivo pelo motor.",
         "dossie": "Gera a planilha aberta (Doc. 11 XLSX com fórmulas Excel =...) e os Docs. 11, 12 e 13 do Dossiê 2.",
     },
 }
@@ -314,7 +314,7 @@ AJUDA: dict[str, str] = {
     "ct.comissao": "Percentual de comissão sobre vendas líquidas (ex.: 1,50% para E2).",
     "ct.intervalo": "Intervalo intrajornada em minutos (E1: 108 min = 1h48 literal do caso -> alerta 41h vs 44h; E2: 60 min).",
     "ct.jornada": "Descrição completa da jornada contratual.",
-    "ct.vt": "Opção de Vale-Transporte, quantidade de passagens/dia (4 = 2 ida + 2 volta ou 2/dia) e tarifa RMTC.",
+    "ct.vt": "Opção de Vale-Transporte, quantidade de viagens por dia (PR-08: 2/dia, Estudo de Caso 02 e aula de DP) e tarifa RMTC.",
     "ct.vr": "Elegibilidade ao Vale-Refeição PAT e valor por dia útil trabalhado (E1: R$ 30,00; E2: sem VR em 09/2026).",
     "ct.aso": "Situação real do ASO admissional (NR-7). Sem ASO apto, o eSocial S-2220 permanece bloqueado.",
     "ct.deps": "Quantidade de dependentes informados para IRRF e Salário-Família.",
