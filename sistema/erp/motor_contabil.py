@@ -645,9 +645,9 @@ def simular_cenario(
     if incluir_derivados:
         cenarios_estrat = []
         for cod_e, nome_e, f_cli, in_m in (
-            ("pessimista", "Pessimista (-30% Clientes / 8% Inad.)", 0.7, 80_000),
-            ("base", "Provavel (Base 100% / Premissa Atual)", 1.0, None),
-            ("otimista", "Otimista (+20% Clientes / 3% Inad.)", 1.2, 30_000),
+            ("pessimista", "Pessimista (−30% de clientes / 8% de inadimplência)", 0.7, 80_000),
+            ("base", "Provável (base 100% / premissas atuais)", 1.0, None),
+            ("otimista", "Otimista (+20% de clientes / 3% de inadimplência)", 1.2, 30_000),
         ):
             r_sub = simular_cenario(cenario, clientes_fator=f_cli, inadimplencia_override_micro=in_m, incluir_derivados=False, inicio=inicio)
             cenarios_estrat.append({
@@ -1001,8 +1001,8 @@ def validar_coerencia_dossie1(conn: Any, empresa_id: int) -> list[dict[str, Any]
                     add_alerta(
                         "FATOR_R_ANO1_ABAIXO_28", "info", "tributario", "planejamento",
                         f"Fator R do Ano 1 ({d['fator_r_anual_micro']/10000:.2f}%) abaixo de 28%",
-                        "Devido a trava de 90d de pro-labore e ausencia de equipe CLT no Ano 1, receitas sujeitas ao Fator R (6920-6/02) tributam no Anexo V.",
-                        "Ter a justificativa tecnica pronta na defesa (segregacao PGDAS-D ou ajuste de pro-labore).",
+                        "Devido à trava de 90 dias sem pró-labore e à ausência de equipe CLT no Ano 1, as receitas sujeitas ao Fator R (6920-6/02) tributam no Anexo V.",
+                        "Ter a justificativa técnica pronta na defesa (segregação no PGDAS-D ou ajuste de pró-labore).",
                         ancora=anc_cen,
                     )
                 if d["bp_caixa_centavos"] < 0:
@@ -1047,7 +1047,7 @@ def validar_coerencia_dossie1(conn: Any, empresa_id: int) -> list[dict[str, Any]
                 "BACKLOG_QUARENTENA_REVISAO", "info", "governanca", "sustentacao",
                 f"{total_pends} registros importados aguardando revisao/homologacao da contadora",
                 f"Itens em quarentena por modulo -> {resumo_mod}.",
-                "Inspecionar, ajustar se necessario, registrar justificativa tecnica e homologar nas 5 Estacoes.",
+                "Inspecionar, ajustar se necessário, registrar justificativa técnica e homologar nas estações.",
                 ancora="/emissao#quarentena",
             )
 
