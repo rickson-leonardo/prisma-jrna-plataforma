@@ -102,6 +102,22 @@ def test_fechamento_patrimonial_zero_centavos_e_cenarios() -> None:
     for d in res_rec.demonstrativo_anual:
         assert d["bp_diferenca_centavos"] == 0
 
+    # Churn por coortes: com retencao de 24 meses, a coorte do M1 sai no M25 e a carteira estabiliza em 2 x 24
+    cli = {x["mes_ordem"]: x["clientes_ativos"] for x in res.projecao_mensal}
+    assert cli[24] == 48 and cli[25] == 48 and cli[36] == 48
+    assert res.demonstrativo_anual[3]["clientes_fim"] == 48
+    res_r12 = simular_cenario(dict(cen_base, retencao_meses=12), incluir_derivados=False)
+    assert res_r12.projecao_mensal[13]["clientes_ativos"] == 24
+
+
+def test_tir_fluxo_nao_convencional() -> None:
+    # (-, +, +, -) com VPL positivo a 15%: bisseccao simples em [-95%, 5000%] nao achava raiz
+    fluxos = [-4_000_000, 5_178_793, 5_455_162, -2_328_881]
+    assert calcular_vpl(fluxos, Decimal("0.15")) > 0
+    tir = calcular_tir(fluxos)
+    assert tir is not None and tir > 0.15
+    assert abs(calcular_vpl(fluxos, Decimal(str(round(tir, 10))))) <= 1
+
 
 def test_vpl_e_tir_deterministico() -> None:
     fluxos = [-10_000, 6_000, 6_000]

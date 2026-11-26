@@ -80,7 +80,12 @@ def calcular_vpl(fluxos_centavos: list[int], tma_anual: Decimal) -> int:
 
 
 def calcular_tir(fluxos_centavos: list[int]) -> float | None:
-    """Calcula a Taxa Interna de Retorno (TIR) via bisseccao robusta sem dependencias externas."""
+    """Calcula a TIR por varredura de grade + bisseccao, sem dependencias externas.
+
+    Fluxos nao convencionais (mais de uma troca de sinal, ex.: -, +, +, -) podem ter duas raizes:
+    a varredura localiza todas e devolve a menor raiz >= 0 (a relevante para comparar com a TMA);
+    sem raiz nao negativa, devolve a maior raiz negativa. Sem raiz alguma, devolve None.
+    """
     tem_pos = any(x > 0 for x in fluxos_centavos)
     tem_neg = any(x < 0 for x in fluxos_centavos)
     if not (tem_pos and tem_neg):
@@ -89,20 +94,34 @@ def calcular_tir(fluxos_centavos: list[int]) -> float | None:
     def npv(rate: float) -> float:
         return sum(fc / ((1.0 + rate) ** t) for t, fc in enumerate(fluxos_centavos))
 
-    lo, hi = -0.95, 50.0
-    f_lo, f_hi = npv(lo), npv(hi)
-    if f_lo * f_hi > 0:
+    def bisseccao(lo: float, hi: float, f_lo: float) -> float:
+        for _ in range(200):
+            mid = (lo + hi) / 2.0
+            f_mid = npv(mid)
+            if f_mid == 0 or (hi - lo) < 1e-12:
+                return mid
+            if f_lo * f_mid < 0:
+                hi = mid
+            else:
+                lo, f_lo = mid, f_mid
+        return (lo + hi) / 2.0
+
+    # Grade: passo fino perto de zero, mais largo em taxas altas (-95% .. 5000%)
+    grade = [-0.95 + i * 0.01 for i in range(295)]            # -0.95 .. 1.99
+    grade += [2.0 + i * 0.1 for i in range(481)]              # 2.0 .. 50.0
+    raizes: list[float] = []
+    r_ant, f_ant = grade[0], npv(grade[0])
+    for r in grade[1:]:
+        f_r = npv(r)
+        if f_ant == 0:
+            raizes.append(r_ant)
+        elif f_ant * f_r < 0:
+            raizes.append(bisseccao(r_ant, r, f_ant))
+        r_ant, f_ant = r, f_r
+    if not raizes:
         return None
-    for _ in range(120):
-        mid = (lo + hi) / 2.0
-        f_mid = npv(mid)
-        if abs(f_mid) < 1e-6 or (hi - lo) < 1e-9:
-            return mid
-        if f_lo * f_mid <= 0:
-            hi, f_hi = mid, f_mid
-        else:
-            lo, f_lo = mid, f_mid
-    return (lo + hi) / 2.0
+    nao_neg = [x for x in raizes if x >= 0]
+    return min(nao_neg) if nao_neg else max(raizes)
 
 
 def calcular_payback(fluxos_centavos: list[int], tma_anual: Decimal | None = None) -> float | None:
@@ -291,7 +310,9 @@ def simular_cenario(
             if y > 1:
                 imob_bruto_corrente += capex_por_ano.get(y, 0)
 
-        clientes_acum_nominal += novos_base
+        # Carteira por coortes: cada cliente permanece `retencao_meses` meses (coerente com LTV = MC x retencao).
+        # Coortes ativas no mes m: as adquiridas em [m - retencao + 1, m].
+        clientes_acum_nominal = novos_base * min(m, retencao_meses)
         clientes_eff_float = clientes_acum_nominal * clientes_fator
         clientes_int = int(round(clientes_eff_float))
         novos_eff_float = novos_base * clientes_fator
