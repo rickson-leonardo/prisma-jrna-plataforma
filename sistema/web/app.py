@@ -8,7 +8,7 @@ import json
 import os
 import secrets
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse
 
 import psycopg2
 from flask import Flask, abort, flash, g, redirect, render_template, request, send_file, session, url_for
@@ -166,6 +166,7 @@ def create_app() -> Flask:
         md=texto.md_html,
         md_inline=texto.md_inline,
         num_br=texto.num_br,
+        tir_br=texto.tir_br,
     )
 
     def progresso_estacoes() -> dict[str, dict[str, int]]:
@@ -197,9 +198,10 @@ def create_app() -> Flask:
         session["dossie_ativo"] = d
         prox = (request.form.get("next") or request.referrer or url_for("painel")).strip()
         flash(f"Contexto alterado para o Dossiê {d}.", "info")
-        if prox.startswith(("http://", "https://")):
-            parsed = urlparse(prox)
-            prox = parsed.path + (f"?{parsed.query}" if parsed.query else "")
+        # Remove ?dossie= do destino: o parametro na URL tem precedencia sobre a sessao e desfaria a troca
+        parsed = urlparse(prox)
+        query = urlencode([(k, v) for k, v in parse_qsl(parsed.query) if k != "dossie"])
+        prox = (parsed.path or "/") + (f"?{query}" if query else "")  # descarta host: so redireciona internamente
         if prox.startswith("/") and not prox.startswith("//"):
             # Se a pagina anterior e exclusiva de outro dossie, volta para o painel
             if d == "D2" and prox.startswith("/planejamento"):

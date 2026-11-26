@@ -41,7 +41,7 @@
       <div class="kpi"><div class="k-l">Receita bruta — ano 1 (R$){{ m.tip('kpi.receita_a1', 'Receita bruta ano 1') }}</div><div class="val">{{ cenario_oficial.receita_bruta_centavos|brl_tab }}</div></div>
       <div class="kpi"><div class="k-l">DAS ano 1 (R$) · Fator R{{ m.tip('kpi.das_fator_r', 'DAS e Fator R') }}</div><div class="val">{{ cenario_oficial.das_centavos|brl_tab }}</div><small>Fator R <span class="mono">{{ cenario_oficial.fator_r_anual_micro|pct_micro }}</span></small></div>
       <div class="kpi"><div class="k-l">Lucro líquido — ano 1 (R$){{ m.tip('kpi.lucro_a1', 'Lucro líquido') }}</div><div class="val">{{ cenario_oficial.lucro_liquido_centavos|brl_tab }}</div></div>
-      <div class="kpi"><div class="k-l">VPL (R$) · TIR — 3 anos{{ m.tip('kpi.vpl_tir', 'VPL e TIR') }}</div><div class="val">{{ ind.get('vpl_centavos', 0)|brl_tab }}</div><small>TIR <span class="mono">{{ ind.get('tir_pct')|num_br }}%</span></small></div>
+      <div class="kpi"><div class="k-l">VPL (R$) · TIR — 3 anos{{ m.tip('kpi.vpl_tir', 'VPL e TIR') }}</div><div class="val">{{ ind.get('vpl_centavos', 0)|brl_tab }}</div><small>TIR <span class="mono">{{ ind.get('tir_pct')|tir_br(ind.get('vpl_centavos')) }}</span></small></div>
       <div class="kpi"><div class="k-l">Check do balanço (R$){{ m.tip('kpi.check_bp', 'Check do balanço') }}</div><div class="val">{{ cenario_oficial.bp_diferenca_centavos|brl }}</div><small>Ativo − (Passivo + PL)</small></div>
     </div>
   {% else %}

@@ -72,3 +72,16 @@ def num_br(v: float | int | None, casas: int = 2) -> str:
     if v is None:
         return "–"
     return ("-" if v < 0 else "") + _br(float(v), casas)
+
+
+def tir_br(tir_pct: float | int | None, vpl_centavos: int | None = None) -> str:
+    """TIR com '%'; quando nao ha taxa que zere o VPL, explica o motivo em vez de deixar em branco.
+
+    Sem TIR e VPL negativo: o VPL fica abaixo de zero em qualquer taxa (nenhuma raiz real).
+    Sem TIR e fluxos todos de mesmo sinal: tambem nao existe raiz.
+    """
+    if tir_pct is not None:
+        return num_br(tir_pct) + "%"
+    if vpl_centavos is not None and int(vpl_centavos) < 0:
+        return "Inexistente (VPL negativo)"
+    return "Inexistente"

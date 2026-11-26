@@ -194,7 +194,7 @@ def _marcadores(d: dict[str, Any]) -> dict[str, str]:
     a, ind = d["anos"], d["indicadores"]
     mk: dict[str, str] = {
         "VPL": texto.brl(ind.get("vpl_centavos")),
-        "TIR": texto.num_br(ind.get("tir_pct")) + "%",
+        "TIR": texto.tir_br(ind.get("tir_pct"), ind.get("vpl_centavos")),
         "CAPITAL_SOCIAL": texto.brl(d["capital_qsa_centavos"]),
         "LTV_CAC": texto.num_br(ind.get("ltv_cac")) + "×",
         "PAYBACK_DESCONTADO": texto.num_br(ind.get("payback_descontado_meses"), 1) + " meses",
@@ -314,7 +314,7 @@ def contexto_documento(doc: str, d: dict[str, Any], para_web: bool = False) -> d
         doc=doc, info=info, css=Markup(css), brand=brand, documentos=DOCUMENTOS,
         para_web=para_web, js_orientacao=Markup(JS_ORIENTACAO),
         pend_doc=_pendencias_documento(doc, d), doc_pend=lambda k: _pendencias_documento(k, d), md=_md_vivo(d), rot=rotulos.rotulo,
-        brl=texto.brl, brl_tab=texto.brl_tab, pct=texto.pct_micro, num=texto.num_br,
+        brl=texto.brl, brl_tab=texto.brl_tab, pct=texto.pct_micro, num=texto.num_br, tir=texto.tir_br,
         sede_txt=f"{sede.get('endereco') or '—'} — {sede.get('municipio') or ''}/{sede.get('uf') or ''}",
         coerencia=_coerencia_cruzada(d), blocos_fluxo=BLOCOS_FLUXO,
         secao=lambda documento, codigo: secao(d, documento, codigo),

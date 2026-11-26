@@ -25,7 +25,7 @@
     <tr><td>Fator R anual</td>{% for a in (a1, a2, a3) %}<td class="num">{{ pct(a.fator_r_anual_micro) }}</td>{% endfor %}</tr>
   </tbody>
 </table>
-<p class="fonte">VPL {{ brl(indicadores.vpl_centavos) }} · TIR {{ num(indicadores.tir_pct) }}% · payback descontado {{ num(indicadores.payback_descontado_meses, 1) }} meses · LTV/CAC {{ num(indicadores.ltv_cac) }}×. Fonte: motor_contabil.py (cenário <span class="mono">{{ cenario.codigo_cenario }}</span>).</p>
+<p class="fonte">VPL {{ brl(indicadores.vpl_centavos) }} · TIR {{ tir(indicadores.tir_pct, indicadores.vpl_centavos) }} · payback descontado {{ num(indicadores.payback_descontado_meses, 1) }} meses · LTV/CAC {{ num(indicadores.ltv_cac) }}×. Fonte: motor_contabil.py (cenário <span class="mono">{{ cenario.codigo_cenario }}</span>).</p>
 {% endif %}
 {% endmacro %}
 

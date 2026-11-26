@@ -41,7 +41,7 @@
           <td class="num calc">{{ c.a1_lucro|brl_tab }}</td>
           <td class="num calc">{{ ind.get('das_3_anos_centavos', 0)|brl_tab }}</td>
           <td class="num calc">{{ ind.get('vpl_centavos', 0)|brl_tab }}</td>
-          <td class="num calc">{{ ind.get('tir_pct')|num_br }}%</td>
+          <td class="num calc">{{ ind.get('tir_pct')|tir_br(ind.get('vpl_centavos')) }}</td>
           <td>{{ m.badge(c.status_validacao) }}</td>
         </tr>
       {% endfor %}
@@ -163,7 +163,7 @@
   <div class="kpi"><div class="k-l">Ponto de equilíbrio — fase 2 (M4–M12){{ m.tip('kpi.be2', 'Ponto de equilíbrio fase 2') }}</div><div class="val">{{ indicadores.get('break_even_fase2_clientes')|num_br }} cli.</div><small>{{ indicadores.get('break_even_fase2_receita_centavos', 0)|brl }} / mês</small></div>
   <div class="kpi"><div class="k-l">LTV (margem de contribuição) / CAC{{ m.tip('kpi.ltv', 'LTV/CAC') }}</div><div class="val">{{ indicadores.get('ltv_cac')|num_br }}×</div><small>LTV {{ indicadores.get('ltv_centavos', 0)|brl }}</small></div>
   <div class="kpi"><div class="k-l">Payback descontado · CAC{{ m.tip('kpi.payback', 'Payback') }}</div><div class="val">{{ indicadores.get('payback_descontado_meses')|num_br(1) }} m</div><small>Payback do CAC {{ indicadores.get('payback_cac_meses')|num_br(1) }} m</small></div>
-  <div class="kpi"><div class="k-l">VPL · TIR{{ m.tip('kpi.vpl_tir', 'VPL e TIR') }}</div><div class="val">{{ indicadores.get('vpl_centavos', 0)|brl_tab }}</div><small>TIR {{ indicadores.get('tir_pct')|num_br }}%</small></div>
+  <div class="kpi"><div class="k-l">VPL · TIR{{ m.tip('kpi.vpl_tir', 'VPL e TIR') }}</div><div class="val">{{ indicadores.get('vpl_centavos', 0)|brl_tab }}</div><small>TIR {{ indicadores.get('tir_pct')|tir_br(indicadores.get('vpl_centavos')) }}</small></div>
   <div class="kpi"><div class="k-l">Transição ME → EPP{{ m.tip('kpi.epp', 'Transição ME para EPP') }}</div><div class="val txt">{% if indicadores.get('mes_transicao_epp') %}Mês <span class="mono">{{ indicadores.get('mes_transicao_epp') }}</span>{% else %}Não ocorre{% endif %}</div></div>
 </div>
 
@@ -218,7 +218,7 @@
       <tbody>
         {% for sc in indicadores.get('cenarios_estrategicos', []) %}
           <tr><td>{{ sc.nome }}</td><td class="num">{{ sc.receita_3_anos_centavos|brl_tab }}</td><td class="num">{{ sc.das_medio_pct|num_br }}%</td>
-          <td class="num">{{ sc.lucro_3_anos_centavos|brl_tab }}</td><td class="num">{{ sc.vpl_centavos|brl_tab }}</td><td class="num">{{ sc.tir_pct|num_br }}%</td></tr>
+          <td class="num">{{ sc.lucro_3_anos_centavos|brl_tab }}</td><td class="num">{{ sc.vpl_centavos|brl_tab }}</td><td class="num">{{ sc.tir_pct|tir_br(sc.vpl_centavos) }}</td></tr>
         {% endfor %}
       </tbody>
     </table>

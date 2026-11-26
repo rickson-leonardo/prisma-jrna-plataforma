@@ -19,6 +19,8 @@ from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
+from sistema.web import texto
+
 BRAND_DIR = Path(__file__).resolve().parent / "static" / "brand"
 
 # tipo da celula -> papel no papel de trabalho
@@ -176,9 +178,16 @@ def montar_abas(d: dict[str, Any]) -> list[Aba]:
     def ou0(x: Any) -> float:
         return float(x) if x is not None else 0.0
 
+    def cel_tir(tir_pct: Any, vpl_centavos: Any) -> Celula:
+        # Sem raiz real nao e 0%: grava o motivo como texto
+        if tir_pct is None:
+            return Celula(texto.tir_br(None, vpl_centavos), FX, "txt")
+        return Celula(float(tir_pct) / 100.0, FX, "pct")
+
     viab = [
         vi("VPL dos fluxos livres (3 anos)", _r(ind.get("vpl_centavos")), "brl", "R$", "Σ FCt / (1 + TMA)^t; viável se > 0"),
-        vi("TIR", ou0(ind.get("tir_pct")) / 100.0, "pct", "% a.a.", "Taxa que zera o VPL; viável se > TMA"),
+        [_t("TIR"), cel_tir(ind.get("tir_pct"), ind.get("vpl_centavos")), _t("% a.a."),
+         _t("Taxa que zera o VPL; viável se > TMA. Inexistente se nenhuma taxa zera o VPL")],
         vi("Payback simples", ou0(ind.get("payback_simples_meses")), "num", "meses", "Fluxo acumulado ≥ 0"),
         vi("Payback descontado", ou0(ind.get("payback_descontado_meses")), "num", "meses", "Fluxo descontado acumulado ≥ 0"),
         vi("Ponto de equilíbrio — fase 1 (M1–M3)", ou0(ind.get("break_even_fase1_clientes")), "num", "clientes", "Custos fixos ÷ margem de contribuição unitária"),
@@ -201,7 +210,7 @@ def montar_abas(d: dict[str, Any]) -> list[Aba]:
 
     # ---------------- Cenários e sensibilidade ----------------
     estr = [[_t(s["nome"]), Celula(_r(s["receita_3_anos_centavos"])), Celula(ou0(s["das_medio_pct"]) / 100.0, FX, "pct"),
-             Celula(_r(s["lucro_3_anos_centavos"])), Celula(_r(s["vpl_centavos"])), Celula(ou0(s["tir_pct"]) / 100.0, FX, "pct")]
+             Celula(_r(s["lucro_3_anos_centavos"])), Celula(_r(s["vpl_centavos"])), cel_tir(s["tir_pct"], s["vpl_centavos"])]
             for s in ind.get("cenarios_estrategicos", [])]
     sens = ind.get("matriz_sensibilidade", {})
     cab_s = ["Ticket \\ Inadimplência"] + [f"{x:.1f}%".replace(".", ",") for x in sens.get("inadimplencias_pct", [])]
