@@ -291,6 +291,7 @@ def carregar_cadastro() -> dict[str, Any]:
             "socios": socios,
             "identificadores": identificadores,
             "pessoas": pessoas,
+            "pessoas_ident": [p for p in pessoas if int(p["id"]) in set(pessoa_ids)],
             "enquadramentos": enquadramentos,
             "soma_quotas_pct": sum(int(s["percentual_micro"] or 0) for s in socios if s["vigente_ate"] is None) / 10_000.0,
             "soma_capital_centavos": sum(int(s["valor_centavos"] or 0) for s in socios if s["vigente_ate"] is None),
@@ -325,40 +326,88 @@ def salvar_empresa(form: dict[str, str]) -> None:
         conn.commit()
 
 
+def _tem_coluna(cur: Any, schema: str, tabela: str, coluna: str) -> bool:
+    cur.execute(
+        """
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = %s AND table_name = %s AND column_name = %s
+        LIMIT 1
+        """,
+        (schema, tabela, coluna),
+    )
+    return cur.fetchone() is not None
+
+
 def criar_ou_salvar_estabelecimento(est_id: int | None, form: dict[str, str]) -> None:
     with conectar_pg() as conn:
         emp = obter_empresa_d1(conn)
         emp_id = int(emp["id"])
+        nire = (form.get("nire") or "").strip() or None
+        uf_padrao = "" if emp.get("dossie") == "D2" else "DF"
+        mun_padrao = "" if emp.get("dossie") == "D2" else "Brasilia"
+        uf_val = (form.get("uf") or uf_padrao).strip()[:2].upper() or None
+        mun_val = (form.get("municipio") or mun_padrao).strip() or None
         with conn.cursor() as cur:
+            tem_nire = _tem_coluna(cur, "erp", "estabelecimento", "nire")
             if est_id is None:
-                chave = f"est:g07:{_slug(form['tipo'])}_{_slug(form['cnpj'])}"
-                cur.execute(
-                    """
-                    INSERT INTO erp.estabelecimento
-                        (chave, empresa_id, tipo, cnpj, uf, municipio, endereco, origem_registro, status_validacao, justificativa_contadora)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, 'usuario', %s, %s)
-                    """,
-                    (
-                        chave, emp_id, form["tipo"], form["cnpj"].strip(),
-                        form.get("uf", "DF").strip()[:2].upper(), form.get("municipio", "Brasilia").strip(),
-                        form["endereco"].strip(), form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
-                    ),
-                )
+                chave = f"est:{'d2' if emp.get('dossie') == 'D2' else 'g07'}:{_slug(form['tipo'])}_{_slug(form['cnpj'])}"
+                if tem_nire:
+                    cur.execute(
+                        """
+                        INSERT INTO erp.estabelecimento
+                            (chave, empresa_id, tipo, cnpj, nire, uf, municipio, endereco, origem_registro, status_validacao, justificativa_contadora)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'usuario', %s, %s)
+                        """,
+                        (
+                            chave, emp_id, form["tipo"], form["cnpj"].strip(), nire,
+                            uf_val, mun_val,
+                            form["endereco"].strip(), form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
+                        ),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        INSERT INTO erp.estabelecimento
+                            (chave, empresa_id, tipo, cnpj, uf, municipio, endereco, origem_registro, status_validacao, justificativa_contadora)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, 'usuario', %s, %s)
+                        """,
+                        (
+                            chave, emp_id, form["tipo"], form["cnpj"].strip(),
+                            uf_val, mun_val,
+                            form["endereco"].strip(), form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
+                        ),
+                    )
             else:
-                cur.execute(
-                    """
-                    UPDATE erp.estabelecimento
-                    SET tipo = %s, cnpj = %s, uf = %s, municipio = %s, endereco = %s,
-                        status_validacao = %s, justificativa_contadora = %s
-                    WHERE id = %s AND empresa_id = %s
-                    """,
-                    (
-                        form["tipo"], form["cnpj"].strip(), form.get("uf", "DF").strip()[:2].upper(),
-                        form.get("municipio", "Brasilia").strip(), form["endereco"].strip(),
-                        form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
-                        est_id, emp_id,
-                    ),
-                )
+                if tem_nire:
+                    cur.execute(
+                        """
+                        UPDATE erp.estabelecimento
+                        SET tipo = %s, cnpj = %s, nire = %s, uf = %s, municipio = %s, endereco = %s,
+                            status_validacao = %s, justificativa_contadora = %s
+                        WHERE id = %s AND empresa_id = %s
+                        """,
+                        (
+                            form["tipo"], form["cnpj"].strip(), nire, uf_val,
+                            mun_val, form["endereco"].strip(),
+                            form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
+                            est_id, emp_id,
+                        ),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        UPDATE erp.estabelecimento
+                        SET tipo = %s, cnpj = %s, uf = %s, municipio = %s, endereco = %s,
+                            status_validacao = %s, justificativa_contadora = %s
+                        WHERE id = %s AND empresa_id = %s
+                        """,
+                        (
+                            form["tipo"], form["cnpj"].strip(), uf_val,
+                            mun_val, form["endereco"].strip(),
+                            form["status_validacao"], form.get("justificativa_contadora", "").strip() or None,
+                            est_id, emp_id,
+                        ),
+                    )
         _validar_coerencia(conn, emp_id)
         conn.commit()
 

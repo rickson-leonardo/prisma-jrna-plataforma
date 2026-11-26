@@ -26,6 +26,18 @@ def _fmt_pct_num_input(micro: int | None) -> str:
     return texto.num_br(int(micro or 0) / 10_000.0)
 
 
+def _fmt_data_br(val: Any) -> str:
+    """Formata data (date/datetime ou YYYY-MM-DD) para DD/MM/AAAA."""
+    if not val:
+        return "—"
+    if hasattr(val, "strftime"):
+        return val.strftime("%d/%m/%Y")
+    s = str(val).strip()
+    if len(s) >= 10 and s[4] == "-" and s[7] == "-" and s[:4].isdigit() and s[5:7].isdigit() and s[8:10].isdigit():
+        return f"{s[8:10]}/{s[5:7]}/{s[:4]}"
+    return s
+
+
 # Campo de justificativa exigido para homologar, por tipo de formulario
 _CAMPOS_JUSTIFICATIVA = ("justificativa_contadora", "justificativa_sustentacao", "revisao_humana")
 
@@ -167,6 +179,7 @@ def create_app() -> Flask:
         md_inline=texto.md_inline,
         num_br=texto.num_br,
         tir_br=texto.tir_br,
+        data_br=_fmt_data_br,
     )
 
     def progresso_estacoes() -> dict[str, dict[str, int]]:

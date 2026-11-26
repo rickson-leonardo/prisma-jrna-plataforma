@@ -238,6 +238,78 @@ def test_regua_d2_sem_47_fixo() -> None:
     assert "48 critérios" in rendered
 
 
+def test_cadastro_d2_progresso_rotulos_vigencia_nire_e_select_ident() -> None:
+    app = create_app()
+    app.jinja_env.globals["progresso_estacoes"] = lambda: {}
+    app.jinja_env.globals["dossie_ativo"] = lambda: "D2"
+    ctx_d2 = {
+        "empresa": {"id": 1, "dossie": "D2", "nome_curto": "Rota Sul Importadora", "razao_social_pessoa": "Rota Sul Ltda.", "origem_registro": "acervo_sigaa", "status_validacao": "acervo_referencia"},
+        "estabelecimentos": [
+            {"id": 1, "tipo": "matriz", "cnpj": "11.222.333/0001-81", "nire": "52900000015", "uf": "GO", "municipio": "Goiânia", "endereco": "Rua das Mangueiras", "status_validacao": "acervo_referencia", "origem_registro": "acervo_sigaa"},
+            {"id": 2, "tipo": "filial", "cnpj": "11.222.333/0002-62", "nire": "42900000012", "uf": "SC", "municipio": "Itajaí", "endereco": "BR-101, Sala 223", "status_validacao": "acervo_referencia", "origem_registro": "acervo_sigaa"},
+        ],
+        "socios": [
+            {"id": 1, "nome_canonico": "Helena Aparecida Mendes Duarte", "papel": "Sócia administradora (assina individualmente)", "quotas": 750_000, "valor_centavos": 75_000_000, "percentual_micro": 500_000, "status_validacao": "acervo_referencia", "origem_registro": "acervo_sigaa"},
+            {"id": 2, "nome_canonico": "Bruno Mendes Duarte", "papel": "Sócio administrador (assina individualmente)", "quotas": 750_000, "valor_centavos": 75_000_000, "percentual_micro": 500_000, "status_validacao": "acervo_referencia", "origem_registro": "acervo_sigaa"},
+        ],
+        "identificadores": [
+            {"id": i, "tipo_id": "CPF", "valor": f"000-{i}", "nome_canonico": "Helena", "eh_ficticio": True, "status_validacao": "acervo_referencia", "origem_registro": "acervo_sigaa"}
+            for i in range(1, 7)
+        ],
+        "pessoas": [
+            {"id": 1, "tipo_pessoa": "PJ", "nome_canonico": "Rota Sul Ltda."},
+            {"id": 7, "tipo_pessoa": "PF", "nome_canonico": "Helena Aparecida Mendes Duarte"},
+            {"id": 463, "tipo_pessoa": "PF", "nome_canonico": "Nathalia Peres Araujo"},
+        ],
+        "pessoas_ident": [
+            {"id": 1, "tipo_pessoa": "PJ", "nome_canonico": "Rota Sul Ltda."},
+            {"id": 7, "tipo_pessoa": "PF", "nome_canonico": "Helena Aparecida Mendes Duarte"},
+        ],
+        "enquadramentos": [
+            {"id": 86, "porte": "ME", "regime_tributario": "Simples_Anexo_I", "cnae_principal": "4530-7/02", "cnaes_secundarios": ["4530-7/05"], "registro_crc": "CRC-DF 004.821/O-2", "responsavel_tecnico_pessoa_id": 463, "vigente_de": "2026-09-01", "vigente_ate": None, "status_validacao": "homologado_contadora", "origem_registro": "usuario"},
+            {"id": 85, "porte": "ME", "regime_tributario": "Simples_Anexo_I", "cnae_principal": "4530-7/02", "cnaes_secundarios": ["4530-7/05"], "registro_crc": None, "responsavel_tecnico_pessoa_id": None, "vigente_de": "2024-10-28", "vigente_ate": "2026-08-31", "status_validacao": "homologado_contadora", "origem_registro": "importado_rascunho_v2"},
+        ],
+        "soma_quotas_pct": 100.0,
+        "soma_capital_centavos": 150_000_000,
+    }
+    with app.test_request_context("/cadastro"):
+        html_d2 = app.jinja_env.get_template("cadastro.html").render(**ctx_d2)
+    assert '<span class="mono">2/2</span> registros cadastrais homologados · 11 referências do acervo' in html_d2
+    assert "Estabelecimentos (Matriz e Filial)" in html_d2
+    assert "Quadro Societário e participação societária" in html_d2
+    assert "NIRE 42900000012" in html_d2
+    assert "Vigente de <span class=\"mono\">28/10/2024</span> a <span class=\"mono\">31/08/2026</span>" in html_d2
+    assert "Vigente desde <span class=\"mono\">01/09/2026</span>" in html_d2
+    # RT aparece no select de Enquadramento (1.5), mas nao no + Novo de Registros (1.4)
+    sec_reg = html_d2[html_d2.index('id="registros"'):html_d2.index('id="enquadramento"')]
+    sec_enq = html_d2[html_d2.index('id="enquadramento"'):]
+    assert "Nathalia Peres Araujo" not in sec_reg
+    assert "Nathalia Peres Araujo" in sec_enq
+
+    # D1 preservado
+    ctx_d1 = dict(ctx_d2, empresa={"id": 11, "dossie": "D1", "nome_curto": "Prisma", "razao_social_pessoa": "Prisma Ltda.", "origem_registro": "usuario", "status_validacao": "homologado_contadora"})
+    with app.test_request_context("/cadastro"):
+        html_d1 = app.jinja_env.get_template("cadastro.html").render(**ctx_d1)
+    assert "Estabelecimentos e sede no Distrito Federal" in html_d1
+    assert "Quadro de Sócias e participação societária" in html_d1
+
+
+def test_doc01_exibe_nire_filial_e_matriz() -> None:
+    dados = _fixture_dados_d2()
+    dados["estabelecimentos"][0]["nire"] = "52900000015"
+    dados["estabelecimentos"][1]["nire"] = "42900000012"
+    html = html_documento("d2_01_diagnostico", para_web=True, dados=dados)
+    assert "52900000015" in html
+    assert "42900000012" in html
+
+
+def test_alerta_cnae_simples_sem_numero_hardcoded() -> None:
+    motor_src = (Path(__file__).resolve().parents[1] / "erp" / "motor_folha.py").read_text(encoding="utf-8")
+    bloco = motor_src[motor_src.index("D2_CNAE_VEDACAO_SIMPLES"):motor_src.index("D2_ASO_ADMISSIONAL_PENDENTE")]
+    assert "917,40" not in bloco and "22,22%" not in bloco
+
+
+
 
 
 

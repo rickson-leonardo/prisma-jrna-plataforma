@@ -120,6 +120,7 @@ AJUDA: dict[str, str] = {
     "emp.razao_social": "Denominação registrada na JUCIS-DF. Para LTDA precisa terminar com “Ltda.” e indicar o objeto (CC, arts. 1.158 e 1.155).",
     "estab.tipo": "Matriz, filial ou estabelecimento único. Cada estabelecimento tem CNPJ próprio (raiz comum) e licenciamento próprio no RLE-DF.",
     "estab.cnpj": "Formato 00.000.000/0000-00. No Dossiê 1 é dado didático fictício padronizado com o Dossiê 2 — marque como fictício em Registros.",
+    "estab.nire": "Número de Identificação do Registro de Empresas (NIRE) atribuído pela Junta Comercial da UF do estabelecimento (ex.: JUCEG na matriz, JUCESC na filial).",
     "estab.uf": "Unidade da federação (2 letras). O DF não tem municípios: inscrição fiscal única CF/DF na SEEC-DF.",
     "estab.municipio": "No DF informe a Região Administrativa (ex.: RA-I Plano Piloto); é ela que emite a viabilidade de localização (LUOS — LC Distrital 948/2019).",
     "estab.endereco": "Endereço completo da sede com CEP. Precisa ser compatível com a LUOS para a atividade 6920-6 antes da locação.",

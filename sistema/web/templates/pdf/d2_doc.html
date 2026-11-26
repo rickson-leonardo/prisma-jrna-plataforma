@@ -73,9 +73,11 @@
       <tr><td>Razão social</td><td>{{ empresa.razao_social }} {{ m.badge(empresa.status_validacao) }}</td></tr>
       <tr><td>Nome fantasia / curto</td><td>{{ empresa.nome_curto }}</td></tr>
       <tr><td>Natureza jurídica / Porte</td><td>Sociedade Empresária Limitada (Ltda.){% if enquadramento_d2 %} · {{ rot(enquadramento_d2.porte, 'porte') }} · {{ rot(enquadramento_d2.regime_tributario, 'regime_tributario') }}{% endif %}</td></tr>
-      <tr><td>NIRE (Matriz)</td><td class="mono">{{ nire_matriz or '—' }}</td></tr>
+      {% if nire_matriz and not (estabelecimentos_d2 and estabelecimentos_d2[0].get('nire')) %}
+        <tr><td>NIRE (Matriz)</td><td class="mono">{{ nire_matriz }}</td></tr>
+      {% endif %}
       {% for est in estabelecimentos_d2 %}
-        <tr><td>{{ rot(est.tipo, 'tipo_estab') }} ({{ est.municipio }}/{{ est.uf }})</td><td>CNPJ <span class="mono">{{ est.cnpj }}</span> · {{ est.endereco or '—' }} {{ m.badge(est.status_validacao) }}</td></tr>
+        <tr><td>{{ rot(est.tipo, 'tipo_estab') }} ({{ est.municipio }}/{{ est.uf }})</td><td>CNPJ <span class="mono">{{ est.cnpj }}</span>{% if est.get('nire') %} · NIRE <span class="mono">{{ est.nire }}</span>{% endif %} · {{ est.endereco or '—' }} {{ m.badge(est.status_validacao) }}</td></tr>
       {% endfor %}
       {% if capital_d2 %}
         <tr><td>Capital social</td><td>Subscrito: <span class="mono">{{ brl(capital_d2.subscrito) }}</span> · Integralizado: <span class="mono">{{ brl(capital_d2.integralizado) if capital_d2.integralizado is not none else '— (não registrado)' }}</span> · A integralizar: <span class="mono">{{ brl(capital_d2.a_integralizar) if capital_d2.a_integralizar is not none else '— (não registrado)' }}</span></td></tr>

@@ -999,7 +999,7 @@ def validar_coerencia_dossie2(conn: Any, empresa_id: int) -> list[dict[str, Any]
             add(
                 "D2_CNAE_VEDACAO_SIMPLES", "critico", "tributario", "cadastro",
                 "Risco de exclusão do Simples Nacional: CNAE 4541-2/01 (motos) sob importação",
-                "O Anexo I mantém 4541-2/01 e 4511-1/02 sob o título Importação/Exportação (LC 123/2006, art. 17, VIII). Exclusão eleva a folha em +R$ 917,40/mês (+22,22%).",
+                "O Anexo I mantém 4541-2/01, 4541-2/03 e 4511-1/02 sob o título Importação/Exportação (LC 123/2006, art. 17, VIII), expondo a empresa à exclusão do Simples Nacional e perda do recolhimento da CPP no DAS (ver PR-02).",
                 "Excluir 4541-2/01, 4541-2/03 e 4511-1/02 na 3ª Alteração Contratual (etapa R-01).",
                 "/legalizacao",
             )

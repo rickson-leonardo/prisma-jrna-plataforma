@@ -2,13 +2,16 @@
 {% import "_macros.html" as m %}
 {% block title %}Cadastro societário e QSA{% endblock %}
 {% block content %}
+{% set eh_d2 = empresa.get('dossie') == 'D2' %}
 {% set todos = [empresa] + estabelecimentos|list + socios|list + identificadores|list + enquadramentos|list %}
-{% set homol = todos|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length %}
+{% set revisaveis = todos|rejectattr('status_validacao', 'equalto', 'acervo_referencia')|list %}
+{% set qtd_acervo = (todos|length) - (revisaveis|length) %}
+{% set homol = revisaveis|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length %}
 <div class="topbar">
   <div>
     <div class="kicker">Estação 1 · Operação ERP</div>
     <h2>Cadastro societário, sede, QSA e responsável técnica</h2>
-    <div class="subtitle">Sociedade, estabelecimentos, Quadro de Sócias, registros civis/profissionais e enquadramento tributário.</div>
+    <div class="subtitle">Sociedade, estabelecimentos, {{ 'Quadro Societário' if eh_d2 else 'Quadro de Sócias' }}, registros civis/profissionais e enquadramento tributário.</div>
   </div>
   <div class="kpi" style="min-width: 240px;">
     <div class="k-l">Quotas ativas · capital do QSA (R$){{ m.tip('kpi.soma_quotas', 'Soma do QSA') }}</div>
@@ -17,7 +20,7 @@
   </div>
 </div>
 {{ m.guia('cadastro') }}
-<div class="progs">{{ m.progresso(homol, todos|length, 'registros cadastrais homologados') }}</div>
+<div class="progs">{{ m.progresso(homol, revisaveis|length, 'registros cadastrais homologados' ~ (' · ' ~ qtd_acervo ~ ' referências do acervo' if qtd_acervo else '')) }}</div>
 
 {# ---------------- Empresa ---------------- #}
 <section class="card" id="empresa" data-crud-bloco>
@@ -41,11 +44,11 @@
 
 {# ---------------- Estabelecimentos ---------------- #}
 <section class="card" id="estabelecimentos">
-  {{ m.titulo_tabela('1.2', 'Estabelecimentos e sede no Distrito Federal', 'estab.tipo', 'erp.estabelecimento') }}
+  {{ m.titulo_tabela('1.2', 'Estabelecimentos (Matriz e Filial)' if eh_d2 else 'Estabelecimentos e sede no Distrito Federal', 'estab.tipo', 'erp.estabelecimento') }}
   <div class="lista">
     {% for e in estabelecimentos %}
       <details class="item" id="estab-{{ e.id }}" data-item data-status="{{ e.status_validacao }}" style="--cols: 140px minmax(0,1fr) auto">
-        <summary><span class="it-cod">{{ e.cnpj }}</span><span class="it-tit">{{ e.tipo|rotulo('tipo_estab') }}<span class="it-sub">{{ e.endereco or '—' }}</span></span><span class="it-meta">{{ m.badge(e.status_validacao) }}</span></summary>
+        <summary><span class="it-cod">{{ e.cnpj }}</span><span class="it-tit">{{ e.tipo|rotulo('tipo_estab') }}{% if e.get('nire') %} · NIRE {{ e.nire }}{% endif %}<span class="it-sub">{{ e.endereco or '—' }}</span></span><span class="it-meta">{{ m.badge(e.status_validacao) }}</span></summary>
         <div class="corpo crud-bloco" data-crud-bloco>
           {{ m.governanca(e) }}
           {{ m.crud_ctrl() }}
@@ -55,8 +58,9 @@
             <div class="form-grid">
               {% call m.field('Tipo', 'estab.tipo') %}{{ m.select_rotulos('tipo', 'tipo_estab', e.tipo) }}{% endcall %}
               {% call m.field('CNPJ', 'estab.cnpj') %}<input class="mono-in" type="text" name="cnpj" value="{{ e.cnpj }}" required>{% endcall %}
-              {% call m.field('UF', 'estab.uf') %}<input type="text" name="uf" maxlength="2" value="{{ e.uf or 'DF' }}">{% endcall %}
-              {% call m.field('Região administrativa / município', 'estab.municipio') %}<input type="text" name="municipio" value="{{ e.municipio or 'Brasilia' }}">{% endcall %}
+              {% call m.field('NIRE (Junta Comercial)', 'estab.nire') %}<input class="mono-in" type="text" name="nire" value="{{ e.get('nire') or '' }}">{% endcall %}
+              {% call m.field('UF', 'estab.uf') %}<input type="text" name="uf" maxlength="2" value="{{ e.uf or ('' if eh_d2 else 'DF') }}">{% endcall %}
+              {% call m.field('Região administrativa / município', 'estab.municipio') %}<input type="text" name="municipio" value="{{ e.municipio or ('' if eh_d2 else 'Brasilia') }}">{% endcall %}
               {% call m.field('Endereço completo', 'estab.endereco', 'span-2') %}<input type="text" name="endereco" value="{{ e.endereco or '' }}" required>{% endcall %}
               {% call m.field('Situação na quarentena', 'gov.status') %}{{ m.status_select(e.status_validacao) }}{% endcall %}
               {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-all') %}<input type="text" name="justificativa_contadora" value="{{ e.justificativa_contadora or '' }}">{% endcall %}
@@ -79,8 +83,9 @@
           <div class="form-grid">
             {% call m.field('Tipo', 'estab.tipo') %}{{ m.select_rotulos('tipo', 'tipo_estab', 'filial') }}{% endcall %}
             {% call m.field('CNPJ', 'estab.cnpj') %}<input class="mono-in" type="text" name="cnpj" required>{% endcall %}
-            {% call m.field('UF', 'estab.uf') %}<input type="text" name="uf" maxlength="2" value="DF">{% endcall %}
-            {% call m.field('Região administrativa / município', 'estab.municipio') %}<input type="text" name="municipio" value="Brasilia">{% endcall %}
+            {% call m.field('NIRE (Junta Comercial)', 'estab.nire') %}<input class="mono-in" type="text" name="nire" value="">{% endcall %}
+            {% call m.field('UF', 'estab.uf') %}<input type="text" name="uf" maxlength="2" value="{{ '' if eh_d2 else 'DF' }}">{% endcall %}
+            {% call m.field('Região administrativa / município', 'estab.municipio') %}<input type="text" name="municipio" value="{{ '' if eh_d2 else 'Brasilia' }}">{% endcall %}
             {% call m.field('Endereço completo', 'estab.endereco', 'span-2') %}<input type="text" name="endereco" required>{% endcall %}
             {% call m.field('Justificativa técnica', 'gov.justificativa', 'span-2') %}<input type="text" name="justificativa_contadora">{% endcall %}
           </div>
@@ -94,7 +99,7 @@
 
 {# ---------------- Quadro de Sócias ---------------- #}
 <section class="card" id="socios">
-  {{ m.titulo_tabela('1.3', 'Quadro de Sócias e participação societária', 'kpi.soma_quotas', 'erp.participacao_societaria') }}
+  {{ m.titulo_tabela('1.3', 'Quadro Societário e participação societária' if eh_d2 else 'Quadro de Sócias e participação societária', 'kpi.soma_quotas', 'erp.participacao_societaria') }}
   <div class="lista">
     {% for s in socios %}
       <details class="item" id="socia-{{ s.id }}" data-item data-status="{{ s.status_validacao }}" style="--cols: 150px minmax(0,1fr) auto">
@@ -121,7 +126,7 @@
       </details>
     {% endfor %}
     <details class="item">
-      <summary><span class="it-cod">+ Nova</span><span class="it-tit">Adicionar sócia ao QSA</span><span></span><span></span></summary>
+      <summary><span class="it-cod">{{ '+ Novo' if eh_d2 else '+ Nova' }}</span><span class="it-tit">{{ 'Adicionar sócio ao QSA' if eh_d2 else 'Adicionar sócia ao QSA' }}</span><span></span><span></span></summary>
       <div class="corpo crud-bloco" data-crud-bloco>
         {{ m.crud_ctrl('Habilitar inclusão', 'modo.incluir') }}
         <form method="post" action="{{ url_for('post_socio_novo') }}">
@@ -133,9 +138,9 @@
             {% call m.field('Quotas', 'socio.quotas') %}<input type="text" data-fmt="int" name="quotas" required>{% endcall %}
             {% call m.field('Capital subscrito (R$)', 'socio.capital') %}<input type="text" data-fmt="brl" name="valor_reais" required>{% endcall %}
             {% call m.field('Participação (%)', 'socio.percentual') %}<input type="text" data-fmt="pct" name="percentual" required>{% endcall %}
-            {% call m.field('Papel / administração', 'socio.papel') %}<input type="text" name="papel" value="Sócia quotista" required>{% endcall %}
+            {% call m.field('Papel / administração', 'socio.papel') %}<input type="text" name="papel" value="{{ 'Sócio quotista' if eh_d2 else 'Sócia quotista' }}" required>{% endcall %}
           </div>
-          <div class="barra-acoes"><span class="acoes"><button class="btn btn-primary" type="submit">Incluir sócia</button>{{ m.tip('acao.incluir', 'Incluir') }}</span></div>
+          <div class="barra-acoes"><span class="acoes"><button class="btn btn-primary" type="submit">{{ 'Incluir sócio' if eh_d2 else 'Incluir sócia' }}</button>{{ m.tip('acao.incluir', 'Incluir') }}</span></div>
           </fieldset>
         </form>
       </div>
@@ -180,7 +185,7 @@
           <input type="hidden" name="status_validacao" value="pendente_revisao">
           <fieldset class="crud-fs" disabled>
           <div class="form-grid">
-            {% call m.field('Pessoa', 'ident.pessoa') %}<select name="pessoa_id">{% for ps in pessoas %}<option value="{{ ps.id }}">{{ ps.nome_canonico }}</option>{% endfor %}</select>{% endcall %}
+            {% call m.field('Pessoa', 'ident.pessoa') %}<select name="pessoa_id">{% for ps in (pessoas_ident if pessoas_ident is defined else pessoas) %}<option value="{{ ps.id }}">{{ ps.nome_canonico }}</option>{% endfor %}</select>{% endcall %}
             {% call m.field('Tipo de registro', 'ident.tipo') %}<select name="tipo_id">{% for tp in ['CPF','CNPJ','CRC','NIRE','IE','IM','OUTRO'] %}<option value="{{ tp }}">{{ tp }}</option>{% endfor %}</select>{% endcall %}
             {% call m.field('Número', 'ident.valor') %}<input class="mono-in" type="text" name="valor" required>{% endcall %}
             {% call m.field('Justificativa técnica', 'gov.justificativa') %}<input type="text" name="justificativa_contadora">{% endcall %}
@@ -199,7 +204,7 @@
   {{ m.titulo_tabela('1.5', 'Enquadramento tributário, CNAEs e responsável técnica (CRC-DF)', 'enq.rt', 'erp.enquadramento_historico') }}
   {{ m.crud_ctrl() }}
   {% for enq in enquadramentos %}
-    <p>{{ m.badge(enq.status_validacao) }} <span class="meta-tec">Vigente desde <span class="mono">{{ enq.vigente_de }}</span></span></p>
+    <p>{{ m.badge(enq.status_validacao) }} <span class="meta-tec">{% if enq.vigente_ate %}Vigente de <span class="mono">{{ enq.vigente_de|data_br }}</span> a <span class="mono">{{ enq.vigente_ate|data_br }}</span>{% else %}Vigente desde <span class="mono">{{ enq.vigente_de|data_br }}</span>{% endif %}</span></p>
     {{ m.governanca(enq) }}
     <form method="post" action="{{ url_for('post_enq_salvar', enq_id=enq.id) }}">
       {{ m.csrf() }}
