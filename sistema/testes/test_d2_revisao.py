@@ -6,7 +6,7 @@ from pathlib import Path
 from sistema.erp.motor_folha import detectar_residuos_texto_d2
 from sistema.testes.test_web_dossie2 import _fixture_dados_d2
 from sistema.web.app import create_app
-from sistema.web.emissor_dossie2 import html_documento
+from sistema.web.emissor_dossie2 import _normalizar_docs_admissao, html_documento
 
 TEMPLATES = Path(__file__).resolve().parents[1] / "web" / "templates"
 
@@ -67,4 +67,18 @@ def test_pdf_sem_fallback_providencia_e_impacto() -> None:
     tabela2 = html_doc14[ini_t2:fim_t2]
     assert "DEC-Y" in html_doc14[:ini_t2]
     assert "DEC-Y" not in tabela2
+
+
+def test_prontuario_nao_afirma_entrega_sem_status() -> None:
+    pecas_str = _normalizar_docs_admissao({"docs_admissionais_json": ["RG/CPF"], "aso_status": "pendente_critico"})
+    assert pecas_str[0] == {"peca": "RG/CPF", "status": "Não informado", "observacao": "Status não registrado no banco"}
+    assert "ASO Admissional" in pecas_str[-1]["peca"]
+
+    pecas_sem_st = _normalizar_docs_admissao({"docs_admissionais_json": [{"documento": "CTPS"}], "aso_status": "apto"})
+    assert pecas_sem_st[0] == {"peca": "CTPS", "status": "Não informado", "observacao": "Status não registrado no banco"}
+
+    pecas_com_st = _normalizar_docs_admissao({"docs_admissionais_json": [{"documento": "CTPS", "status": "entregue"}]})
+    assert pecas_com_st[0]["status"] == "entregue"
+    assert "ASO Admissional" in pecas_com_st[-1]["peca"]
+
 

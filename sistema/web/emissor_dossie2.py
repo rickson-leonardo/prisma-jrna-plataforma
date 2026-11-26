@@ -309,16 +309,20 @@ def _normalizar_docs_admissao(ct: dict[str, Any]) -> list[dict[str, str]]:
             if "aso" in nome.lower():
                 tem_aso = True
                 continue
-            st = str(raw.get("status") or "entregue")
-            obs = str(raw.get("observacao") or "—")
+            st_raw = str(raw.get("status") or "").strip()
+            if st_raw:
+                st = st_raw
+                obs = str(raw.get("observacao") or "—")
+            else:
+                st = "Não informado"
+                obs = str(raw.get("observacao") or "Status não registrado no banco")
             pecas.append({"peca": nome, "status": st, "observacao": obs})
         else:
             nome = str(raw)
             if "aso" in nome.lower():
                 tem_aso = True
                 continue
-            obs = "Série didática (PR-18)" if "fict" in nome.lower() else "Listada no prontuário"
-            pecas.append({"peca": nome, "status": "Entregue (prontuário)", "observacao": obs})
+            pecas.append({"peca": nome, "status": "Não informado", "observacao": "Status não registrado no banco"})
     aso_st = str(ct.get("aso_status") or "pendente_critico")
     pecas.append({
         "peca": "ASO Admissional (NR-7 / eSocial S-2220)",
