@@ -38,9 +38,10 @@
 </select>
 {%- endmacro %}
 
-{# Select generico a partir dos rotulos legiveis #}
-{% macro select_rotulos(nome, grupo, atual) -%}
-<select name="{{ nome }}">{% for cod, txt in opcoes(grupo) %}<option value="{{ cod }}" {{ 'selected' if atual == cod }} title="{{ cod }}">{{ txt }}</option>{% endfor %}</select>
+{# Select generico a partir dos rotulos legiveis. `vazio` (opcional) acrescenta a opcao "sem valor",
+   para campos que a contadora ainda nao classificou: sem ela, o navegador grava a primeira opcao. #}
+{% macro select_rotulos(nome, grupo, atual, vazio=none) -%}
+<select name="{{ nome }}">{% if vazio is not none %}<option value="" {{ 'selected' if not atual }}>{{ vazio }}</option>{% endif %}{% for cod, txt in opcoes(grupo) %}<option value="{{ cod }}" {{ 'selected' if atual == cod }} title="{{ cod }}">{{ txt }}</option>{% endfor %}</select>
 {%- endmacro %}
 
 {# Botoes padrao: salvar rascunho / homologar (valida justificativa no servidor e no navegador) #}

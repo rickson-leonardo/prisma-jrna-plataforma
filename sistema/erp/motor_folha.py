@@ -84,7 +84,8 @@ def detectar_residuos_texto_d2(
             fim_nl = txt.find("\n", m.end())
             fim_frase = min(len(txt), fim_nl if fim_nl != -1 else len(txt), m.end() + 120)
             frase = txt[ini_frase:fim_frase].lower()
-            if "revogad" not in frase and "1.708/2023" not in frase:
+            # "revoga" cobre revogada, revogado, revogando e revogação
+            if "revoga" not in frase and "1.708/2023" not in frase:
                 achados.append({"documento": origem, "padrao": "1.555/2018", "trecho": txt[ini_frase:fim_frase].replace("\n", " ").strip()[:80]})
     return achados
 
