@@ -78,7 +78,7 @@
         <tr><td>{{ rot(est.tipo, 'tipo_estab') }} ({{ est.municipio }}/{{ est.uf }})</td><td>CNPJ <span class="mono">{{ est.cnpj }}</span> · {{ est.endereco or '—' }} {{ m.badge(est.status_validacao) }}</td></tr>
       {% endfor %}
       {% if capital_d2 %}
-        <tr><td>Capital social</td><td>Subscrito: <span class="mono">{{ brl(capital_d2.subscrito) }}</span> · Integralizado: <span class="mono">{{ brl(capital_d2.integralizado) }}</span> · A integralizar: <span class="mono">{{ brl(capital_d2.a_integralizar) }}</span></td></tr>
+        <tr><td>Capital social</td><td>Subscrito: <span class="mono">{{ brl(capital_d2.subscrito) }}</span> · Integralizado: <span class="mono">{{ brl(capital_d2.integralizado) if capital_d2.integralizado is not none else '— (não registrado)' }}</span> · A integralizar: <span class="mono">{{ brl(capital_d2.a_integralizar) if capital_d2.a_integralizar is not none else '— (não registrado)' }}</span></td></tr>
       {% endif %}
     </tbody>
   </table>

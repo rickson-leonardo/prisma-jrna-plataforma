@@ -190,6 +190,7 @@ def _fixture_dados_d2() -> dict[str, Any]:
         "fatos_capital": [
             {"atributo": "capital_social", "valor_centavos": 100_000_000, "vigente_ate": "2026-09-13"},
             {"atributo": "capital_social", "valor_centavos": 150_000_000, "vigente_ate": None},
+            {"atributo": "capital_integralizado", "valor_centavos": 100_000_000, "vigente_ate": None},
         ],
         "clausulas_d2": [
             {

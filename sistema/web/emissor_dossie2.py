@@ -179,7 +179,7 @@ def carregar_dados_dossie2() -> dict[str, Any]:
         enquadramento = cur.fetchone()
 
         cur.execute(
-            "SELECT * FROM erp.fato WHERE sujeito_chave = %s AND atributo = 'capital_social' ORDER BY vigente_de, id",
+            "SELECT * FROM erp.fato WHERE sujeito_chave = %s AND atributo IN ('capital_social', 'capital_integralizado') ORDER BY vigente_de, id",
             (EMPRESA_CHAVE_D2,),
         )
         fatos_capital = cur.fetchall()
@@ -417,14 +417,32 @@ def _fmt_pct_socio(micro: int | None) -> str:
     return texto.pct_micro(v)
 
 
-def _capital_doc01(d: dict[str, Any]) -> dict[str, int]:
+def _capital_doc01(d: dict[str, Any]) -> dict[str, int | None]:
     subscrito = sum(int(s.get("valor_centavos") or 0) for s in (d.get("socios") or []))
     fatos = d.get("fatos_capital") or []
-    depois = next((f for f in fatos if f.get("vigente_ate") is None and f.get("valor_centavos") is not None), None)
-    antes = next((f for f in fatos if f.get("vigente_ate") is not None and f.get("valor_centavos") is not None), None)
-    if subscrito <= 0 and depois:
-        subscrito = int(depois["valor_centavos"])
-    integralizado = int(antes["valor_centavos"]) if antes else subscrito
+    cap_vigente = next(
+        (
+            f for f in fatos
+            if f.get("atributo", "capital_social") == "capital_social"
+            and f.get("vigente_ate") is None
+            and f.get("valor_centavos") is not None
+        ),
+        None,
+    )
+    if subscrito <= 0 and cap_vigente:
+        subscrito = int(cap_vigente["valor_centavos"])
+    fato_int = next(
+        (
+            f for f in fatos
+            if f.get("atributo") == "capital_integralizado"
+            and f.get("vigente_ate") is None
+            and f.get("valor_centavos") is not None
+        ),
+        None,
+    )
+    if fato_int is None:
+        return {"subscrito": subscrito, "integralizado": None, "a_integralizar": None}
+    integralizado = int(fato_int["valor_centavos"])
     a_integralizar = max(0, subscrito - integralizado)
     return {"subscrito": subscrito, "integralizado": integralizado, "a_integralizar": a_integralizar}
 

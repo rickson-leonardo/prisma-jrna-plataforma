@@ -6,7 +6,7 @@ from pathlib import Path
 from sistema.erp.motor_folha import detectar_residuos_texto_d2
 from sistema.testes.test_web_dossie2 import _fixture_dados_d2
 from sistema.web.app import create_app
-from sistema.web.emissor_dossie2 import _normalizar_docs_admissao, html_documento
+from sistema.web.emissor_dossie2 import _capital_doc01, _normalizar_docs_admissao, html_documento
 
 TEMPLATES = Path(__file__).resolve().parents[1] / "web" / "templates"
 
@@ -80,5 +80,24 @@ def test_prontuario_nao_afirma_entrega_sem_status() -> None:
     pecas_com_st = _normalizar_docs_admissao({"docs_admissionais_json": [{"documento": "CTPS", "status": "entregue"}]})
     assert pecas_com_st[0]["status"] == "entregue"
     assert "ASO Admissional" in pecas_com_st[-1]["peca"]
+
+
+def test_capital_integralizado_exige_fato_explicito() -> None:
+    dados = _fixture_dados_d2()
+    cap_com = _capital_doc01(dados)
+    assert cap_com == {"subscrito": 150_000_000, "integralizado": 100_000_000, "a_integralizar": 50_000_000}
+
+    dados["fatos_capital"] = [
+        {"atributo": "capital_social", "valor_centavos": 100_000_000, "vigente_ate": "2026-09-13"},
+        {"atributo": "capital_social", "valor_centavos": 150_000_000, "vigente_ate": None},
+    ]
+    cap_sem = _capital_doc01(dados)
+    assert cap_sem == {"subscrito": 150_000_000, "integralizado": None, "a_integralizar": None}
+
+    html = html_documento("d2_01_diagnostico", para_web=True, dados=dados)
+    assert "Integralizado: <span class=\"mono\">— (não registrado)</span>" in html
+    assert "A integralizar: <span class=\"mono\">— (não registrado)</span>" in html
+    assert "R$\xa0500.000,00" not in html
+
 
 
