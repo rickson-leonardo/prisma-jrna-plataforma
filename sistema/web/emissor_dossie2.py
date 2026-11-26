@@ -14,6 +14,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from markupsafe import Markup
 
 from sistema.config import PLATAFORMA_DIR
+from sistema.erp.motor_folha import impacto_exclusao_simples
 from sistema.pg.db import conectar_pg
 from sistema.web import rotulos, texto
 from sistema.web.emissor_dossie1 import BRAND_DIR, CSS, JS_ORIENTACAO, WEB_DIR, verificar_pdf
@@ -141,21 +142,48 @@ def carregar_dados_dossie2() -> dict[str, Any]:
     }
 
 
+def _fmt_brl_ou_traco(centavos: int | None) -> str:
+    return "—" if centavos is None else texto.brl(centavos)
+
+
+def _soma_rubrica(itens: list[dict[str, Any]], codigo: str) -> int | None:
+    vals = [int(it["valor_centavos"]) for it in itens if it.get("codigo_rubrica") == codigo and it.get("valor_centavos") is not None]
+    return sum(vals) if vals else None
+
+
+def _calcular_liquido_b(comp: dict[str, Any], itens: list[dict[str, Any]]) -> int | None:
+    liq_a = comp.get("liquido_total_centavos")
+    if liq_a is None:
+        return None
+    if comp.get("cenario_negocial") == "B_patronal":
+        return int(liq_a)
+    neg = _soma_rubrica(itens, "NEGOCIAL")
+    if neg is None:
+        return None
+    return int(liq_a) + neg
+
+
 def _marcadores_d2(d: dict[str, Any]) -> dict[str, str]:
     comp = d.get("comp") or {}
-    part_d = sum(int(p["valor_centavos"]) for p in d.get("partidas", []) if p["dc"] == "D")
+    itens = d.get("itens") or []
+    partidas = d.get("partidas") or []
+    part_d = sum(int(p["valor_centavos"]) for p in partidas if p.get("dc") == "D") if partidas else None
+    liq_b = _calcular_liquido_b(comp, itens)
+    vt_subs = _soma_rubrica(itens, "VT-SUBS")
+    vr_tot = _soma_rubrica(itens, "VR-PAT")
+    imp_excl = impacto_exclusao_simples(itens, d.get("parametros") or [])
     return {
-        "BRUTO_TOTAL": texto.brl(comp.get("bruto_total_centavos") or 283333),
-        "INSS_TOTAL": texto.brl(comp.get("inss_total_centavos") or 21268),
-        "FGTS_TOTAL": texto.brl(comp.get("fgts_total_centavos") or 22667),
-        "LIQUIDO_A": texto.brl(comp.get("liquido_total_centavos") or 241630),
-        "LIQUIDO_B": texto.brl(251065),
-        "PROVISOES_TOTAL": texto.brl(comp.get("provisoes_total_centavos") or 50400),
-        "CUSTO_SIMPLES": texto.brl(comp.get("custo_total_centavos") or 412800),
-        "SUBSIDIO_VT": texto.brl(23400),
-        "VR_TOTAL": texto.brl(33000),
-        "IMPACTO_EXCLUSAO_SIMPLES": texto.brl(91740),
-        "PARTIDAS_DOBRADAS": texto.brl(part_d or 423800),
+        "BRUTO_TOTAL": _fmt_brl_ou_traco(comp.get("bruto_total_centavos")),
+        "INSS_TOTAL": _fmt_brl_ou_traco(comp.get("inss_total_centavos")),
+        "FGTS_TOTAL": _fmt_brl_ou_traco(comp.get("fgts_total_centavos")),
+        "LIQUIDO_A": _fmt_brl_ou_traco(comp.get("liquido_total_centavos")),
+        "LIQUIDO_B": _fmt_brl_ou_traco(liq_b),
+        "PROVISOES_TOTAL": _fmt_brl_ou_traco(comp.get("provisoes_total_centavos")),
+        "CUSTO_SIMPLES": _fmt_brl_ou_traco(comp.get("custo_total_centavos")),
+        "SUBSIDIO_VT": _fmt_brl_ou_traco(vt_subs),
+        "VR_TOTAL": _fmt_brl_ou_traco(vr_tot),
+        "IMPACTO_EXCLUSAO_SIMPLES": _fmt_brl_ou_traco(imp_excl),
+        "PARTIDAS_DOBRADAS": _fmt_brl_ou_traco(part_d),
     }
 
 
@@ -194,19 +222,19 @@ def html_documento(doc: str, para_web: bool = False, dados: dict[str, Any] | Non
     css = CSS % {"B": brand, "SANS": faces, "HDR": hdr.replace('"', "'"), "RODAPE": rodape.replace('"', "'")}
     sede = (d["estabelecimentos"] or [{}])[0]
     comp = d.get("comp") or {}
-    part_d = sum(int(p["valor_centavos"]) for p in d.get("partidas", []) if p["dc"] == "D")
+    mk = _marcadores_d2(d)
     resumo_exec = None
     if doc in ("d2_00_indice", "d2_11_folha", "d2_12_resumo_contab"):
         resumo_exec = {
-            "competencia": comp.get("competencia", "2026-09"),
-            "bruto": texto.brl(comp.get("bruto_total_centavos") or 283333),
-            "inss": texto.brl(comp.get("inss_total_centavos") or 21268),
-            "fgts": texto.brl(comp.get("fgts_total_centavos") or 22667),
-            "liq_a": texto.brl(comp.get("liquido_total_centavos") or 241630),
-            "liq_b": texto.brl(251065),
-            "provisoes": texto.brl(comp.get("provisoes_total_centavos") or 50400),
-            "custo": texto.brl(comp.get("custo_total_centavos") or 412800),
-            "partidas": texto.brl(part_d or 423800),
+            "competencia": comp.get("competencia") or "—",
+            "bruto": mk["BRUTO_TOTAL"],
+            "inss": mk["INSS_TOTAL"],
+            "fgts": mk["FGTS_TOTAL"],
+            "liq_a": mk["LIQUIDO_A"],
+            "liq_b": mk["LIQUIDO_B"],
+            "provisoes": mk["PROVISOES_TOTAL"],
+            "custo": mk["CUSTO_SIMPLES"],
+            "partidas": mk["PARTIDAS_DOBRADAS"],
         }
     return _jinja().get_template("d2_doc.html").render(
         doc=doc, info=info, css=Markup(css), brand=brand, para_web=para_web,
@@ -214,7 +242,8 @@ def html_documento(doc: str, para_web: bool = False, dados: dict[str, Any] | Non
         pend_doc=d["pendencias_total"], pendencias_total=d["pendencias_total"],
         emitido_em=d["emitido_em"], socios=[],
         sede_txt=f"{sede.get('endereco') or '—'} — {sede.get('municipio') or 'Goiânia'}/{sede.get('uf') or 'GO'}",
-        secoes=d["secoes"].get(doc, []), md=_md_vivo_d2(d), brl=texto.brl, brl_tab=texto.brl_tab,
+        secoes=d["secoes"].get(doc, []), md=_md_vivo_d2(d), rot=rotulos.rotulo,
+        brl=texto.brl, brl_tab=texto.brl_tab, pct=texto.pct_micro, num=texto.num_br,
         resumo_executivo=resumo_exec,
         extra_rubricas=d["itens"] if doc == "d2_11_folha" else None,
         extra_partidas=d["partidas"] if doc == "d2_12_resumo_contab" else None,

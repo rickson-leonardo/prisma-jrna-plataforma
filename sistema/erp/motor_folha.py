@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
+import re
 from typing import Any
 
 from psycopg2.extras import execute_values
@@ -17,9 +18,75 @@ from sistema.pg.db import conectar_pg
 
 EMPRESA_CHAVE_D2 = "emp:rota_sul_d2"
 
+# ponytail: CPP 20% + RAT 2% + Terceiros FPAS 515 5,8% = 27,8% (278_000 micro); evolução: ler de erp.parametro_legal quando parametrizado.
+ALIQ_EXCLUSAO_SIMPLES_MICRO_PADRAO = 278_000
+
 
 def _round_cent(valor: Decimal) -> int:
     return int(valor.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+
+def impacto_exclusao_simples(itens: list[dict[str, Any]], parametros: list[dict[str, Any]] | None = None) -> int | None:
+    """Calcula o custo patronal extra se a Rota Sul for excluida do Simples Nacional (PR-17)."""
+    if not itens:
+        return None
+    base_exclusao = sum(
+        int(it.get("valor_centavos") or 0)
+        for it in itens
+        if it.get("tipo_rubrica") == "provento" or it.get("codigo_rubrica") in ("PROV-13", "PROV-FER", "PROV-1/3")
+    )
+    if base_exclusao <= 0:
+        return None
+    par_excl = next((p for p in (parametros or []) if p.get("codigo") in ("EXCL-SIMPLES", "CPP-FORA-SIMPLES")), None)
+    aliq_micro = int(par_excl["aliquota_micro"]) if par_excl and par_excl.get("aliquota_micro") else ALIQ_EXCLUSAO_SIMPLES_MICRO_PADRAO
+    return _round_cent(Decimal(base_exclusao) * Decimal(aliq_micro) / Decimal("1000000"))
+
+
+def detectar_residuos_texto_d2(
+    secoes: list[dict[str, Any]],
+    contratos_servico: list[dict[str, Any]],
+) -> list[dict[str, str]]:
+    """Detecta residuos de rascunho/IA ([INSERIR, [cite, 1.555/2018 nao revogada, XX.XXX, TODO, ???)."""
+    achados: list[dict[str, str]] = []
+    re_inserir = re.compile(r"(?<!`)\[INSERIR[^\]\n]*\](?!`)", re.IGNORECASE)
+    re_cite = re.compile(r"(?<!`)\[cite[^\]]*\](?!`)", re.IGNORECASE)
+    re_1555 = re.compile(r"1\.555/2018")
+    re_xxxx = re.compile(r"XX\.XXX", re.IGNORECASE)
+    re_todo = re.compile(r"\bTODO\b")
+    re_interr = re.compile(r"\?\?\?")
+
+    fontes: list[tuple[str, str]] = []
+    for s in secoes or []:
+        doc = str(s.get("documento") or "secao")
+        cod = str(s.get("codigo_secao") or "")
+        fontes.append((f"{doc}:{cod}", str(s.get("conteudo_md") or "")))
+    for cs in contratos_servico or []:
+        cod = str(cs.get("codigo_documento") or "contrato_servico")
+        fontes.append((f"contrato_servico:{cod}", str(cs.get("conteudo_md") or "")))
+
+    for origem, txt in fontes:
+        if not txt:
+            continue
+        for nome_p, rx in (
+            ("[INSERIR", re_inserir),
+            ("[cite", re_cite),
+            ("XX.XXX", re_xxxx),
+            ("TODO", re_todo),
+            ("???", re_interr),
+        ):
+            m = rx.search(txt)
+            if m:
+                ini = max(0, m.start() - 25)
+                fim = min(len(txt), m.end() + 35)
+                achados.append({"documento": origem, "padrao": nome_p, "trecho": txt[ini:fim].replace("\n", " ").strip()})
+        for m in re_1555.finditer(txt):
+            ini_frase = max(0, txt.rfind("\n", 0, m.start()), m.start() - 120)
+            fim_nl = txt.find("\n", m.end())
+            fim_frase = min(len(txt), fim_nl if fim_nl != -1 else len(txt), m.end() + 120)
+            frase = txt[ini_frase:fim_frase].lower()
+            if "revogad" not in frase and "1.708/2023" not in frase:
+                achados.append({"documento": origem, "padrao": "1.555/2018", "trecho": txt[ini_frase:fim_frase].replace("\n", " ").strip()[:80]})
+    return achados
 
 
 def _calc_inss_progressivo(base_centavos: int, faixas: list[dict[str, Any]]) -> tuple[int, str]:
@@ -447,8 +514,11 @@ def recalcular_folha_d2(conn: Any, competencia_id: int | None = None) -> dict[st
                 p_rows,
             )
 
-        base_exclusao = tot["bruto"] + tot["prov_13"] + tot["prov_ferias"] + tot["prov_terco"]
-        exclusao_simples_extra = _round_cent(Decimal(base_exclusao) * Decimal("0.278"))
+        itens_dicts = [
+            {"tipo_rubrica": r[6], "codigo_rubrica": r[4], "valor_centavos": r[9]}
+            for r in itens
+        ]
+        exclusao_simples_extra = impacto_exclusao_simples(itens_dicts, pars) or 0
 
     validar_coerencia_dossie2(conn, emp_id)
     return {
@@ -566,6 +636,21 @@ def validar_coerencia_dossie2(conn: Any, empresa_id: int) -> list[dict[str, Any]
                 "Os itens importados do pacote revisado permanecem em quarentena até validação nas estações 1–9.",
                 "Revisar e homologar com justificativa técnica; acompanhar OP-02..OP-08.",
                 "/emissao#quarentena",
+            )
+
+        cur.execute("SELECT documento, codigo_secao, conteudo_md FROM erp.documento_secao WHERE empresa_id = %s AND dossie = 'D2'", (empresa_id,))
+        secoes_d2 = cur.fetchall()
+        cur.execute("SELECT codigo_documento, conteudo_md FROM erp.contrato_servico WHERE empresa_id = %s", (empresa_id,))
+        cs_d2 = cur.fetchall()
+        residuos = detectar_residuos_texto_d2(secoes_d2, cs_d2)
+        if residuos:
+            lista_res = "; ".join(f"{r['documento']} ({r['padrao']}: {r['trecho']})" for r in residuos[:5])
+            add(
+                "D2_TEXTO_RESIDUO", "critico", "governanca", "emissao",
+                f"Marcas de rascunho ou norma revogada detectadas em {len(residuos)} trecho(s)",
+                f"Resíduos encontrados: {lista_res}.",
+                "Remover placeholders ([INSERIR, [cite, XX.XXX, TODO, ???) e substituir Res. CFC 1.555/2018 pela Res. CFC 1.708/2023.",
+                "/emissao#secoes",
             )
 
         cur.execute("DELETE FROM auditoria.alerta_coerencia WHERE empresa_id = %s AND dossie = 'D2'", (empresa_id,))
