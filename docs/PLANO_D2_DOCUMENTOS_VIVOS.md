@@ -324,3 +324,58 @@ Montar no teste um dicionário `dados` no formato de `carregar_dados_dossie2()` 
 | 3 | 26/11/2026 | `d831175` | `pytest sistema/testes -q`: 32 passed, 23 skipped | Docs 01–04, 08, 10 e conciliação Doc 12; regras `D2_PROPOSTA_CONTRATO_DIVERGENTE` e `D2_SALARIO_ABAIXO_PISO`; extração de `obter_dados_escritorio_d1`; telas D2 (sem afetar D1) e novos campos editáveis. |
 | 4 | 26/11/2026 | `d7e1031` | `pytest sistema/testes -q`: 36 passed, 23 skipped | Doc 13 (PT-01..05, recálculo 100%, AUD-01..10), `recalcular_folha_independente_dados`/`recalcular_folha_independente`, separação `PROV-FER`/`PROV-1/3` no motor e na planilha `.xlsx`, regra `D2_RECALCULO_DIVERGENTE`. |
 | 5 | 26/11/2026 | `87f754f`, `af97d15`, `d831175`, `d7e1031` (+ doc final) | `pytest sistema/testes -q`: 36 passed, 23 skipped; render local puro Docs 01/06/13 OK | Push de `feat/d2-documentos-vivos`; deploy Vercel concluído (`state: success`): https://prisma-jrna-plataforma-git-fe-06c7dc-ricksons-projects-31de7f0c.vercel.app . `git diff --stat master..HEAD`: 17 arquivos (`docs/PLANO_D2_DOCUMENTOS_VIVOS.md`, `sistema/erp/motor_folha.py`, `sistema/pg/migrations/008_d2_documentos_vivos.sql`, `sistema/testes/test_web_dossie2.py`, `sistema/web/{ajuda,emissor_dossie2,planilha_dossie2,repo,repo_d2,rotulos}.py`, `sistema/web/templates/{dp,folha,instrumentos,onboarding,sustentacao}.html`, `sistema/web/templates/pdf/{_m,d2_doc}.html`; +2679/-194). Conferência no navegador na prévia Vercel pendente por Chrome DevTools indisponível (`DevToolsActivePort` ausente) — requer abertura/login pela usuária. |
+
+## 12. Complemento — a plataforma como única fonte de verdade (Fase 7)
+
+> **Status:** 🟡 AGUARDANDO liberação do revisor.
+> **Decisão da usuária (26/11/2026):** nenhum número vale por vir de rascunho (pasta `Arquivado_antigo`), de texto importado ou de conta feita no chat. Todo número é **calculado por um motor da plataforma**, mostrado numa **página com memória de cálculo** (base × parâmetro × fórmula = resultado) e conferível em **planilha com fórmulas vivas**. A homologação acontece na tela, pela contadora. Migração 008 aplicada em produção pelo revisor (26/11/2026).
+> **Régua:** a devolutiva oficial do D2 (ver 12.8). Lembrete do item P6/Encargos: "sem aplicar CPP 20%/RAT/terceiros fora do Simples" — qualquer simulação fora do Simples é **sensibilidade**, nunca valor da folha.
+
+### 12.1 Alertas sem números digitados
+Hoje vários alertas de `validar_coerencia_dossie2` trazem valores escritos no texto (vindos dos rascunhos da V2):
+- `D2_CNAE_VEDACAO_SIMPLES`: "+R$ 917,40/mês (+22,22%)";
+- `D2_OP01_VT_4_VS_2`: "R$ 234,00 / R$ 62,00 / R$ 4.128,00 / R$ 3.956,00";
+- `D2_OP_JORNADA_E1_41H`: "41h / 44h / 3h";
+- `D2_ONBOARDING_PEND_CRITICAS`: "16 itens"; `D2_QUARENTENA_REVISAO`: "261 registros".
+- [ ] Cada valor passa a ser **formatado a partir do cálculo** (motor ou contagem no banco). Se o insumo faltar, o alerta diz "insumo ausente: <campo>" em vez de um número.
+- [ ] Teste puro: montar dados com valores diferentes dos atuais e confirmar que o texto do alerta muda junto.
+
+### 12.2 Motor de jornada (substitui o texto "41h × 44h")
+- [ ] Migração 009 (nullable, idempotente) em `erp.contrato_trabalho`: `hora_entrada TIME`, `hora_saida TIME`, `dias_semana SMALLINT`, `horas_sabado NUMERIC(4,2)`.
+- [ ] Função pura `horas_semanais(contrato)` = (saída − entrada − intervalo) × dias + sábado. Regra `D2_JORNADA_DIVERGENTE` compara com `jornada_semanal_horas` e mostra a conta.
+- [ ] Campos editáveis na tela do DP; a contadora preenche a partir do Estudo de Caso 02 (acervo).
+
+### 12.3 Simulador de sensibilidade do vale-transporte
+- [ ] Função pura que, a partir do contrato (passagens/dia, tarifa), da competência (dias úteis) e do parâmetro de 6% (Lei 7.418/1985), devolve os dois cenários (passagens do contrato × alternativa informada): custo bruto, desconto do empregado, subsídio da empresa e líquido.
+- [ ] Bloco na tela da folha com a memória de cálculo das duas colunas. O cenário oficial continua sendo `vt_passagens_dia` do contrato (decisão da contadora, registrada como premissa).
+
+### 12.4 Simulador de enquadramento: Simples × fora do Simples (Rota Sul) — somente sensibilidade
+- [ ] Parâmetros novos em `erp.parametro_legal` (cada um com norma, link e data de consulta, em quarentena até a contadora homologar): CPP 20%, RAT/FAP do CNAE, terceiros FPAS 515, presunção IRPJ 8% e CSLL 12% (comércio), IRPJ 15% + adicional 10%, CSLL 9%, PIS 0,65% e Cofins 3% (cumulativo), faixas do Anexo I da LC 123.
+- [ ] Premissa de **receita bruta** da Rota Sul informada na tela, com fonte. **Sem receita informada, o simulador não calcula** ("premissa ausente").
+- [ ] Página com o quadro comparativo e a memória de cálculo, rotulada como sensibilidade.
+- [ ] `# ponytail:` ICMS como parâmetro único por UF (sem ST nem DIFAL).
+
+### 12.5 Memória de cálculo da folha e planilha
+- [ ] Página "Memória de cálculo" por empregado e rubrica: base, parâmetro usado (chave + norma), fórmula, resultado do motor e do recálculo independente, lado a lado.
+- [ ] Aba de planilha para cada simulador (12.3 e 12.4), no padrão atual (premissas em azul, fórmulas em preto).
+
+### 12.6 Testes e aceite
+- [ ] Testes puros para 12.1 a 12.4 (nada grava no banco).
+- [ ] Aceite: abrir cada página e refazer 1 conta de cada bloco com a calculadora, só com os números mostrados na própria página.
+
+### 12.8 Régua oficial do D2 (48 elementos)
+O revisor preparou o alinhamento dos critérios D2 à **devolutiva oficial** (régua "Para chegar ao 4", conferida contra as devolutivas D2 de 23 duplas no acervo): o D2 passa a ter **48** critérios (novo `C-48` = P5 "Salário proporcional").
+- [ ] `templates/sustentacao.html:8`: trocar o texto fixo `'47 critérios'` pela contagem real.
+- [ ] `erp/importar_dossie2.py` (`CRITERIOS_D2`, linha ~98): o comentário cita como fonte um rascunho (`REVISAO_ENTREGA_LIMPA_2026-11-24.md`) cujas notas V1 divergem da devolutiva oficial em 18 itens. O banco passa a ser a fonte; atualizar o comentário e não reimportar critérios D2.
+- [ ] Nenhum teste deve fixar "47" para o D2.
+
+### 12.7 Registro de execução (executor preenche)
+
+| Item | Data | Commit | Testes | Observações |
+|---|---|---|---|---|
+| 12.1 | | | | |
+| 12.2 | | | | |
+| 12.3 | | | | |
+| 12.4 | | | | |
+| 12.5 | | | | |
+| 12.8 | | | | |
