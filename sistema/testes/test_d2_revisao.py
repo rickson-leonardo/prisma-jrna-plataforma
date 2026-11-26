@@ -3,10 +3,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sistema.erp.motor_folha import detectar_residuos_texto_d2
+from sistema.erp.motor_folha import (
+    ALIQ_EXCLUSAO_SIMPLES_MICRO_PADRAO,
+    _historico_lote_l3,
+    detectar_residuos_texto_d2,
+    recalcular_folha_independente_dados,
+)
 from sistema.testes.test_web_dossie2 import _fixture_dados_d2
 from sistema.web.app import create_app
 from sistema.web.emissor_dossie2 import _capital_doc01, _normalizar_docs_admissao, html_documento
+from sistema.web.planilha_dossie2 import _montar_workbook_d2
 
 TEMPLATES = Path(__file__).resolve().parents[1] / "web" / "templates"
 
@@ -98,6 +104,110 @@ def test_capital_integralizado_exige_fato_explicito() -> None:
     assert "Integralizado: <span class=\"mono\">— (não registrado)</span>" in html
     assert "A integralizar: <span class=\"mono\">— (não registrado)</span>" in html
     assert "R$\xa0500.000,00" not in html
+
+
+def test_emissor_sem_fallback_rt_e_sede() -> None:
+    emissor_src = (Path(__file__).resolve().parents[1] / "web" / "emissor_dossie2.py").read_text(encoding="utf-8")
+    for proibido in ("Nathalia Peres Araujo", "CRC-DF 025.431/O-7", "'Goiânia'", "'GO'"):
+        assert proibido not in emissor_src
+
+    dados = _fixture_dados_d2()
+    dados["estabelecimentos"] = [{"id": 1, "tipo": "matriz", "cnpj": "11.222.333/0001-81", "uf": None, "municipio": None, "endereco": None, "status_validacao": "pendente_revisao"}]
+    dados["escritorio"] = {}
+    dados["rt"] = {"nome": "—", "crc": "—"}
+    html = html_documento("d2_01_diagnostico", para_web=True, dados=dados)
+    assert "— — —/—" in html
+    assert "PRISMA JRNA (RT —, —)" in html
+    assert "Goiânia" not in html
+    assert "Nathalia Peres Araujo" not in html
+
+
+def test_planilha_sem_valores_reserva_e_excl_simples() -> None:
+    plan_src = (Path(__file__).resolve().parents[1] / "web" / "planilha_dossie2.py").read_text(encoding="utf-8")
+    for literal in ("6000000", "15000", "172225", "186300", "0.278"):
+        assert literal not in plan_src
+
+    dados = _fixture_dados_d2()
+    dados["comp"].pop("vendas_liquidas_e2_centavos", None)
+    dados["contratos"][0].pop("piso_cct_centavos", None)
+    dados["contratos"][1].pop("piso_cct_centavos", None)
+    dados["contratos"][1].pop("comissao_pct_micro", None)
+    wb = _montar_workbook_d2(dados)
+    ws_par = wb["Parametros"]
+    assert ws_par["C11"].value is None
+    assert ws_par["D11"].value is None
+    assert ws_par["C28"].value is None
+    assert ws_par["D28"].value is None
+    assert ws_par["D29"].value == ALIQ_EXCLUSAO_SIMPLES_MICRO_PADRAO / 1_000_000.0
+
+    # Com parâmetro EXCL-SIMPLES explícito no banco, a planilha usa o parâmetro
+    dados["parametros"].append({"codigo": "EXCL-SIMPLES", "categoria": "encargos", "ordem": 1, "aliquota_micro": 295_000})
+    wb2 = _montar_workbook_d2(dados)
+    assert wb2["Parametros"]["D29"].value == 0.295
+
+
+def test_recalculo_sem_fgts_registra_ausente_e_nao_inventa() -> None:
+    dados = _fixture_dados_d2()
+    dados["parametros"] = [p for p in dados["parametros"] if p.get("codigo") != "FGTS-8"]
+    ausentes: list[str] = []
+    comp = recalcular_folha_independente_dados(
+        dados["comp"], dados["contratos"], dados["parametros"], dados["itens"], parametros_ausentes=ausentes
+    )
+    assert "FGTS-8" in ausentes
+    assert not any(r["codigo_rubrica"] in ("FGTS-8", "PROV-FGTS") for r in comp)
+
+    motor_src = (Path(__file__).resolve().parents[1] / "erp" / "motor_folha.py").read_text(encoding="utf-8")
+    assert "D2_PARAMETRO_AUSENTE" in motor_src
+
+
+def test_recalculo_com_parametros_producao_preserva_gabarito() -> None:
+    dados = _fixture_dados_d2()
+    # Completa demais faixas de produção do IRRF e RED-TRANS
+    dados["parametros"].extend([
+        {"codigo": "IRRF-F2", "categoria": "irrf", "ordem": 4, "limite_centavos": 282_665, "aliquota_micro": 75_000, "deducao_centavos": 18_216},
+        {"codigo": "IRRF-F3", "categoria": "irrf", "ordem": 5, "limite_centavos": 375_105, "aliquota_micro": 150_000, "deducao_centavos": 39_416},
+        {"codigo": "IRRF-F4", "categoria": "irrf", "ordem": 6, "limite_centavos": 466_468, "aliquota_micro": 225_000, "deducao_centavos": 67_549},
+        {"codigo": "IRRF-F5", "categoria": "irrf", "ordem": 7, "limite_centavos": None, "aliquota_micro": 275_000, "deducao_centavos": 90_873},
+        {"codigo": "RED-TRANS", "categoria": "reducao_irrf_2026", "ordem": 2, "limite_centavos": 735_000, "aliquota_micro": 133_145, "deducao_centavos": 97_862},
+    ])
+    ausentes: list[str] = []
+    comp = recalcular_folha_independente_dados(
+        dados["comp"], dados["contratos"], dados["parametros"], dados["itens"], parametros_ausentes=ausentes
+    )
+    assert ausentes == []
+    mapa = {(r["codigo_empregado"], r["codigo_rubrica"]): r["valor_recalculado_centavos"] for r in comp}
+    assert mapa[("E1", "INSS-RET")] == 9_000
+    assert mapa[("E2", "INSS-RET")] == 12_268
+    assert mapa[("E1", "NEGOCIAL")] == 3_996
+    assert mapa[("E2", "NEGOCIAL")] == 5_439
+    assert mapa[("E1", "VT-DESC")] == 7_200
+    assert mapa[("E2", "VT-DESC")] == 3_800
+    assert mapa[("E1", "PROV-13")] == 20_000
+    assert mapa[("E1", "PROV-FER")] == 20_000
+    assert mapa[("E1", "PROV-1/3")] == 6_667
+    assert mapa[("E1", "PROV-FGTS")] == 3_733
+
+    # Verifica correção de precedência com dias_trabalhados_e1=None e dias_uteis_vt_e1=None
+    comp_none = dict(dados["comp"], dias_trabalhados_e1=None, dias_uteis_vt_e1=None)
+    rec_none = recalcular_folha_independente_dados(comp_none, dados["contratos"], dados["parametros"], [])
+    mapa_none = {(r["codigo_empregado"], r["codigo_rubrica"]): r["valor_recalculado_centavos"] for r in rec_none}
+    assert mapa_none[("E1", "SAL-PROP")] == 0
+    assert mapa_none[("E1", "VT-DESC")] == 0
+
+
+def test_historico_lote_l3_dinamico() -> None:
+    cts_2 = [
+        {"codigo_empregado": "E1", "vt_optante": True, "vt_passagens_dia": 2},
+        {"codigo_empregado": "E2", "vt_optante": True, "vt_passagens_dia": 2},
+    ]
+    assert _historico_lote_l3(cts_2, "2026-09") == "L3 — Apropriação de Benefícios VT (2/dia) e VR PAT 09/2026"
+
+    cts_misto = [
+        {"codigo_empregado": "E1", "vt_optante": True, "vt_passagens_dia": 4},
+        {"codigo_empregado": "E2", "vt_optante": True, "vt_passagens_dia": 2},
+    ]
+    assert _historico_lote_l3(cts_misto, "2026-09") == "L3 — Apropriação de Benefícios VT (E1 4/dia, E2 2/dia) e VR PAT 09/2026"
+
 
 
 

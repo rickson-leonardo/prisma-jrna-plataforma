@@ -17,6 +17,7 @@ from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
+from sistema.erp.motor_folha import ALIQ_EXCLUSAO_SIMPLES_MICRO_PADRAO
 from sistema.web.planilha_dossie1 import (
     BRAND_DIR,
     COR_TIPO,
@@ -36,12 +37,12 @@ from sistema.web.planilha_dossie1 import (
 XLSX_D2_NOME = "11_Folha_Pagamento_Set2026_Memoria_Calculo.xlsx"
 
 
-def _r(c: int | None) -> float:
-    return round(int(c or 0) / 100.0, 2)
+def _r(c: int | None) -> float | None:
+    return None if c is None else round(int(c) / 100.0, 2)
 
 
-def _p(m: int | None) -> float:
-    return int(m or 0) / 1_000_000.0
+def _p(m: int | None) -> float | None:
+    return None if m is None else int(m) / 1_000_000.0
 
 
 def _estilizar_cab_aba(ws: Any, titulo: str, subtitulo: str, col_fim: int) -> int:
@@ -120,6 +121,13 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
     r = _estilizar_cab_aba(ws_par, "PARÂMETROS OFICIAIS — COMPETÊNCIA 09/2026 (ROTA SUL)", "Portaria MPS/MF 13/2026 · Lei 15.270/2025 · CCT SRT00189/2025 + Aditivo 2026/2027", 5)
     _hdr(ws_par, r, ["Código", "Parâmetro / Premissa", "Valor / Limite", "Alíquota / Extra", "Base Legal / Origem"])
     r += 1
+    par_excl = pars.get("EXCL-SIMPLES") or pars.get("CPP-FORA-SIMPLES") or {}
+    aliq_excl = (
+        _p(par_excl.get("aliquota_micro"))
+        if par_excl.get("aliquota_micro") is not None
+        else ALIQ_EXCLUSAO_SIMPLES_MICRO_PADRAO / 1_000_000.0
+    )
+
     # Linhas fixas previsiveis (linhas 6..31):
     linhas_par = [
         ("SAL-E1", "Salário contratual mensal — E1 (Mariana)", _r(e1.get("salario_base_centavos", 240000)), None, "brl", None, "Estudo de Caso 02 / Ficha E1"),  # row 6
@@ -127,7 +135,7 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
         ("DIAS-MES", "Dias padrão do mês comercial (divisor CLT)", int(fc.get("dias_mes_padrao") or 30), None, "int", None, "CLT art. 64"),  # row 8
         ("DIAS-E1", "Dias trabalhados na competência — E1 (16 a 30/09)", int(fc.get("dias_trabalhados_e1") or 15), None, "int", None, "Admissão 16/09/2026"),  # row 9
         ("DIAS-E2", "Dias trabalhados na competência — E2 (21 a 30/09)", int(fc.get("dias_trabalhados_e2") or 10), None, "int", None, "Admissão 21/09/2026"),  # row 10
-        ("VENDAS-E2", "Vendas líquidas de E2 em 09/2026 (premissa PR-07)", _r(fc.get("vendas_liquidas_e2_centavos", 6000000)), _p(e2.get("comissao_pct_micro", 15000)), "brl", "pct", "Contrato E2 Cl. 3ª (1,50%)"),  # row 11
+        ("VENDAS-E2", "Vendas líquidas de E2 em 09/2026 (premissa PR-07)", _r(fc.get("vendas_liquidas_e2_centavos")), _p(e2.get("comissao_pct_micro")), "brl", "pct", "Contrato E2 Cl. 3ª (1,50%)"),  # row 11
         ("DSR-E2", "Dias úteis comissão (9) / Domingos no período (1)", int(fc.get("dias_uteis_comissao_e2") or 9), int(fc.get("domingos_feriados_e2") or 1), "int", "int", "Lei 605/1949; Súmula 27 TST (27/09)"),  # row 12
         ("VT-E1", "VT E1: dias úteis / passagens por dia", int(fc.get("dias_uteis_vt_e1") or 11), int(e1.get("vt_passagens_dia") or 4), "int", "int", "PR-08 (4/dia = 2 ida + 2 volta; sensib. 2/dia)"),  # row 13
         ("VT-E2", "VT E2: dias úteis / passagens por dia", int(fc.get("dias_uteis_vt_e2") or 9), int(e2.get("vt_passagens_dia") or 4), "int", "int", "PR-08 (4/dia = 2 ida + 2 volta; sensib. 2/dia)"),  # row 14
@@ -144,14 +152,14 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
         ("IRRF-F1", "IRRF Clássico Faixa Isenta / Dependente", _r(pars.get("IRRF-F1", {}).get("limite_centavos", 242880)), _r(pars.get("IRRF-DEP", {}).get("valor_centavos", 18959)), "brl", "brl", "RFB 2026"),  # row 25
         ("FGTS", "FGTS Digital Mensal", 0.0, _p(pars.get("FGTS-8", {}).get("aliquota_micro", 80000)), "brl", "pct", "Lei nº 8.036/1990 (PIX dia 20)"),  # row 26
         ("NEGOCIAL", "Contribuição Negocial CCT (teto / alíquota)", _r(pars.get("CCT-NEGOCIAL", {}).get("limite_centavos", 14800)), _p(pars.get("CCT-NEGOCIAL", {}).get("aliquota_micro", 33300)), "brl", "pct", "CCT Cl. 11ª + STF Tema 935"),  # row 27
-        ("CCT-PISOS", "Pisos CCT: Geral / Vendedor", _r(e1.get("piso_cct_centavos", 172225)), _r(e2.get("piso_cct_centavos", 186300)), "brl", "brl", "CCT SECEG × SINDILOJAS-GO Cl. 3ª"),  # row 28
-        ("EXCL-SIMP", "Sensibilidade Exclusão Simples (CPP+RAT+Terc)", 0.0, 0.278, "brl", "pct", "PR-17: 20% CPP + 2% RAT + 5,8% FPAS 515"),  # row 29
+        ("CCT-PISOS", "Pisos CCT: Geral / Vendedor", _r(e1.get("piso_cct_centavos")), _r(e2.get("piso_cct_centavos")), "brl", "brl", "CCT SECEG × SINDILOJAS-GO Cl. 3ª"),  # row 28
+        ("EXCL-SIMP", "Sensibilidade Exclusão Simples (CPP+RAT+Terc)", 0.0, aliq_excl, "brl", "pct", "PR-17: 20% CPP + 2% RAT + 5,8% FPAS 515"),  # row 29
     ]
     for cod, desc, v1, v2, f1, f2, norm in linhas_par:
         _cell(ws_par, r, 1, cod, TXT, "txt", True)
         _cell(ws_par, r, 2, desc, TXT, "txt")
-        _cell(ws_par, r, 3, v1, IN, f1)
-        _cell(ws_par, r, 4, "" if v2 is None else v2, IN if v2 is not None else TXT, f2 or "txt")
+        _cell(ws_par, r, 3, None if v1 is None else v1, IN if v1 is not None else TXT, f1 if v1 is not None else "txt")
+        _cell(ws_par, r, 4, None if v2 is None else v2, IN if v2 is not None else TXT, (f2 or "txt") if v2 is not None else "txt")
         _cell(ws_par, r, 5, norm, TXT, "txt")
         r += 1
     _ajustar_impressao(ws_par, {1: 14, 2: 46, 3: 16, 4: 16, 5: 44})

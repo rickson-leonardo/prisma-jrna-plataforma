@@ -193,8 +193,8 @@ def carregar_dados_dossie2() -> dict[str, Any]:
         cur.execute("SELECT * FROM erp.auditoria_folha WHERE empresa_id = %s ORDER BY ordem, id", (emp_id,))
         auditoria = cur.fetchall()
 
-        rt_nome = (escritorio or {}).get("rt_nome") or "Nathalia Peres Araujo"
-        rt_crc = (escritorio or {}).get("rt_crc") or "CRC-DF 025.431/O-7"
+        rt_nome = (escritorio or {}).get("rt_nome") or "—"
+        rt_crc = (escritorio or {}).get("rt_crc") or "—"
 
     return {
         "emitido_em": datetime.now(),
@@ -623,7 +623,7 @@ def html_documento(doc: str, para_web: bool = False, dados: dict[str, Any] | Non
         js_orientacao=Markup(JS_ORIENTACAO), empresa=d["empresa"], rt=d["rt"], cnpj=cnpj_info,
         pend_doc=pend_doc, pendencias_total=d["pendencias_total"],
         emitido_em=d["emitido_em"], socios=[],
-        sede_txt=f"{sede.get('endereco') or '—'} — {sede.get('municipio') or 'Goiânia'}/{sede.get('uf') or 'GO'}",
+        sede_txt=f"{sede.get('endereco') or '—'} — {sede.get('municipio') or '—'}/{sede.get('uf') or '—'}",
         secoes=d["secoes"].get(doc, []), md=_md_vivo_d2(d), rot=rotulos.rotulo,
         brl=texto.brl, brl_tab=texto.brl_tab, pct=texto.pct_micro, num=texto.num_br,
         fmt_hhmm=_fmt_hhmm, fmt_data=_fmt_data, fmt_pct_socio=_fmt_pct_socio,
