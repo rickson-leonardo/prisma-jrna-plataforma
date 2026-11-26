@@ -379,3 +379,4 @@ O revisor preparou o alinhamento dos critérios D2 à **devolutiva oficial** (r�
 | 12.4 | | | | |
 | 12.5 | | | | |
 | 12.8 | | | | |
+| Revisão F1–5 | 26/11/2026 | `e48981e`, `b70cf2d`, `e1868e5`, `9621e58`, `9a33c14` | `48 passed, 23 skipped` (`DATABASE_URL` inexistente) | Prévia Vercel: https://prisma-jrna-plataforma-git-fi-8f4c50-ricksons-projects-31de7f0c.vercel.app |
