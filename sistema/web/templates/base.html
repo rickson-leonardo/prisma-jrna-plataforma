@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Sistema Contábil{% endblock %} — PRISMA JRNA</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='brand/simbolo_prisma_jrna.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20261125b') }}">
 </head>
 <body>
 <a class="sr-only" href="#conteudo">Ir para o conteúdo</a>
@@ -20,8 +20,8 @@
     <form method="post" action="{{ url_for('post_contexto_selecionar') }}" style="padding: 8px 10px; border-bottom: 1px solid var(--l200); display:flex; gap:6px; align-items:center;">
       {{ m.csrf() }}
       <input type="hidden" name="next" value="{{ request.full_path }}">
-      <button type="submit" name="dossie" value="D1" class="btn btn-sm {{ 'btn-primary' if _da == 'D1' else 'btn-sec' }}" style="flex:1;" title="Escritório PRISMA JRNA (Dossiê 1)">D1 · Prisma</button>
-      <button type="submit" name="dossie" value="D2" class="btn btn-sm {{ 'btn-primary' if _da == 'D2' else 'btn-sec' }}" style="flex:1;" title="Cliente Rota Sul (Dossiê 2)">D2 · Rota Sul</button>
+      <button type="submit" name="dossie" value="D1" class="btn btn-sm ctx-dossie{{ ' ativo' if _da == 'D1' }}" aria-pressed="{{ 'true' if _da == 'D1' else 'false' }}" title="Escritório PRISMA JRNA (Dossiê 1)">D1 · Prisma</button>
+      <button type="submit" name="dossie" value="D2" class="btn btn-sm ctx-dossie{{ ' ativo' if _da == 'D2' }}" aria-pressed="{{ 'true' if _da == 'D2' else 'false' }}" title="Cliente Rota Sul (Dossiê 2)">D2 · Rota Sul</button>
       {{ m.tip('ctx.dossie', 'Alternar dossiê') }}
     </form>
     {% set prog = progresso_estacoes() %}

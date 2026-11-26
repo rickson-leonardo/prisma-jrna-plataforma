@@ -189,6 +189,10 @@ textarea.longo { min-height: 220px; font-size: 13px; }
 .btn-primary:hover { background: var(--g900); }
 .btn-sec { background: var(--w); color: var(--g800); border-color: var(--l300); }
 .btn-sec:hover { background: var(--n100); }
+/* Seletor D1/D2 na sidebar escura: ativo em branco (mesmo padrao do item ativo do menu), inativo vazado */
+.ctx-dossie { flex: 1; justify-content: center; background: transparent; color: var(--l200); border-color: rgba(255,255,255,.28); }
+.ctx-dossie:hover { background: rgba(255,255,255,.08); }
+.ctx-dossie.ativo { background: var(--w); color: var(--g800); border-color: var(--w); font-weight: 700; }
 .btn-danger-ghost { background: var(--w); color: var(--cr); border-color: var(--cr-bd); }
 .btn-danger-ghost:hover { background: var(--cr-bg); }
 .btn-danger { background: var(--cr); color: var(--w); }
