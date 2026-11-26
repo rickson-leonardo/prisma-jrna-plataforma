@@ -973,7 +973,7 @@ def validar_coerencia_dossie1(conn: Any, empresa_id: int) -> list[dict[str, Any]
                     "Alterar regime_simulacao em /planejamento para calculo progressivo real.",
                     ancora=anc_cen,
                 )
-            if cen_of["regime_simulacao"] == "simples_segregado":
+            if cen_of["regime_simulacao"] == "simples_segregado" and cen_of["status_validacao"] != "homologado_contadora":
                 add_alerta(
                     "PREMISSA_SEGREGACAO_85_15", "alerta", "tributario", "planejamento",
                     "Premissa de segregacao de receitas (85% / 15%) exige validacao da contadora",

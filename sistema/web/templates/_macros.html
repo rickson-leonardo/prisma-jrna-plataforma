@@ -34,6 +34,7 @@
   <option value="pendente_revisao" {{ 'selected' if atual == 'pendente_revisao' }}>Pendente de revisão</option>
   <option value="alerta_inconsistencia" {{ 'selected' if atual == 'alerta_inconsistencia' }}>Inconsistência apontada</option>
   {% if atual == 'homologado_contadora' %}<option value="homologado_contadora" selected>Homologado pela contadora</option>{% endif %}
+  {% if atual == 'acervo_referencia' %}<option value="acervo_referencia" selected>Referência do acervo</option>{% endif %}
 </select>
 {%- endmacro %}
 
