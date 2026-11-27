@@ -58,6 +58,17 @@ Legenda de status: ✅ aplicado em produção · ⏳ SQL pronto, aguardando exec
 >
 > **Lição de processo:** o primeiro envio do SQL falhou ("19 CNAEs"): a linha de continuação "anteriormente;" entrava como vazia. O ensaio usava `string_agg`, que esconde vazios. Ensaios passam a usar a mesma consulta do SQL final.
 
+## Perguntas ao professor (grupo da disciplina)
+
+Critério (usuária, 27/11/2026): o professor faz o papel de todos os personagens do caso (cliente, contador anterior, advogado). Só perguntamos **fatos do caso** que só ele conhece; nunca o que a legislação vigente ou o próprio material responde.
+
+| Data | Pergunta | Papel | Status |
+|---|---|---|---|
+| 27/11/2026 | Houve manifestação do advogado sobre as diretrizes da 3ª Alteração? (liga a Q9 / PEND-02) | Advogado | ⏳ enviada pela usuária |
+| 27/11/2026 | As respostas de 24/09/2026 (cliente, contador anterior e advogado) estão reunidas em algum documento? (fonte do P3) | Professor | ⏳ enviada pela usuária |
+
+Descartadas por serem respondidas pela lei ou pelo material: datas de admissão (EC02 p. 2), leitura das provisões (CF art. 7º, XVII; FGTS 8%), jornada 41h × 44h (incoerência proposital, tratada na PR-11).
+
 ## Classificação das fontes: original × legado
 
 | Classe | O que é | Como tratar |
