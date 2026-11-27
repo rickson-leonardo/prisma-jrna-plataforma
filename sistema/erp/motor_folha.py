@@ -398,7 +398,7 @@ def recalcular_folha_independente_dados(
         # VR
         vr_val = dias_vr * int(ct.get("vr_valor_dia_centavos") or 0) if ct.get("vr_elegivel") else 0
         if vr_val > 0:
-            rubricas_emp.append(("VR-PAT", "Vale-Refeição (PAT)", vr_val, vr_val))
+            rubricas_emp.append(("VR-PAT", "Vale-Refeição (CLT art. 457, § 2º)", vr_val, vr_val))
 
         # Contribuicao Negocial e FGTS
         if neg_ok and aliq_neg is not None and teto_neg is not None:
@@ -569,18 +569,18 @@ def _calc_irrf_2026(
 
 
 CONTAS_FOLHA_D2: tuple[tuple[str, str, int, str], ...] = (
-    ("1.1.4.01", "Adiantamentos de Benefícios VT/VR", 1, "D"),
     ("2.1.2.01", "Salários a Pagar", 2, "C"),
     ("2.1.2.02", "INSS a Recolher (Retido — DCTFWeb)", 2, "C"),
     ("2.1.2.03", "FGTS a Recolher (FGTS Digital)", 2, "C"),
     ("2.1.2.05", "Contribuição Negocial a Recolher (CCT SECEG)", 2, "C"),
+    ("2.1.2.06", "VT/VR a Pagar (Operadoras de Benefícios)", 2, "C"),
     ("2.1.2.10", "Provisão para 13º Salário", 2, "C"),
     ("2.1.2.11", "Provisão para Férias e 1/3 Constitucional", 2, "C"),
     ("2.1.2.12", "Provisão de FGTS s/ 13º e Férias", 2, "C"),
     ("4.1.1.01", "Despesas Administrativas — Salários (E1)", 4, "D"),
     ("4.1.1.03", "Despesas Administrativas — FGTS (E1)", 4, "D"),
     ("4.1.1.05", "Despesas Administrativas — Vale-Transporte (E1)", 4, "D"),
-    ("4.1.1.06", "Despesas Administrativas — Vale-Refeição PAT (E1)", 4, "D"),
+    ("4.1.1.06", "Despesas Administrativas — Vale-Refeição (E1)", 4, "D"),
     ("4.1.1.07", "Despesas Administrativas — Provisão 13º Salário (E1)", 4, "D"),
     ("4.1.1.08", "Despesas Administrativas — Provisão Férias e 1/3 (E1)", 4, "D"),
     ("4.1.1.09", "Despesas Administrativas — FGTS s/ Provisões (E1)", 4, "D"),
@@ -622,7 +622,7 @@ def _historico_lote_l3(cts: list[dict[str, Any]], competencia: str) -> str:
         vt_txt = f"VT ({vt_itens[0][1]}/dia)"
     else:
         vt_txt = "VT (" + ", ".join(f"{cod} {p}/dia" for cod, p in vt_itens) + ")"
-    return f"L3 — Apropriação de Benefícios {vt_txt} e VR PAT {comp_fmt}"
+    return f"L3 — Apropriação de Benefícios {vt_txt} e VR {comp_fmt}"
 
 
 def recalcular_folha_d2(conn: Any, competencia_id: int | None = None) -> dict[str, Any]:
@@ -766,18 +766,18 @@ def recalcular_folha_d2(conn: Any, competencia_id: int | None = None) -> dict[st
             itens.append((
                 f"fi:{fc['competencia']}:{cod}:VT-SUBS", fc_id, ct_id, 8, "VT-SUBS",
                 f"Subsídio Vale-Transporte Empresa ({passagens}/dia)", "informativo", f"{dias_vt}d x {passagens}/d",
-                vt_bruto, vt_subs, f"{vt_bruto/100:.2f} - {vt_desc/100:.2f} (sensib 2/dia = {vt_subs_2d/100:.2f})",
+                vt_bruto, vt_subs, f"{vt_bruto/100:.2f} - {vt_desc/100:.2f}",
                 "Lei 7.418/1985", False, False, False, "motor_calculo", "pendente_revisao",
             ))
 
-            # Vale-Refeicao (PAT — indenizatorio)
+            # Vale-Refeicao (auxilio-alimentacao nao pago em dinheiro: CLT art. 457, par. 2)
             vr_val = dias_vr * int(ct["vr_valor_dia_centavos"] or 0) if ct["vr_elegivel"] else 0
             if vr_val > 0:
                 itens.append((
                     f"fi:{fc['competencia']}:{cod}:VR", fc_id, ct_id, 9, "VR-PAT",
-                    "Vale-Refeição (PAT — 100% Empresa)", "informativo", f"{dias_vr}d x R$ 30,00",
+                    "Vale-Refeição (CLT art. 457, § 2º)", "informativo", f"{dias_vr}d x R$ 30,00",
                     vr_val, vr_val, f"{dias_vr} * {int(ct['vr_valor_dia_centavos'])/100:.2f}",
-                    "CLT art. 457 § 2º; Lei 6.321/1976", False, False, False, "motor_calculo", "pendente_revisao",
+                    "CLT art. 457, § 2º (EC02, p. 3: R$ 30,00/dia trabalhado)", False, False, False, "motor_calculo", "pendente_revisao",
                 ))
 
             # Contribuicao Negocial (Cenario A vs B)
@@ -912,7 +912,7 @@ def recalcular_folha_d2(conn: Any, competencia_id: int | None = None) -> dict[st
                 ("4.1.1.05", "D", e1["vt_bruto"]),
                 ("4.2.1.05", "D", e2["vt_bruto"]),
                 ("4.1.1.06", "D", e1["vr"]),
-                ("1.1.4.01", "C", e1["vt_bruto"] + e2["vt_bruto"] + e1["vr"]),
+                ("2.1.2.06", "C", e1["vt_bruto"] + e2["vt_bruto"] + e1["vr"]),
             ]),
             (4, "L4 — Provisões Trabalhistas 09/2026 (1/12 avo E1: 13º, Férias+1/3 e FGTS)", "folha_l4", [
                 ("4.1.1.07", "D", tot["prov_13"]),
@@ -1028,8 +1028,8 @@ def validar_coerencia_dossie2(conn: Any, empresa_id: int) -> list[dict[str, Any]
         if any(c["vt_optante"] and int(c["vt_passagens_dia"] or 0) == 4 for c in cts):
             add(
                 "D2_OP01_VT_4_VS_2", "info", "trabalhista", "folha",
-                "OP-01: Vale-Transporte parametrizado em 4 passagens/dia (sensibilidade 2/dia)",
-                "4/dia gera subsídio de R$ 234,00 (custo R$ 4.128,00); leitura literal de 2/dia gera subsídio de R$ 62,00 (custo R$ 3.956,00), sem alterar o líquido.",
+                "OP-01: Vale-Transporte parametrizado em 4 passagens/dia (o caso informa 2 conduções/dia)",
+                "EC02, p. 3 e aula de DP, p. 24: 2 conduções/dia (PR-08). A quantidade muda o subsídio da empresa, não o desconto de 6% do empregado.",
                 "Confirmar trajeto real no Termo VT assinado (DOC-12).",
                 "/dp#contratos-trabalho",
             )

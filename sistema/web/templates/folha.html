@@ -130,7 +130,7 @@
               {% call m.field('Norma de referência', 'aud.norma', 'span-2') %}<input type="text" name="norma_referencia" value="{{ a.norma_referencia }}">{% endcall %}
               {% call m.field('Responsável', 'aud.responsavel') %}<input type="text" name="responsavel" value="{{ a.responsavel or '' }}">{% endcall %}
               {% call m.field('Prazo', 'aud.responsavel') %}<input type="text" name="prazo_texto" value="{{ a.prazo_texto or '' }}">{% endcall %}
-              {% call m.field('Valor V1 (R$)', 'aud.valor_v1') %}<input class="num-in" type="text" data-fmt="num" name="valor_v1_reais" value="{{ a.valor_v1_centavos|reais_in if a.valor_v1_centavos is not none else '' }}">{% endcall %}
+              {% call m.field('Valor anterior (R$)', 'aud.valor_v1') %}<input class="num-in" type="text" data-fmt="num" name="valor_v1_reais" value="{{ a.valor_v1_centavos|reais_in if a.valor_v1_centavos is not none else '' }}">{% endcall %}
               {% call m.field('Valor recalculado (R$)', 'aud.valor_rec') %}<input class="num-in" type="text" data-fmt="num" name="valor_recalculado_reais" value="{{ a.valor_recalculado_centavos|reais_in if a.valor_recalculado_centavos is not none else '' }}">{% endcall %}
               {% call m.field('Objetivo / Evidência examinada', 'aud.conclusao', 'span-all') %}<textarea name="objetivo_ou_evidencia">{{ a.objetivo_ou_evidencia }}</textarea>{% endcall %}
               {% call m.field('Procedimento / Risco', 'aud.conclusao', 'span-all') %}<textarea name="procedimento_ou_risco">{{ a.procedimento_ou_risco }}</textarea>{% endcall %}

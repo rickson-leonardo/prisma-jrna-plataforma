@@ -200,13 +200,13 @@ def test_historico_lote_l3_dinamico() -> None:
         {"codigo_empregado": "E1", "vt_optante": True, "vt_passagens_dia": 2},
         {"codigo_empregado": "E2", "vt_optante": True, "vt_passagens_dia": 2},
     ]
-    assert _historico_lote_l3(cts_2, "2026-09") == "L3 — Apropriação de Benefícios VT (2/dia) e VR PAT 09/2026"
+    assert _historico_lote_l3(cts_2, "2026-09") == "L3 — Apropriação de Benefícios VT (2/dia) e VR 09/2026"
 
     cts_misto = [
         {"codigo_empregado": "E1", "vt_optante": True, "vt_passagens_dia": 4},
         {"codigo_empregado": "E2", "vt_optante": True, "vt_passagens_dia": 2},
     ]
-    assert _historico_lote_l3(cts_misto, "2026-09") == "L3 — Apropriação de Benefícios VT (E1 4/dia, E2 2/dia) e VR PAT 09/2026"
+    assert _historico_lote_l3(cts_misto, "2026-09") == "L3 — Apropriação de Benefícios VT (E1 4/dia, E2 2/dia) e VR 09/2026"
 
 
 def test_regua_d2_sem_47_fixo() -> None:
@@ -344,3 +344,23 @@ def test_pdf_contrato_resolve_marcadores_de_honorarios() -> None:
     html = html_documento("d2_03_contrato", para_web=True, dados=dados).replace(" ", " ").replace("&nbsp;", " ")
     assert "Setup de R$ 2.000,00 e mensal de R$ 4.000,00." in html
     assert "{{" not in html
+
+
+def test_recibos_d2_saem_das_rubricas_do_motor():
+    from sistema.web.emissor_dossie2 import _recibos_d2
+    d = {
+        "contratos": [{"codigo_empregado": "E2", "nome_empregado": "E2", "cargo": "Vendedor", "cbo": "5211-10"}],
+        "itens": [
+            {"codigo_empregado": "E2", "codigo_rubrica": "SAL-PROP", "tipo_rubrica": "provento", "valor_centavos": 63_333},
+            {"codigo_empregado": "E2", "codigo_rubrica": "COMISSAO", "tipo_rubrica": "provento", "valor_centavos": 90_000},
+            {"codigo_empregado": "E2", "codigo_rubrica": "DSR-COM", "tipo_rubrica": "provento", "valor_centavos": 10_000},
+            {"codigo_empregado": "E2", "codigo_rubrica": "INSS-RET", "tipo_rubrica": "desconto", "valor_centavos": 12_268},
+            {"codigo_empregado": "E2", "codigo_rubrica": "IRRF", "tipo_rubrica": "desconto", "valor_centavos": 0},
+            {"codigo_empregado": "E2", "codigo_rubrica": "VT-DESC", "tipo_rubrica": "desconto", "valor_centavos": 3_800},
+            {"codigo_empregado": "E2", "codigo_rubrica": "NEGOCIAL", "tipo_rubrica": "desconto", "valor_centavos": 5_439},
+            {"codigo_empregado": "E2", "codigo_rubrica": "FGTS-8", "tipo_rubrica": "encargo", "valor_centavos": 13_067},
+        ],
+    }
+    (r,) = _recibos_d2(d)
+    assert (r["bruto"], r["total_descontos"], r["liquido"], r["fgts"], r["vr"]) == (163_333, 21_507, 141_826, 13_067, 0)
+    assert [it["codigo_rubrica"] for it in r["descontos"]] == ["INSS-RET", "VT-DESC", "NEGOCIAL"]  # IRRF zero não aparece

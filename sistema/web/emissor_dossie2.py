@@ -493,6 +493,25 @@ def _memoria_custo_doc02(cs: dict[str, Any] | None) -> tuple[list[dict[str, Any]
     return linhas, sum(int(ln["total_centavos"]) for ln in linhas)
 
 
+def _recibos_d2(d: dict[str, Any]) -> list[dict[str, Any]]:
+    """Recibo de pagamento por empregado, montado das rubricas do motor (erp.folha_item)."""
+    recibos = []
+    for ct in d.get("contratos") or []:
+        its = [it for it in (d.get("itens") or []) if it.get("codigo_empregado") == ct.get("codigo_empregado")]
+        if not its:
+            continue
+        prov = [it for it in its if it.get("tipo_rubrica") == "provento"]
+        desc = [it for it in its if it.get("tipo_rubrica") == "desconto" and int(it.get("valor_centavos") or 0) > 0]
+        soma = lambda xs: sum(int(x.get("valor_centavos") or 0) for x in xs)
+        recibos.append({
+            "ct": ct, "proventos": prov, "descontos": desc,
+            "bruto": soma(prov), "total_descontos": soma(desc), "liquido": soma(prov) - soma(desc),
+            "fgts": soma(it for it in its if it.get("codigo_rubrica") == "FGTS-8"),
+            "vr": soma(it for it in its if it.get("codigo_rubrica") == "VR-PAT"),
+        })
+    return recibos
+
+
 def _conciliacao_doc12(d: dict[str, Any]) -> list[dict[str, Any]]:
     comp = d.get("comp") or {}
     itens = d.get("itens") or []
@@ -637,6 +656,7 @@ def html_documento(doc: str, para_web: bool = False, dados: dict[str, Any] | Non
         ctx_extra["exp_ct"] = next((c for c in (d.get("contratos") or []) if c.get("codigo_empregado") == alvo), None)
     elif doc == "d2_12_resumo_contab":
         ctx_extra["conciliacao_d2"] = _conciliacao_doc12(d)
+        ctx_extra["recibos_d2"] = _recibos_d2(d)
     elif doc == "d2_13_auditoria":
         aud = d.get("auditoria") or []
         ctx_extra["aud_pts"] = [a for a in aud if a.get("tipo_registro") == "papel_trabalho"]

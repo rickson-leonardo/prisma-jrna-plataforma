@@ -224,3 +224,27 @@ Régua (devolutiva G07, "Para chegar ao 4"): C-23 a C-28 e C-48 (P5), C-29 a C-3
 | AUD-07 | SST além do ASO (inventário de riscos PGR/DIR, PCMSO), controle de ponto e pró-labore indefinidos | Resposta Q4 (carta p. 3); PEND-07; PEND-08 | Alto |
 
 As correções da V1 (comissão, salário-família, VR, negocial, provisões, piso) saem do quadro de achados; o recálculo independente (tabela gerada) mostra a folha conforme.
+
+Decisões da usuária (27/11/2026): **FO-03 aprovado** (achados do cliente, não da V1) e **FO-08 aprovado** (L3 credita passivo "VT/VR a pagar"). Demais propostas FO aprovadas. Código + SQL 11.
+
+## Respostas do professor no grupo da disciplina (informadas pela usuária em 27/11/2026)
+
+Classe: **original registrado** (respostas do cliente dadas pelo professor no grupo). Falta registrar o texto no acervo (SQL próprio, como o 07).
+
+| Nº | Resposta | Impacto | Onde tratar |
+|---|---|---|---|
+| G-01 | Integralização: data correta **31/07/2026**; "31/07/2025" na consolidação é errata. Os R$ 500.000 **não** foram integralizados (extratos simulados não podem ter esse lançamento) | Doc 01 trata como "conflito de datas" → passa a "errata confirmada pelo cliente; prazo de 31/07/2026 vencido, sócios em mora" | Doc 01 (linha nova na Estação 2); D3 (extratos) |
+| G-02 | Filial de Itajaí: objeto registrado errado; finalidade real é **só importação de pneus**. Sócio acha que filial exige sair do Simples ("vocês é que vão nos orientar") | Reforça R-01 (depurar CNAEs da filial na 3ª Alteração); orientar que o Simples não veda filial (o limite de receita é da empresa toda) | Doc 01 / PEND-02; parecer tributário (D2 Doc 01 ou D3) |
+| G-03 | Regime supletivo (Cl. 18ª): sem resposta, "dependemos do que vocês vão nos orientar" | Orientação nossa na 3ª Alteração | Doc 01 / PEND-02 |
+| G-04 | Cônjuge de Helena: **João Alves Duarte**, mesmo endereço; nenhum ato depende de outorga uxória | Qualificação dos sócios; sem providência | Doc 01 (qualificação) |
+| G-05 | Faturamento dos últimos 12 meses **R$ 2.878.147,98**; Simples Nacional desde o início | Porte **EPP** (acima de R$ 360 mil); base do RBT12 | Doc 01 (enquadramento) e D3 |
+| G-06 | Escritório anterior **Sócontas Ltda.**: obrigações acessórias dos últimos seis meses não entregues; sistema **Domínio** | Confirma Q8/PEND-03; migração de dados do Domínio | Doc 05 (Q8/PEND-03: nova fonte) |
+| G-07 | Importação a simular: 1.000 pneus de Singapura a USD 18,79 (INCOTERM, frete, câmbio e NCM ficam como premissa dos alunos) | D3 | D3 |
+| G-08 | **Contingência: causa trabalhista de R$ 120.987,00** (detalhes "com o advogado") | Achado de auditoria trabalhista (avaliação de provisão/divulgação depende do advogado) | Doc 13 (AUD-08); D4 (NBC TG 25) |
+| G-09 | Pró-labore/distribuição: "80% do lucro líquido do mês", informal e verbal, sem valor fixado | Sócios administradores sem pró-labore formal e retirada informal: risco previdenciário e de distribuição sem lastro contábil | Doc 13 (AUD-07); PEND-08; S-2300 |
+| G-10 | Assinatura individual para todos os atos, sem limite de alçada | Risco de governança (já apontado no Doc 01) | Doc 01 |
+| G-11 | Sindicato/CCT: sócio não sabe responder (o aluno apura em fonte oficial) | Confirma a CCT como apuração da dupla (premissa didática da AULA p. 21; PR-03) | Doc 06 seção 3 / PR-03 |
+
+Novo achado ligado ao G-01: **D01-b** — o Doc 01 (seção 3) ainda traz a linha "Documentos de DP da 1ª entrega (v1) × Cl. 2ª Alteração" (autoauditoria da V1, mesmo problema do FO-03). Tratar junto com o G-01 na revisita do Doc 01.
+
+Sobre as perguntas enviadas ao professor: o G-06 e o G-08 respondem parte da pergunta sobre as respostas consolidadas de 24/09/2026; a manifestação do advogado continua sem resposta (o G-08 remete ao advogado).

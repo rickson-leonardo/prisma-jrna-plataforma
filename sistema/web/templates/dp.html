@@ -52,7 +52,7 @@
               {% call m.field('VT: passagens/dia', 'ct.vt') %}<input type="text" data-fmt="int" name="vt_passagens_dia" value="{{ ct.vt_passagens_dia }}">{% endcall %}
               {% call m.field('Tarifa VT RMTC (R$)', 'ct.vt') %}<input class="num-in" type="text" data-fmt="num" name="vt_tarifa_reais" value="{{ ct.vt_tarifa_centavos|reais_in }}">{% endcall %}
               <label class="check" style="align-self:end;"><input type="checkbox" name="vt_optante" {{ 'checked' if ct.vt_optante }}> Optante VT (6%){{ m.tip('ct.vt', 'Optante VT') }}</label>
-              <label class="check" style="align-self:end;"><input type="checkbox" name="vr_elegivel" {{ 'checked' if ct.vr_elegivel }}> Recebe VR (PAT){{ m.tip('ct.vr', 'Elegível VR') }}</label>
+              <label class="check" style="align-self:end;"><input type="checkbox" name="vr_elegivel" {{ 'checked' if ct.vr_elegivel }}> Recebe VR{{ m.tip('ct.vr', 'Elegível VR') }}</label>
               {% call m.field('Valor diário VR (R$)', 'ct.vr') %}<input class="num-in" type="text" data-fmt="num" name="vr_valor_dia_reais" value="{{ ct.vr_valor_dia_centavos|reais_in }}">{% endcall %}
               {% call m.field('Status real do ASO (NR-7)', 'ct.aso') %}{{ m.select_rotulos('aso_status', 'aso_status', ct.aso_status) }}{% endcall %}
               {% call m.field('Observação ASO', 'ct.aso', 'span-2') %}<input type="text" name="aso_observacao" value="{{ ct.aso_observacao }}">{% endcall %}

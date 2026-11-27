@@ -118,7 +118,7 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
     # =========================================================================
     # 1. ABA PARAMETROS (ancora unica para todas as formulas da planilha)
     # =========================================================================
-    r = _estilizar_cab_aba(ws_par, "PARÂMETROS OFICIAIS — COMPETÊNCIA 09/2026 (ROTA SUL)", "Portaria MPS/MF 13/2026 · Lei 15.270/2025 · CCT SRT00189/2025 + Aditivo 2026/2027", 5)
+    r = _estilizar_cab_aba(ws_par, "PARÂMETROS OFICIAIS — COMPETÊNCIA 09/2026 (ROTA SUL)", "Portaria MPS/MF 13/2026 · Lei 15.270/2025 · CCT SECEG × SINDILOJAS-GO, Termo Aditivo 2026/2027", 5)
     _hdr(ws_par, r, ["Código", "Parâmetro / Premissa", "Valor / Limite", "Alíquota / Extra", "Base Legal / Origem"])
     r += 1
     par_excl = pars.get("EXCL-SIMPLES") or pars.get("CPP-FORA-SIMPLES") or {}
@@ -140,8 +140,8 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
         ("VT-E1", "VT E1: dias úteis / passagens por dia", fc.get("dias_uteis_vt_e1"), e1.get("vt_passagens_dia"), "int", "int", "PR-08 (Estudo de Caso 02, p. 3; aula de DP, p. 24)"),  # row 13
         ("VT-E2", "VT E2: dias úteis / passagens por dia", fc.get("dias_uteis_vt_e2"), e2.get("vt_passagens_dia"), "int", "int", "PR-08 (Estudo de Caso 02, p. 3; aula de DP, p. 24)"),  # row 14
         ("VT-TAR", "Tarifa unitária VT RMTC Goiânia / Pct desconto", _r(e1.get("vt_tarifa_centavos", 430)), 0.06, "brl", "pct", "Lei 7.418/1985 art. 4º"),  # row 15
-        ("VT-MISTO", "CCT Cl. 6ª — Teto base salário misto", _r(pars.get("CCT-VT-MISTO", {}).get("limite_centavos", 225750)), None, "brl", None, "CCT SRT00189/2025 Cl. 6ª"),  # row 16
-        ("VR-E1", "VR E1: dias úteis / valor diário PAT", int(fc.get("dias_uteis_vr_e1") or 11), _r(e1.get("vr_valor_dia_centavos", 3000)), "int", "brl", "PR-09 (CLT art. 457 § 2º; E2 sem VR)"),  # row 17
+        ("VT-MISTO", "CCT Cl. 6ª — Teto base salário misto", _r(pars.get("CCT-VT-MISTO", {}).get("limite_centavos", 225750)), None, "brl", None, "Termo Aditivo 2026/2027, cl. 6ª (aula de DP, p. 29)"),  # row 16
+        ("VR-E1", "VR E1: dias trabalhados / valor diário", int(fc.get("dias_uteis_vr_e1") or 11), _r(e1.get("vr_valor_dia_centavos", 3000)), "int", "brl", "PR-09 (CLT art. 457 § 2º; E2 sem VR)"),  # row 17
         ("INSS-F1", "INSS 2026 Faixa 1 (teto R$ 1.621,00)", _r(pars.get("INSS-F1", {}).get("limite_centavos", 162100)), _p(pars.get("INSS-F1", {}).get("aliquota_micro", 75000)), "brl", "pct", "Portaria MPS/MF nº 13/2026"),  # row 18
         ("INSS-F2", "INSS 2026 Faixa 2 (teto R$ 2.902,84)", _r(pars.get("INSS-F2", {}).get("limite_centavos", 290284)), _p(pars.get("INSS-F2", {}).get("aliquota_micro", 90000)), "brl", "pct", "Portaria MPS/MF nº 13/2026"),  # row 19
         ("INSS-F3", "INSS 2026 Faixa 3 (teto R$ 4.354,27)", _r(pars.get("INSS-F3", {}).get("limite_centavos", 435427)), _p(pars.get("INSS-F3", {}).get("aliquota_micro", 120000)), "brl", "pct", "Portaria MPS/MF nº 13/2026"),  # row 20
@@ -215,7 +215,7 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
 
     # Quadro de Beneficios VT/VR na aba Folha_Set2026 (rows 11..14)
     # Viagens/dia vêm do contrato (PR-08); a comparação com outra quantidade fica no simulador de VT (plano, item 12.3)
-    _hdr(ws_folha, 10, ["Cód.", "Benefício / Custo Empresa", "VT Bruto", "Desc. VT (6%)", "Subsídio VT", "VR (PAT)", "Obs."], freezes=False)
+    _hdr(ws_folha, 10, ["Cód.", "Benefício / Custo Empresa", "VT Bruto", "Desc. VT (6%)", "Subsídio VT", "VR", "Obs."], freezes=False)
     _cell(ws_folha, 11, 1, "E1", TXT, "txt", True)
     _cell(ws_folha, 11, 2, "Mariana Alves Costa (11d úteis)", TXT, "txt")
     _cell(ws_folha, 11, 3, "=Parametros!C13*Parametros!D13*Parametros!C15", FX, "brl")
@@ -323,8 +323,8 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
         ("L2", "C", "2.1.2.03", "FGTS a Recolher (FGTS Digital)", 0.0, "=Folha_Set2026!O8"),
         ("L3", "D", "4.1.1.05", "Desp. Adm. — Apropriação VT (E1)", "=Folha_Set2026!C11", 0.0),
         ("L3", "D", "4.2.1.05", "Desp. Com. — Apropriação VT (E2)", "=Folha_Set2026!C12", 0.0),
-        ("L3", "D", "4.1.1.06", "Desp. Adm. — Vale-Refeição PAT (E1)", "=Folha_Set2026!F11", 0.0),
-        ("L3", "C", "1.1.4.01", "Adiantamentos / Fornecedores VT e VR", 0.0, "=Folha_Set2026!C13+Folha_Set2026!F13"),
+        ("L3", "D", "4.1.1.06", "Desp. Adm. — Vale-Refeição (E1)", "=Folha_Set2026!F11", 0.0),
+        ("L3", "C", "2.1.2.06", "VT/VR a Pagar (Operadoras de Benefícios)", 0.0, "=Folha_Set2026!C13+Folha_Set2026!F13"),
         ("L4", "D", "4.1.1.07", "Desp. Adm. — Provisão 13º Salário", "=E6", 0.0),
         ("L4", "D", "4.1.1.08", "Desp. Adm. — Provisão Férias + 1/3", "=E7+E8", 0.0),
         ("L4", "D", "4.1.1.09", "Desp. Adm. — FGTS s/ Provisões", "=ROUND(E9*Parametros!D26,2)", 0.0),
@@ -359,7 +359,7 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
         ("5", "FGTS da Folha (FGTS Digital)", "=Folha_Set2026!O8", "=F23"),
         ("6", "Desconto VT (6% Empregados)", "=Folha_Set2026!K8", "=F19+F20"),
         ("7", "Subsídio Líquido VT Empresa", "=Folha_Set2026!E13", "=E24+E25-F19-F20"),
-        ("8", "Vale-Refeição Empresa (PAT)", "=Folha_Set2026!F13", "=E26"),
+        ("8", "Vale-Refeição Empresa", "=Folha_Set2026!F13", "=E26"),
         ("9", "Partidas Dobradas (Débitos − Créditos)", f"=E{rp}", f"=F{rp}"),
     ]
     rc = rc_hdr + 1
@@ -392,10 +392,10 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
         ("s", "Rota Sul Importadora, Exportadora, Comércio e Distribuidora Ltda. · Competência 09/2026", ""),
         ("", "", ""),
         ("h", "Aba / Item", "Descrição"),
-        ("", "Parametros", "Premissas da competência, tabelas oficiais 2026 (Portaria MPS/MF 13/2026, Lei 15.270/2025) e CCT SRT00189/2025."),
-        ("", "Folha_Set2026", "Cálculo por fórmulas dinâmicas de E1 e E2 (bruto, INSS 4 faixas, IRRF, VT 4x2, VR, Negocial A/B, FGTS)."),
+        ("", "Parametros", "Premissas da competência, tabelas oficiais 2026 (Portaria MPS/MF 13/2026, Lei 15.270/2025) e CCT SECEG × SINDILOJAS-GO (Termo Aditivo 2026/2027)."),
+        ("", "Folha_Set2026", "Cálculo por fórmulas dinâmicas de E1 e E2 (bruto, INSS 4 faixas, IRRF, VT, VR, Negocial A/B, FGTS)."),
         ("", "Memoria_Calculo", "Passo a passo de INSS progressivo, IRRF ótimo e sensibilidade de exclusão do Simples (+27,8%)."),
-        ("", "Provisoes_e_Integracao", "Provisões 1/12 avo (R$ 504,00), lotes L1–L4 em partidas dobradas (R$ 4.238,00) e 9 linhas de conciliação zeradas."),
+        ("", "Provisoes_e_Integracao", "Provisões 1/12 avo, lotes L1–L4 em partidas dobradas e conciliação folha × contabilidade (fórmulas)."),
         ("", "Governança", f"{d.get('pendencias_total', 0)} registros do Dossiê 2 ainda em quarentena/revisão."),
     ]
     r_rd = 7
