@@ -728,7 +728,7 @@ def recalcular_folha_d2(conn: Any, competencia_id: int | None = None) -> dict[st
                 "Salário-Família (Portaria MPS/MF 13/2026)", "informativo",
                 "Inelegível (> R$ 1.980,38)" if sf_val == 0 and int(ct["qtd_dependentes_sf"] or 0) > 0 else "0 dep.",
                 sal_base, sf_val, f"Sal. contratual {sal_base/100:.2f} vs teto {teto_sf/100:.2f}",
-                "Dec. 3.048/1999 art. 82; Port. MPS/MF 13/2026", False, False, False, "motor_calculo", "pendente_revisao",
+                "Portaria Interministerial MPS/MF nº 13/2026 (art. 4º, §§ 2º e 4º)", False, False, False, "motor_calculo", "pendente_revisao",
             ))
 
             inss, mem_inss = _calc_inss_progressivo(bruto, by_cat.get("inss", []))
@@ -750,7 +750,7 @@ def recalcular_folha_d2(conn: Any, competencia_id: int | None = None) -> dict[st
 
             # Vale-Transporte
             tarifa = int(ct["vt_tarifa_centavos"] or 430)
-            passagens = int(ct["vt_passagens_dia"] or 4)
+            passagens = int(ct["vt_passagens_dia"] or 2)  # EC02 p. 3: 2 conduções/dia (PR-08)
             vt_bruto = dias_vt * passagens * tarifa if ct["vt_optante"] else 0
             vt_bruto_2d = dias_vt * 2 * tarifa if ct["vt_optante"] else 0
             base_vt = min(sal_prop, _round_cent(Decimal(teto_vt_misto) * Decimal(dias_trab) / Decimal(dias_mes))) if cod == "E2" else sal_prop
@@ -1086,7 +1086,7 @@ def validar_coerencia_dossie2(conn: Any, empresa_id: int) -> list[dict[str, Any]
                 "D2_TEXTO_RESIDUO", "critico", "governanca", "emissao",
                 f"Marcas de rascunho ou norma revogada detectadas em {len(residuos)} trecho(s)",
                 f"Resíduos encontrados: {lista_res}.",
-                "Remover placeholders ([INSERIR, [cite, XX.XXX, TODO, ???) e substituir Res. CFC 1.555/2018 pela Res. CFC 1.708/2023.",
+                "Remover placeholders ([INSERIR, [cite, XX.XXX, TODO, ???) e substituir a Res. CFC 1.555/2018 (revogada) pela 1.590/2020 (contrato e distrato) ou pela 1.708/2023 (registro da organização contábil).",
                 "/emissao#secoes",
             )
 

@@ -146,7 +146,7 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
         ("INSS-F2", "INSS 2026 Faixa 2 (teto R$ 2.902,84)", _r(pars.get("INSS-F2", {}).get("limite_centavos", 290284)), _p(pars.get("INSS-F2", {}).get("aliquota_micro", 90000)), "brl", "pct", "Portaria MPS/MF nº 13/2026"),  # row 19
         ("INSS-F3", "INSS 2026 Faixa 3 (teto R$ 4.354,27)", _r(pars.get("INSS-F3", {}).get("limite_centavos", 435427)), _p(pars.get("INSS-F3", {}).get("aliquota_micro", 120000)), "brl", "pct", "Portaria MPS/MF nº 13/2026"),  # row 20
         ("INSS-F4", "INSS 2026 Faixa 4 (teto R$ 8.475,55)", _r(pars.get("INSS-F4", {}).get("limite_centavos", 847555)), _p(pars.get("INSS-F4", {}).get("aliquota_micro", 140000)), "brl", "pct", "Portaria MPS/MF nº 13/2026"),  # row 21
-        ("SF-2026", "Salário-Família 2026 (teto R$ 1.980,38 / cota)", _r(pars.get("SF-2026", {}).get("limite_centavos", 198038)), _r(pars.get("SF-2026", {}).get("valor_centavos", 6754)), "brl", "brl", "Dec. 3.048/99 art. 82; Port. 13/2026"),  # row 22
+        ("SF-2026", "Salário-Família 2026 (teto R$ 1.980,38 / cota)", _r(pars.get("SF-2026", {}).get("limite_centavos", 198038)), _r(pars.get("SF-2026", {}).get("valor_centavos", 6754)), "brl", "brl", "Port. Interministerial MPS/MF 13/2026, art. 4º, § 2º"),  # row 22
         ("SF-DEP", "Dependentes Salário-Família (E1 / E2)", int(e1.get("qtd_dependentes_sf") or 1), int(e2.get("qtd_dependentes_sf") or 0), "int", "int", "E1 possui 1 filho (6 anos)"),  # row 23
         ("IRRF-SIMPL", "IRRF Desconto Simplificado / Isenção Lei 15.270", _r(pars.get("IRRF-SIMPLIF", {}).get("valor_centavos", 60720)), _r(pars.get("RED-ISENTO", {}).get("limite_centavos", 500000)), "brl", "brl", "Lei 14.848/2024 + Lei 15.270/2025"),  # row 24
         ("IRRF-F1", "IRRF Clássico Faixa Isenta / Dependente", _r(pars.get("IRRF-F1", {}).get("limite_centavos", 242880)), _r(pars.get("IRRF-DEP", {}).get("valor_centavos", 18959)), "brl", "brl", "RFB 2026"),  # row 25
@@ -298,14 +298,14 @@ def _montar_workbook_d2(d: dict[str, Any]) -> openpyxl.Workbook:
     _cell(ws_prov, 9, 3, "=SUM(C6:C8)", FX, "brl", True)
     _cell(ws_prov, 9, 4, "=SUM(D6:D8)", FX, "brl", True)
     _cell(ws_prov, 9, 5, "=C9+D9", FX, "brl", True)
-    _cell(ws_prov, 9, 6, "R$ 466,67 (somente E1)", TXT, "txt")
+    _cell(ws_prov, 9, 6, "Só quem completou o avo (15 dias ou mais no mês)", TXT, "txt")
 
     _cell(ws_prov, 10, 1, "Total Provisões + FGTS 8%", TXT, "txt", True)
     _cell(ws_prov, 10, 2, "Subtotal + ROUND(8% * Subtotal, 2)", TXT, "txt")
     _cell(ws_prov, 10, 3, "=C9+ROUND(C9*Parametros!D26,2)", FX, "brl", True)
     _cell(ws_prov, 10, 4, "=D9+ROUND(D9*Parametros!D26,2)", FX, "brl", True)
     _cell(ws_prov, 10, 5, "=C10+D10", FX, "brl", True)
-    _cell(ws_prov, 10, 6, "R$ 504,00 (466,67 + 37,33 FGTS)", TXT, "txt")
+    _cell(ws_prov, 10, 6, "Subtotal + FGTS de 8% sobre as provisões", TXT, "txt")
 
     # Partidas Dobradas L1..L4 (rows 13..33)
     _hdr(ws_prov, 12, ["Lote", "D/C", "Conta Contábil", "Histórico Resumido", "Débito (R$)", "Crédito (R$)"], freezes=False)
