@@ -106,10 +106,27 @@ Decisão da usuária: avançar pelos documentos gerados e pelos produtos da rég
 | Etapa | Telas | Documentos | Produto (régua) | Status |
 |---|---|---|---|---|
 | 1 | Estação 1 + Estação 2 + 7 seções do Doc 01 | Doc 01 | P1 (V1: 1,7) | ✅ |
-| 2 | Estação 7 (Onboarding e Contratos) | Docs 02, 03, 04 e 05 | P2 e P3 | ⏳ em andamento |
+| 2 | Estação 7 (Onboarding e Contratos) | Docs 02, 03, 04 e 05 | P2 e P3 | ⏳ contratos (Docs 02–04) com SQL pronto; falta o Doc 05 |
 | 3 | Estação 8 (DP) | Docs 06 a 10 | P4 | |
 | 4 | Estação 9 (Folha e Auditoria) | Docs 11, 12, 13 + planilha .xlsx | P5, P6 e P7 | |
 | 5 | Estação 5 (Conformidade, PR e IA) | Docs 14 e 15 | P8 e P9 | |
 | 6 | Todas fechadas | Doc 00 (índice) | Consolidado | |
 
 > A Estação 3 (Saneamento, etapas R-01 a R-09) não gera nenhum documento do D2 (conferido no emissor); entra como conferência de coerência com os achados da Estação 2 quando algum documento citar os códigos R-xx. Telas já fechadas recebem linhas novas sempre que uma etapa posterior revelar algo.
+
+## Etapa 2 — Estação 7, contratos (Docs 02, 03 e 04 → P2)
+
+Régua do P2 (V1: todos os 5 elementos com nota 2): contrato com dados completos da contratada (CNPJ e CRC); proposta com memória de custo; responsabilidades, LGPD e procuração; termo com rol de pendências e assinatura da RT; coerência entre os três e com o cliente.
+
+| Nº | Achado | Fonte oficial | Solução | Status |
+|---|---|---|---|---|
+| CT-01 | A PRISMA assina em 14/09/2026 com CNPJ, CRC e "ME", mas o D1 projetou contrato social em 15/09/2026 e CNPJ em 01/10/2026 | EC02 p. 1: "cada dupla — na condição de sócios da organização contábil constituída no Dossiê 1 — assume o atendimento" | **Opção A (decisão da usuária, 27/11):** prevalece a premissa do caso; nova PR-19 registra que o cronograma do D1 é projeção do plano de abertura | ⏳ SQL 08 |
+| CT-02 | "Sócontas **Ltda.**" nos três documentos (e em outra seção do D2) | DEV G07 p. 3: "Sócontas/Dr. Osvaldo" | "Sócontas / Dr. Osvaldo" em todo o D2 | ⏳ SQL 08 |
+| CT-03 | Endereço da contratada abreviado ("Asa Sul, 6º andar, sala 901") | D1: `erp.estabelecimento` da PRISMA (SCS, Quadra 06, Bloco A, Lote 157…) | Endereço completo lido do D1 pelo próprio SQL | ⏳ SQL 08 |
+| CT-04 | "Hora técnica de R$ 125, aderente ao modelo financeiro do Dossiê 1": o D1 não tem esse valor (só o ticket médio de R$ 1.500, que confere) | D1: cenário oficial `v2_segregacao` (ticket R$ 1.500); RÉGUA (G02): valores "premissa da dupla" aceitos se declarados | Nova PR-20 declara a hora técnica como premissa de precificação | ⏳ SQL 08 |
+| CT-05 | Valores digitados nos textos (proposta, Cláusula 2ª do contrato, 13º) | — | Marcadores vivos `{{VALOR_SETUP}}`, `{{HONORARIO_MENSAL}}` etc. (código no branch `feat/d2-marcadores-honorarios`); memória de horas ganha código por frente e perde os campos digitados "total" e "valor_hora" | 🔁 merge + ⏳ SQL 08 |
+| CT-06 | Termo de RT com "+R$ 917,40/mês" e só o CNAE 4541-2/01 | PR-02 | Sem número digitado; os 3 CNAEs (4541-2/01, 4541-2/03, 4511-1/02) e remissão à PR-02 e à sensibilidade PR-17 | ⏳ SQL 08 |
+| CT-07 | Cabeçalho da proposta com "(Revisão Final: 23/11/2026)", resto da tentativa anterior | — | Removido | ⏳ SQL 08 |
+| CT-08 | Omissão de março a agosto citada como "relato verbal dos sócios a confirmar" | Respostas do professor no grupo (classe "original registrado pela dupla anterior") | "respostas do cliente dadas pelo professor no grupo da disciplina" | ⏳ SQL 08 |
+
+Ordem obrigatória: **merge do branch `feat/d2-marcadores-honorarios` → SQL `08_docs02a04_contratos.sql`** (sem o código, os PDFs mostrariam `{{VALOR_SETUP}}` literalmente). Pré-condições do SQL 08 conferidas só com leitura em 27/11: 21 seções e 4 contratos pendentes, 10 frentes de horas, 4 endereços e todos os trechos a substituir presentes.
