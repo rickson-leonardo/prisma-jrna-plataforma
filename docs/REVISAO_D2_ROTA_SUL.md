@@ -312,3 +312,9 @@ Correções: código na branch `d2-pente-fino` (testes 54 passaram, 23 pulados) 
 - **Saneamento (3ª Alteração) 0/9:** diretrizes R-01 a R-09 (`erp.processo_legalizacao_etapa`) nunca revisadas na etapa 1. Não entram no PDF do Doc 01 (a Tabela 4 sai das cláusulas), mas aparecem na tela e na quarentena do Doc 00. Restos: "conflito 2025 × 2026" (R-02), Res. CFC 1.708/2023 (R-07), "SC COSIT 120/2016" sem conferência (R-09); faltavam G-01, G-02, G-03, G-06 e G-09. `docs/revisao_d2_sql/16_saneamento_r01a09.sql` corrige e homologa as 9.
 - **Conformidade, PR e IA 30/78:** 30 = 20 premissas + 10 registros do diário de IA (homologados). Os 48 restantes são as avaliações da régua (`auditoria.avaliacao_conformidade`, `nota_v1` da devolutiva + `nota` V2 a atribuir), que a usuária deixou para depois. Não entram em nenhum documento, mas aparecem na tabela de quarentena do Doc 00.
 - Decisão (27/11/2026): **opção A** — autoavaliação V2 dos 48 elementos em `docs/revisao_d2_sql/17_notas_v2_regua.sql` (nota 4 com a localização e a justificativa; nota 3 em C-12, resposta do advogado não localizada, e C-40, registro da CCT não localizado). Merge da `d2-pente-fino` no master (6173c7d). Ordem: SQL 15, 16 e 17 → emissão, sem recalcular a folha.
+
+## Fechamento (27/11/2026)
+
+SQL 15, 16 e 17 aplicados (saneamento 9/9; notas V2 48/48); quarentena do D2 sem pendências. Documentos emitidos pela usuária e salvos em `G:\Meu Drive\Nath\Laboratório\Dossiê 02`, renomeados "00 - …" a "15 - …" (planilha como "11 - Planilha…"). A quarentena do Doc 00 emitido mostra todos os módulos homologados.
+
+Pendências que não impedem a entrega: respostas do professor às 2 perguntas (manifestação do advogado; consolidado de 24/09); registrar no acervo o texto das respostas do grupo (G-01 a G-11); `importar_dossie2.py` ainda guarda o rascunho legado (só afeta uma importação nova).
