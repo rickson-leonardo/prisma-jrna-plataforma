@@ -210,6 +210,7 @@ Régua (devolutiva G07, "Para chegar ao 4"): C-23 a C-28 e C-48 (P5), C-29 a C-3
 | FO-10 | Fundamentação do salário-família no Doc 11 ("Decreto 3.048/1999, art. 82 determina que no mês de admissão o direito é aferido pela remuneração contratual integral") sem conferência do texto da norma; a aula trata o ponto como desafio | AULA p. 24 | Doc 11 cita só a Portaria e a aula e remete o critério à PR-06 (conferir a norma na etapa 5) | ❓ |
 | FO-11 | Restos de 4 passagens no motor: texto da fórmula do subsídio "(sensib 2/dia = …)", alerta OP-01 com R$ 4.128,00 / R$ 3.956,00 digitados; apontamento da competência "lotes L1–L4 (R$ 4.238)" | — | Limpeza no código e no registro | ❓ |
 | FO-12 | Observação (sem correção): a régua C-29 diz "férias R$ 266,67 e 1/3 R$ 37,33". Os números batem com o L4 do motor (férias + 1/3 = R$ 266,67; FGTS sobre provisões = R$ 37,33); o "1/3" do texto da devolutiva corresponde ao FGTS | DEV G07 p. 3 | Nenhuma; registrado para a leitura da nota | ✅ |
+| FO-13 | Data de pagamento da folha gravada como 07/10/2026 (`folha_competencia.data_pagamento`). Se o sábado contar como dia útil na contagem do 5º dia útil (entendimento do MTE), o prazo seria 06/10/2026. O SQL 11 deixou os textos com "até o 5º dia útil de outubro (CLT, art. 459, § 1º)", sem data | CLT, art. 459, § 1º | Conferir a norma de contagem na etapa 5 e ajustar a data na tela da folha | ⏳ etapa 5 |
 
 **Proposta para o FO-03 (achados do cliente, competência 09/2026):**
 
@@ -225,7 +226,7 @@ Régua (devolutiva G07, "Para chegar ao 4"): C-23 a C-28 e C-48 (P5), C-29 a C-3
 
 As correções da V1 (comissão, salário-família, VR, negocial, provisões, piso) saem do quadro de achados; o recálculo independente (tabela gerada) mostra a folha conforme.
 
-Decisões da usuária (27/11/2026): **FO-03 aprovado** (achados do cliente, não da V1) e **FO-08 aprovado** (L3 credita passivo "VT/VR a pagar"). Demais propostas FO aprovadas. Código + SQL 11.
+Decisões da usuária (27/11/2026): **FO-03 aprovado** (achados do cliente, não da V1) e **FO-08 aprovado** (L3 credita passivo "VT/VR a pagar"). Demais propostas FO aprovadas. Código na branch `d2-etapa4-folha` + `docs/revisao_d2_sql/11_docs11a13_folha.sql`. O Doc 13 ganhou o AUD-08 (contingência trabalhista, G-08) e o AUD-07 incorporou a retirada informal dos sócios (G-09). Ordem: merge → deploy → "Recalcular" na tela da folha → SQL 11.
 
 ## Respostas do professor no grupo da disciplina (informadas pela usuária em 27/11/2026)
 
