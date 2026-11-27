@@ -297,3 +297,13 @@ SQL 13 rodado pela usuária em 27/11/2026 (enquadramento: ME até 31/12/2025; EP
 ## Etapa 6 — Doc 00 (índice) — SQL 14
 
 Achados no Doc 00: números digitados com 4 passagens (R$ 234,00, R$ 4.128,00, R$ 4.238,00, R$ 917,40), Res. CFC 1.708/2023 como norma do contrato, registro SRT00189/2025, "220 fórmulas", "10 achados", "PR-01 a PR-18", pasta `_entrega_limpa` com arquivos `.md` e guia visual (doc. 16) que a plataforma não gera. `docs/revisao_d2_sql/14_doc00_indice.sql`: inventário com os 16 arquivos gerados pela plataforma e o produto de cada um (P1 a P9), "o que mudou em relação à 1ª entrega" conferido na devolutiva oficial (p. 3: produtos 8 e 9 considerados não entregues), matriz de contribuição atualizada e resumo executivo com marcadores vivos; homologa as 4 seções.
+
+## Pente fino final (27/11/2026)
+
+Varredura de todos os registros do D2 (seções, contratos de trabalho, eSocial, folha, lançamentos, parâmetros, premissas, diligência, auditoria, contratos de serviço, cláusulas, diário de IA, enquadramento e requisitos) e do código, com os padrões de legado (4 passagens e valores derivados, totais antigos, SRT, 1.708 como norma do contrato, "220 fórmulas", PAT, V1, datas de rascunho, AUD/PR antigos, Decreto 3.048 art. 82, conflito de datas, LTCAT, "Cadastramento inicial"). Todos os marcadores `{{…}}` dos textos têm valor.
+
+**Por que o legado "voltava":** parte estava no código e reaparecia no PDF, na planilha ou a cada recálculo — título do PDF do Doc 04 com a 1.708/2023; motor gravando "Dec. 3.048/1999 art. 82" na rubrica do salário-família e usando 4 passagens como padrão quando o campo vem vazio; planilha com "R$ 504,00 (466,67 + 37,33 FGTS)" digitado; telas e ajuda com SRT, "VT 4×2", "provisões R$ 504" e "AUD-01..10". O `importar_dossie2.py` guarda o rascunho original, mas só roda numa importação nova e não sobrescreve registros existentes.
+
+Correções: código na branch `d2-pente-fino` (testes 54 passaram, 23 pulados) e `docs/revisao_d2_sql/15_pente_fino.sql` (parâmetro SF-2026, 2 rubricas do salário-família, Doc 06 seção 4, DOC-12, diário de IA 192 e 198, descrições dos produtos P2, P7 e P8). A varredura por leitura encontrou exatamente esses 10 registros. Nenhuma correção exige recálculo da folha.
+
+**Recálculo antes de emitir: não fazer.** O recálculo apaga e regrava rubricas e lançamentos como "pendente de revisão" (desfaria a homologação da etapa 4), e nada que entra no cálculo mudou depois do SQL 11.
