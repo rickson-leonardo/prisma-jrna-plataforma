@@ -163,3 +163,14 @@ Régua do P3 (V1: respostas 1, pendências 1, checklist 2, perguntas 2): respost
 | OB-13 | Fonte circular: os 13 documentos e as 8 pendências citavam como origem o próprio Doc 05 ("Doc. 05 §1/§3") | Régua P3: "origem de cada informação" | Cada item aponta a origem real: carta de onboarding (acervo, p. 2–3), EC02 p. 1 e p. 3, AULA p. 24–25, DEV G07 p. 3, NR-1/4/7 e Anexo I Cl. 16ª | ✅ |
 
 Aceite da usuária em 27/11/2026 para OB-01 a OB-12. SQL `09_doc05_onboarding.sql` (pré-condições conferidas só com leitura: 30 itens, 4 seções, fontes do acervo e trechos a substituir).
+
+## Etapa 3 — Estação 8, Departamento Pessoal (Docs 06 a 10 → P4)
+
+Régua do P4 (V1: prontuário 1; CBO/piso 2; dependentes/VT/VR 2; eSocial 2; ficha 3; contrato de experiência 3; ASO 3).
+
+Conferido com EC02 pp. 2–3 (27/11/2026): cargos, CBOs, admissões (16/09 e 21/09), salários, jornadas, experiência (45+45 e 30+60), VT, VR (R$ 30/dia só E1), dependentes (E1: 1 filho, 6 anos; E2: nenhum) e CCT — **batem**.
+
+| Nº | Achado | Fonte oficial | Solução | Status |
+|---|---|---|---|---|
+| DP-01 | Dados pessoais inventados pela tentativa anterior: nomes "Mariana Alves Costa" e "Rafael Souza Lima", CPFs, e o filho "Lucas Alves Costa" com CPF e nascimento 12/03/2020 (marcados como "fictícios", PR-18). O caso e a aula só falam em "Empregado 1", "Empregado 2" e "1 filho, 6 anos" | EC02 pp. 2–3; AULA p. 21; RÉGUA C-20: "Ficha com dados do caso (…) **sem dados inventados**"; RÉGUA C-22: documentos de admissão "como pendência real" | Opção A (recomendada): remover os dados pessoais inventados; "Empregado 1 (Auxiliar Administrativo)" / "Empregado 2 (Vendedor)"; dados pessoais "a coletar (DOC-09)"; filho "1 filho, 6 anos (EC02 p. 3); certidão a coletar" | ❓ decisão |
+| DP-02 | (efeito na Estação 7) DOC-09 "Documentos civis admissionais" homologado como **concluído/recebido**, mas o caso lista "documentos de admissão" entre as "informações a apurar" | EC02 p. 3 ("Informações a apurar: … documentos de admissão") | Reabrir o DOC-09 como pendente (linha nova na Estação 7, conforme a regra de telas fechadas) | ❓ depende do DP-01 |
