@@ -249,3 +249,9 @@ Classe: **original registrado** (respostas do cliente dadas pelo professor no gr
 Novo achado ligado ao G-01: **D01-b** — o Doc 01 (seção 3) ainda traz a linha "Documentos de DP da 1ª entrega (v1) × Cl. 2ª Alteração" (autoauditoria da V1, mesmo problema do FO-03). Tratar junto com o G-01 na revisita do Doc 01.
 
 Sobre as perguntas enviadas ao professor: o G-06 e o G-08 respondem parte da pergunta sobre as respostas consolidadas de 24/09/2026; a manifestação do advogado continua sem resposta (o G-08 remete ao advogado).
+
+Merge da branch `d2-etapa4-folha` no master (2d54125), recálculo na tela da folha e SQL 11 rodado pela usuária em 27/11/2026: auditoria 13/13, rubricas 23/23, lançamentos L1–L4 4/4, seções 17/17 homologados. **Etapa 4 ✅.**
+
+## Etapa 5 — Estação 5, Premissas e IA (Docs 14 e 15 → P8, P9)
+
+Pendências herdadas para esta etapa: PR-01, 02, 08, 11, 19 e 20 aguardando homologação; DP-08 resolvido (tarifa); FO-10 (critério do salário-família, PR-06); FO-13 (contagem do 5º dia útil); citar como fonte as respostas do grupo G-05, G-09 e G-11 nas premissas afetadas.
