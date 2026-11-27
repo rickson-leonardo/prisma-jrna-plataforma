@@ -130,3 +130,22 @@ Régua do P2 (V1: todos os 5 elementos com nota 2): contrato com dados completos
 | CT-08 | Omissão de março a agosto citada como "relato verbal dos sócios a confirmar" | Respostas do professor no grupo (classe "original registrado pela dupla anterior") | "respostas do cliente dadas pelo professor no grupo da disciplina" | ✅ |
 
 Aplicado em 27/11/2026 (merge `9b64874` em produção + SQL 08: 21 seções e 4 contratos homologados; PR-19 e PR-20 criadas, pendentes de homologação na tela Sustentação). Ordem que era obrigatória: **merge do branch `feat/d2-marcadores-honorarios` → SQL `08_docs02a04_contratos.sql`** (sem o código, os PDFs mostrariam `{{VALOR_SETUP}}` literalmente). Pré-condições do SQL 08 conferidas só com leitura em 27/11: 21 seções e 4 contratos pendentes, 10 frentes de horas, 4 endereços e todos os trechos a substituir presentes.
+
+## Etapa 2 — Estação 7, onboarding (Doc 05 → P3)
+
+Régua do P3 (V1: respostas 1, pendências 1, checklist 2, perguntas 2): respostas do cliente, do contador e do advogado registradas com a origem; quadro de pendências com responsável, prazo e providência; checklist por pessoa/tema com responsável e status; perguntas objetivas sobre as lacunas.
+
+| Nº | Achado | Fonte oficial | Solução | Status |
+|---|---|---|---|---|
+| OB-01 | Quadros em duplicidade: as seções 1 a 3 repetem à mão os quadros que o PDF já gera do banco (`diligencia_item`) e já divergem (DOC-02 "Recebido" no texto × "em saneamento" no banco) | Emissor (`d2_doc.html`, quadros dil_docs/dil_pergs/dil_pends) | Seções 1–3 viram introdução curta; conteúdo único = os 30 itens de diligência do banco | ❓ aguarda ok |
+| OB-02 | Cabeçalho com "Atualização: 23/11/2026" (tentativa anterior) | — | Remover | ❓ |
+| OB-03 | Q1–Q5 citadas como "retorno formal / resposta escrita dos sócios" | Classe "original registrado pela dupla anterior"; carta no acervo (p. 3) | "Respostas do cliente dadas pelo professor no grupo da disciplina, registradas na carta (acervo, p. 3)" | ❓ |
+| OB-04 | Q7 (ASO) e Q8 (Sócontas e omissão) citados como "relato de onboarding, 1ª entrega" | DEV G07 p. 3 ("fatos que vieram da resposta do cliente") | Mesma fonte: resposta do professor no grupo, citada na devolutiva oficial | ❓ |
+| OB-05 | DOC-12 com "VT 4×2 passagens"; Q6 com "2 conduções por trajeto" | AULA p. 24; PR-08 | 2 viagens/dia | ❓ |
+| OB-06 | Os 13 documentos com responsável genérico "Diretoria / DP PRISMA" (a régua pede checklist por pessoa com responsável) | Régua P3 | Responsável por documento (sócios, advogado, contador anterior, empregados, clínica SST, despachante, diretoria comercial) | ❓ |
+| OB-07 | Q1–Q9 com prazo "23/11/2026" (data de revisão da tentativa anterior) | — | Q1–Q6 "Respondida"; Q7, Q8 e Q9 com os prazos das pendências ligadas (PEND-01 02/10, PEND-03 30/10, PEND-02 20/10) | ❓ |
+| OB-08 | PEND-02 cita só o CNAE 4541-2/01 | PR-02 | Os 3 CNAEs | ❓ |
+| OB-09 | Valores digitados no texto ("R$ 12.000", "R$ 900 e R$ 100") | — | Sem números; valores ficam nos docs que os calculam (02 e 11) | ❓ |
+| OB-10 | "PR-01 a PR-18" | — | PR-01 a PR-20 | ❓ |
+| OB-11 | Q9 (advogado) afirma "não houve resposta formal" | Busca em `Arquivado_antigo` (27/11): nenhuma resposta do advogado; anotação PQ-07 de 23/11 da tentativa anterior: Nathalia "não sei / não lembro" | Redação honesta: "resposta do advogado não localizada nos registros da dupla; providência segue em PEND-02" | ❓ |
+| OB-12 | Premissa "vendas líquidas de R$ 60.000" (DOC-13, PEND-05, Q10) sem fonte precisa | AULA p. 25: "Premissa didática: vendas líquidas de R$ 60.000 no período; 9 dias trabalháveis e 1 DSR" | Citar AULA p. 25 | ❓ |
