@@ -355,6 +355,7 @@ def test_d2_documentos_sem_constantes() -> None:
     dados_vazios["comp"] = {}
     dados_vazios["itens"] = []
     dados_vazios["partidas"] = []
+    dados_vazios["contratos_servico"] = []
     mk_vazio = _marcadores_d2(dados_vazios)
     for chave, valor in mk_vazio.items():
         assert valor == "—", f"Marcador {chave} deveria ser '—' sem dados, mas retornou {valor!r}"

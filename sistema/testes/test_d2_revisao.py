@@ -11,7 +11,7 @@ from sistema.erp.motor_folha import (
 )
 from sistema.testes.test_web_dossie2 import _fixture_dados_d2
 from sistema.web.app import create_app
-from sistema.web.emissor_dossie2 import _capital_doc01, _normalizar_docs_admissao, html_documento
+from sistema.web.emissor_dossie2 import _capital_doc01, _marcadores_honorarios, _normalizar_docs_admissao, html_documento
 from sistema.web.planilha_dossie2 import _montar_workbook_d2
 
 TEMPLATES = Path(__file__).resolve().parents[1] / "web" / "templates"
@@ -313,3 +313,34 @@ def test_alerta_cnae_simples_sem_numero_hardcoded() -> None:
 
 
 
+
+
+def test_marcadores_honorarios_vem_de_horas_vezes_valor_hora() -> None:
+    cs = [
+        {"codigo_documento": "proposta", "valor_hora_centavos": 12_500, "honorario_mensal_centavos": 400_000,
+         "tem_decimo_terceiro": True, "horas_mes_estimadas": 32,
+         "memoria_horas_json": [{"codigo": "SETUP", "frente": "Implantação", "horas": 16},
+                                {"codigo": "RECUPERACAO", "frente": "Passivo", "horas": 96},
+                                {"codigo": "MENSAL_MATRIZ", "frente": "Matriz", "horas": 20}]},
+        {"codigo_documento": "contrato", "valor_hora_centavos": 12_500, "honorario_mensal_centavos": 400_000,
+         "tem_decimo_terceiro": False, "horas_mes_estimadas": 32, "memoria_horas_json": []},
+    ]
+    mk = {k: v.replace(" ", " ") for k, v in _marcadores_honorarios(cs).items()}
+    assert mk["VALOR_SETUP"] == "R$ 2.000,00" and mk["HORAS_RECUPERACAO"] == "96"
+    assert mk["VALOR_RECUPERACAO"] == "R$ 12.000,00" and mk["VALOR_MENSAL_MATRIZ"] == "R$ 2.500,00"
+    assert mk["HONORARIO_MENSAL"] == "R$ 4.000,00" and mk["VALOR_HORA"] == "R$ 125,00"
+    assert mk["DECIMO_TERCEIRO"] == "—"  # o contrato (fonte dos campos escalares) diz que não há 13º
+    # dado muda -> texto muda
+    cs[0]["valor_hora_centavos"] = 15_000
+    assert _marcadores_honorarios(cs)["VALOR_SETUP"].replace(" ", " ") == "R$ 2.400,00"
+
+
+def test_pdf_contrato_resolve_marcadores_de_honorarios() -> None:
+    dados = _fixture_dados_d2()
+    dados["contratos_servico"][0]["memoria_horas_json"] = [{"codigo": "SETUP", "frente": "Implantação", "horas": 16}]
+    dados["secoes"]["d2_03_contrato"] = [{"codigo_secao": "c2", "titulo": "Honorários", "ordem": 1,
+                                          "conteudo_md": "Setup de {{VALOR_SETUP}} e mensal de {{HONORARIO_MENSAL}}.",
+                                          "status_validacao": "pendente_revisao"}]
+    html = html_documento("d2_03_contrato", para_web=True, dados=dados).replace(" ", " ").replace("&nbsp;", " ")
+    assert "Setup de R$ 2.000,00 e mensal de R$ 4.000,00." in html
+    assert "{{" not in html

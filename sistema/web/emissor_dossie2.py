@@ -246,6 +246,33 @@ def _calcular_liquido_b(comp: dict[str, Any], itens: list[dict[str, Any]]) -> in
     return int(liq_a) + neg
 
 
+def _marcadores_honorarios(contratos_servico: list[dict[str, Any]]) -> dict[str, str]:
+    """Marcadores dos honorários (Docs 02–04) a partir do contrato (ou da proposta): nenhum valor digitado no texto.
+
+    VALOR_<COD> = horas da frente `codigo` em memoria_horas_json × valor_hora_centavos do registro.
+    """
+    por_doc = {str(c.get("codigo_documento")): c for c in (contratos_servico or [])}
+    cs = por_doc.get("contrato") or por_doc.get("proposta")
+    if not cs:
+        return {}
+    vh = cs.get("valor_hora_centavos")
+    mk = {
+        "VALOR_HORA": _fmt_brl_ou_traco(vh),
+        "HORAS_MES": "—" if cs.get("horas_mes_estimadas") is None else str(cs["horas_mes_estimadas"]),
+        "HONORARIO_MENSAL": _fmt_brl_ou_traco(cs.get("honorario_mensal_centavos")),
+        "DECIMO_TERCEIRO": _fmt_brl_ou_traco(cs.get("honorario_mensal_centavos") if cs.get("tem_decimo_terceiro") else None),
+    }
+    # memória de horas: do contrato se houver; senão da proposta (a regra D2_PROPOSTA_CONTRATO_DIVERGENTE garante o mesmo valor-hora)
+    mem = next((c for c in (por_doc.get("contrato"), por_doc.get("proposta")) if c and c.get("memoria_horas_json")), None)
+    vh_mem = (mem or {}).get("valor_hora_centavos")
+    for item in (mem or {}).get("memoria_horas_json") or []:
+        if isinstance(item, dict) and item.get("codigo") and item.get("horas") is not None:
+            cod, horas = str(item["codigo"]).upper(), int(item["horas"])
+            mk[f"HORAS_{cod}"] = str(horas)
+            mk[f"VALOR_{cod}"] = _fmt_brl_ou_traco(horas * int(vh_mem) if vh_mem is not None else None)
+    return mk
+
+
 def _marcadores_d2(d: dict[str, Any]) -> dict[str, str]:
     comp = d.get("comp") or {}
     itens = d.get("itens") or []
@@ -267,6 +294,7 @@ def _marcadores_d2(d: dict[str, Any]) -> dict[str, str]:
         "VR_TOTAL": _fmt_brl_ou_traco(vr_tot),
         "IMPACTO_EXCLUSAO_SIMPLES": _fmt_brl_ou_traco(imp_excl),
         "PARTIDAS_DOBRADAS": _fmt_brl_ou_traco(part_d),
+        **_marcadores_honorarios(d.get("contratos_servico") or []),
     }
 
 
