@@ -280,3 +280,14 @@ Verificações em fonte oficial feitas em 27/11/2026 (Claude Code, busca e leitu
 | PRM-11 | Diário de IA: 7 registros legados com as mesmas afirmações (SRT, "confronto triplo v1", "10 achados + 18 premissas") e sem a revisão feita na plataforma em 26–27/11/2026 | Régua C-44 a C-47 | Corrigir os 7 registros e incluir o registro desta revisão (Claude Code: fontes conferidas e decisões da usuária) | ✅ SQL 12 |
 
 Decisões da usuária (27/11/2026): PRM-04 (EPP), PRM-06 (Res. CFC 1.590/2020), PRM-07 (CCT premissa didática) e PRM-08 (06/10/2026) aprovados; demais propostas aprovadas. SQL: `docs/revisao_d2_sql/12_docs14e15_premissas_ia.sql` — 20 premissas reescritas com quem decide, prazo e impacto; data de pagamento 06/10/2026; Docs 14 e 15 (9 seções); diário de IA (5 registros corrigidos + registro desta revisão); homologa 20 premissas, 9 seções e 8 registros do diário. A correção dos Docs 01 a 04 (PRM-06, G-01, G-05, D01-b) fica para o SQL 13. Padrões das pós-condições conferidos por leitura contra os textos atuais.
+
+SQL 12 rodado pela usuária em 27/11/2026: premissas 20/20, seções dos Docs 14–15 9/9, diário de IA 10/10 homologados. **Etapa 5 ✅.**
+
+## Revisita das etapas 1 e 2 (Docs 01 a 05) — SQL 13
+
+`docs/revisao_d2_sql/13_revisita_docs01a05.sql`, conferido por leitura (19 trechos, cada um presente exatamente uma vez):
+- **PRM-06:** Res. CFC nº 1.590/2020 no lugar da 1.708/2023 onde o assunto é contrato, distrato, devolução de documentos ou comunicação ao novo RT (Docs 01 R-07, 02, 03, 04; DOC-07 e PEND-03 do Doc 05; registros do termo de RT e do contrato). O Termo de RT cita as duas: a 1.590/2020 (contrato) e a 1.708/2023 (registro da organização contábil).
+- **G-01:** "conflito de datas" passa a "errata reconhecida pelo cliente" — a resposta Q5 da carta já dizia "o prazo real que a gente se comprometeu é 31/07/2026"; o G-01 confirma que 31/07/2025 é errata. O prazo de 31/07/2026 está vencido e a mora permanece (Doc 01 seções 2 a 5, título 3.3, cláusula do capital, Doc 04).
+- **G-05 / PRM-04:** enquadramento em três períodos — 28/10/2024 a 31/12/2025 ME (premissa), 01/01/2026 a 31/08/2026 EPP e a partir de 01/09/2026 EPP (LC 123/2006, art. 3º, § 9º: EPP no ano-calendário seguinte ao excesso). O Doc 01 mostra o período atual.
+- **D01-b:** sai do Doc 01 a linha "Documentos de DP da 1ª entrega (v1)".
+- Fica para a etapa 6: Doc 00 (cita a 1.708/2023 e a entrega V1).
