@@ -91,8 +91,25 @@ Os 9 achados de cláusula são **legado** (`importado_rascunho_v2`). Roteiro:
 | E2-07 | `inst:d2:07` — JCP (TJLP) oneroso no Simples (Cl. 13ª § 1º), lucros desproporcionais/antecipados sem travas de escrituração e regularidade fiscal (Cl. 13ª §§ 2º–3º; débitos mar–ago/2026 via P-01) e pró-labore facultativo (Cl. 16ª) | EC02 pp. 1 e 11–12; Lei 9.249/1995 art. 9º; LC 123/2006 art. 14 § 2º; Lei 4.357/1964 art. 32 ([Planalto](https://www.planalto.gov.br/ccivil_03/leis/l4357.htm), 26/11/2026); Lei 8.212/1991 art. 12, V, "f"; SC COSIT 120/2016 | Vincular corretamente os débitos à P-01, classificar **Material / Alto** e preencher os 6 campos (R-07 e R-09) no SQL `02_` | ✅ |
 | E2-08 | `inst:d2:08` — Quórum de 3/4 na Cl. 15ª citando arts. 1.071/1.076 do CC desatualizados frente à Lei 14.451/2022 (mínimo legal passou a >50%) e estendendo 3/4 à escolha do liquidante | EC02 p. 12 (Cl. 15ª); CC art. 1.076, II–III c/ redação da Lei 14.451/2022 ([Planalto](https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2022/lei/L14451.htm), 26/11/2026) | Precisar que o contrato pode fixar quórum maior mas reproduz dispositivo revogado e estende 3/4 ao liquidante, classificar **Material / Médio** e preencher os 6 campos (R-04) no SQL `02_` | ✅ |
 | E2-09 | `inst:d2:09` — Regência supletiva contraditória na Cl. 18ª (Sociedade Simples "conjuntamente" com S.A.) | EC02 p. 12 (Cl. 18ª); CC art. 1.053 par. único ([Planalto](https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm), 26/11/2026) | Confirmar antinomia frente ao CC art. 1.053 par. único, classificar **Material / Médio** e preencher os 6 campos (R-05) no SQL `02_` | ✅ |
-| E2-10 | 9 achados conferidos mas ainda 0/9 homologados na quarentena e 3 metadados herdados do D1 (`metodo_haveres`/`quorum_tipo` em 05, 06 e 08) | EC02 pp. 7–13 (Anexo I) | Homologar os 9 achados com justificativa técnica e limpar os 3 metadados D1 para `nao_aplicavel` no SQL `docs/revisao_d2_sql/05_estacao2_homologar_anexo1.sql` | ⏳ |
+| E2-10 | 9 achados conferidos mas ainda 0/9 homologados na quarentena e 3 metadados herdados do D1 (`metodo_haveres`/`quorum_tipo` em 05, 06 e 08) | EC02 pp. 7–13 (Anexo I) | Homologar os 9 achados com justificativa técnica e limpar os 3 metadados D1 para `nao_aplicavel` no SQL `docs/revisao_d2_sql/05_estacao2_homologar_anexo1.sql` | ✅ |
 
-| D01 | Doc. 01 (diagnóstico): 7 seções pendentes, 3 com o número legado R$ 917,40; texto reescrito pela Gemini citava `Solicitação_JRNA.pdf` como "Respostas Oficiais do Cliente" e chamava o contador anterior de "Sócontas **Ltda.**" | EC02 pp. 1–2 e 7–13; respostas do professor (Solicitação_JRNA p. 3); DEV p. 3 | Revisão (Claude, 27/11): fonte renomeada para "respostas do cliente dadas pelo professor no grupo da disciplina" e "Ltda." removido (não consta da devolutiva). SQL `06_doc01_secoes_homologar.sql` | ⏳ |
-| A-08 | A carta de onboarding com as respostas do professor (`Solicitação_JRNA.pdf`) não estava no acervo | Arquivo da dupla (sha256 ec866df0…) | Registrar no acervo (74 linhas) e conferir que as respostas Q1–Q5 do banco estão literalmente na p. 3 (conferido localmente: 5/5). SQL `07_acervo_solicitacao_jrna.sql` | ⏳ |
+| D01 | Doc. 01 (diagnóstico): 7 seções pendentes, 3 com o número legado R$ 917,40; texto reescrito pela Gemini citava `Solicitação_JRNA.pdf` como "Respostas Oficiais do Cliente" e chamava o contador anterior de "Sócontas **Ltda.**" | EC02 pp. 1–2 e 7–13; respostas do professor (Solicitação_JRNA p. 3); DEV p. 3 | Revisão (Claude, 27/11): fonte renomeada para "respostas do cliente dadas pelo professor no grupo da disciplina" e "Ltda." removido (não consta da devolutiva). SQL `06_doc01_secoes_homologar.sql` | ✅ |
+| A-08 | A carta de onboarding com as respostas do professor (`Solicitação_JRNA.pdf`) não estava no acervo | Arquivo da dupla (sha256 ec866df0…) | Registrar no acervo (74 linhas) e conferir que as respostas Q1–Q5 do banco estão literalmente na p. 3 (conferido localmente: 5/5). SQL `07_acervo_solicitacao_jrna.sql` | ✅ |
 | A-09 | Migração 009 (coluna NIRE) aplicada no banco mas sem registro no controle de migrações | — | Registrada em `auditoria.schema_migration` (27/11) | ✅ |
+
+---
+
+## Ordem de trabalho a partir de 27/11/2026: por documento e produto
+
+Decisão da usuária: avançar pelos documentos gerados e pelos produtos da régua, e não mais pela ordem das telas. Cada etapa fecha as telas que alimentam um grupo de documentos.
+
+| Etapa | Telas | Documentos | Produto (régua) | Status |
+|---|---|---|---|---|
+| 1 | Estação 1 + Estação 2 + 7 seções do Doc 01 | Doc 01 | P1 (V1: 1,7) | ✅ |
+| 2 | Estação 7 (Onboarding e Contratos) | Docs 02, 03, 04 e 05 | P2 e P3 | ⏳ em andamento |
+| 3 | Estação 8 (DP) | Docs 06 a 10 | P4 | |
+| 4 | Estação 9 (Folha e Auditoria) | Docs 11, 12, 13 + planilha .xlsx | P5, P6 e P7 | |
+| 5 | Estação 5 (Conformidade, PR e IA) | Docs 14 e 15 | P8 e P9 | |
+| 6 | Todas fechadas | Doc 00 (índice) | Consolidado | |
+
+> A Estação 3 (Saneamento, etapas R-01 a R-09) não gera nenhum documento do D2 (conferido no emissor); entra como conferência de coerência com os achados da Estação 2 quando algum documento citar os códigos R-xx. Telas já fechadas recebem linhas novas sempre que uma etapa posterior revelar algo.
