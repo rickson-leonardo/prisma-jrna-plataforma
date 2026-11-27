@@ -291,3 +291,9 @@ SQL 12 rodado pela usuária em 27/11/2026: premissas 20/20, seções dos Docs 14
 - **G-05 / PRM-04:** enquadramento em três períodos — 28/10/2024 a 31/12/2025 ME (premissa), 01/01/2026 a 31/08/2026 EPP e a partir de 01/09/2026 EPP (LC 123/2006, art. 3º, § 9º: EPP no ano-calendário seguinte ao excesso). O Doc 01 mostra o período atual.
 - **D01-b:** sai do Doc 01 a linha "Documentos de DP da 1ª entrega (v1)".
 - Fica para a etapa 6: Doc 00 (cita a 1.708/2023 e a entrega V1).
+
+SQL 13 rodado pela usuária em 27/11/2026 (enquadramento: ME até 31/12/2025; EPP a partir de 01/01/2026).
+
+## Etapa 6 — Doc 00 (índice) — SQL 14
+
+Achados no Doc 00: números digitados com 4 passagens (R$ 234,00, R$ 4.128,00, R$ 4.238,00, R$ 917,40), Res. CFC 1.708/2023 como norma do contrato, registro SRT00189/2025, "220 fórmulas", "10 achados", "PR-01 a PR-18", pasta `_entrega_limpa` com arquivos `.md` e guia visual (doc. 16) que a plataforma não gera. `docs/revisao_d2_sql/14_doc00_indice.sql`: inventário com os 16 arquivos gerados pela plataforma e o produto de cada um (P1 a P9), "o que mudou em relação à 1ª entrega" conferido na devolutiva oficial (p. 3: produtos 8 e 9 considerados não entregues), matriz de contribuição atualizada e resumo executivo com marcadores vivos; homologa as 4 seções.
