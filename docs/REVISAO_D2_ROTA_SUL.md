@@ -307,3 +307,7 @@ Varredura de todos os registros do D2 (seções, contratos de trabalho, eSocial,
 Correções: código na branch `d2-pente-fino` (testes 54 passaram, 23 pulados) e `docs/revisao_d2_sql/15_pente_fino.sql` (parâmetro SF-2026, 2 rubricas do salário-família, Doc 06 seção 4, DOC-12, diário de IA 192 e 198, descrições dos produtos P2, P7 e P8). A varredura por leitura encontrou exatamente esses 10 registros. Nenhuma correção exige recálculo da folha.
 
 **Recálculo antes de emitir: não fazer.** O recálculo apaga e regrava rubricas e lançamentos como "pendente de revisão" (desfaria a homologação da etapa 4), e nada que entra no cálculo mudou depois do SQL 11.
+
+### Menu com telas abaixo de 100% (27/11/2026)
+- **Saneamento (3ª Alteração) 0/9:** diretrizes R-01 a R-09 (`erp.processo_legalizacao_etapa`) nunca revisadas na etapa 1. Não entram no PDF do Doc 01 (a Tabela 4 sai das cláusulas), mas aparecem na tela e na quarentena do Doc 00. Restos: "conflito 2025 × 2026" (R-02), Res. CFC 1.708/2023 (R-07), "SC COSIT 120/2016" sem conferência (R-09); faltavam G-01, G-02, G-03, G-06 e G-09. `docs/revisao_d2_sql/16_saneamento_r01a09.sql` corrige e homologa as 9.
+- **Conformidade, PR e IA 30/78:** 30 = 20 premissas + 10 registros do diário de IA (homologados). Os 48 restantes são as avaliações da régua (`auditoria.avaliacao_conformidade`, `nota_v1` da devolutiva + `nota` V2 a atribuir), que a usuária deixou para depois. Não entram em nenhum documento, mas aparecem na tabela de quarentena do Doc 00.
