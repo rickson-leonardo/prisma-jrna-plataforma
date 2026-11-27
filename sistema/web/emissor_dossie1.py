@@ -122,6 +122,9 @@ th{background:var(--g800);color:#fff;font-weight:650;text-align:left;padding:1.7
 td{padding:1.5mm 2mm;border-bottom:.5pt solid var(--l200);vertical-align:top}
 tbody tr:nth-child(even) td{background:var(--n50)}
 td.num{font-family:var(--mono);font-size:8.2pt;white-space:nowrap;text-align:right}
+.mono.url,.url{white-space:normal;word-break:break-all;overflow-wrap:anywhere;font-size:7.4pt}
+table.fixa{table-layout:fixed}
+table.fixa .badge{white-space:normal}
 th.num{text-align:right}
 tr.total td{font-weight:700;border-top:1.2pt solid var(--g800);border-bottom:1.2pt solid var(--g800);background:#fff!important}
 .tt{font-size:8.5pt;font-weight:650;margin:4mm 0 0;break-after:avoid;color:var(--g900)}

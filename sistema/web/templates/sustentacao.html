@@ -73,7 +73,7 @@
   </div>
 </section>
 
-<div class="zona"><span class="mundo mundo-sus">Sustentação</span><h2>2. {{ 'Premissas Adotadas e Fontes Oficiais (PR-01 a PR-18)' if empresa.dossie == 'D2' else 'Consultas normativas (Q1 a Q10)' }}</h2></div>
+<div class="zona"><span class="mundo mundo-sus">Sustentação</span><h2>2. {{ 'Premissas Adotadas e Fontes Oficiais (PR-01 a PR-20)' if empresa.dossie == 'D2' else 'Consultas normativas (Q1 a Q10)' }}</h2></div>
 <section class="card" id="consultas">
   {{ m.titulo_tabela('Tabela 5.2', 'Fontes oficiais, premissas e legislação verificada', 'q.resposta', 'erp.consulta_normativa') }}
   <div class="progs">{{ m.progresso(consultas|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length, consultas|length, 'itens homologados') }}</div>

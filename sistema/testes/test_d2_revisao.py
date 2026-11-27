@@ -364,3 +364,19 @@ def test_recibos_d2_saem_das_rubricas_do_motor():
     (r,) = _recibos_d2(d)
     assert (r["bruto"], r["total_descontos"], r["liquido"], r["fgts"], r["vr"]) == (163_333, 21_507, 141_826, 13_067, 0)
     assert [it["codigo_rubrica"] for it in r["descontos"]] == ["INSS-RET", "VT-DESC", "NEGOCIAL"]  # IRRF zero não aparece
+
+
+def test_doc16_rastreabilidade_sai_das_avaliacoes():
+    dados = _fixture_dados_d2()
+    dados["avaliacoes"] = [
+        {"matriz": "d2_p5", "codigo": "C-23", "descricao": "Comissão e DSR do Empregado 2. Para chegar ao 4: ...",
+         "nota_v1": 0, "critica_v1": "Folha sem comissão.", "nota": 4, "referencia_localizacao": "Doc. 11",
+         "justificativa_sustentacao": "Comissão e DSR pelo motor.", "status_validacao": "homologado_contadora"},
+        {"matriz": "d2_p8", "codigo": "C-40", "descricao": "CCT e tabelas. Para chegar ao 4: ...",
+         "nota_v1": 0, "critica_v1": "Sem registro de premissas.", "nota": 3, "referencia_localizacao": "Doc. 14",
+         "justificativa_sustentacao": "Registro da CCT não localizado.", "status_validacao": "homologado_contadora"},
+    ]
+    html = html_documento("d2_16_rastreabilidade", dados=dados)
+    assert "Folha sem comissão." in html and "Registro da CCT não localizado." in html
+    assert "Comissão e DSR do Empregado 2" in html and "Para chegar ao 4" not in html
+    assert ">P5<" in html and ">P8<" in html

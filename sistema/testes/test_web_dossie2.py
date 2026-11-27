@@ -166,6 +166,11 @@ def _fixture_dados_d2() -> dict[str, Any]:
         "consultas": [
             {"id": 1, "numero_questao": 1, "enunciado": "PR-01 — Enquadramento Simples Nacional", "resposta_autoral": "Anexo I sem CPP em folha.", "decisao_impactada": "Docs. 11, 12, 13", "norma_citada": "LC 123/2006", "link_oficial": "https://www.planalto.gov.br", "data_acesso": "2026-09-20", "responsavel_decisao": "RT PRISMA", "prazo_decisao": "30/09/2026", "impacto_se_alterada": "Altera encargos da folha", "status_validacao": "pendente_revisao"},
         ],
+        "avaliacoes": [
+            {"matriz": "d2_p5", "codigo": "C-23", "descricao": "Comissão e DSR do Empregado 2. Para chegar ao 4: ...", "nota_v1": 0,
+             "critica_v1": "Folha sem comissão.", "nota": 4, "referencia_localizacao": "Doc. 11",
+             "justificativa_sustentacao": "Comissão e DSR pelo motor.", "status_validacao": "homologado_contadora"},
+        ],
         "diario_ia": [
             {"id": 1, "entregavel": "Doc. 05", "ferramenta": "Antigravity (Gemini 4)", "finalidade": "Organização de checklist e respostas literais", "prompt_resumo": "Tabular DOC-01..13 e Q1..Q9 sem inventar evidência.", "fonte_oficial": "Estudo de Caso 02 e respostas da diretoria", "revisao_humana": "Conferido item a item pela contadora.", "status_validacao": "pendente_revisao"},
         ],
@@ -505,6 +510,7 @@ def test_d2_quadros_por_documento() -> None:
         "d2_13_auditoria": ("Tabela 1 — Planejamento e Papéis de Trabalho", "PT-01", "Tabela 2 — Recálculo Independente", "AUD-03"),
         "d2_14_premissas": ("Tabela 1 — Premissas adotadas", "PR-01"),
         "d2_15_ia": ("Tabela 1 — Diário transparente de uso de IA", "Tabular DOC-01..13"),
+        "d2_16_rastreabilidade": ("Tabela 2 — Elemento a elemento", "C-23"),
     }
     assert set(verificacoes) == set(DOCUMENTOS)
     for doc, trechos in verificacoes.items():
