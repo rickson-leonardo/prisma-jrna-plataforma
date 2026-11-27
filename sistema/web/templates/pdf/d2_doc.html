@@ -377,7 +377,7 @@
       <tr><td>Piso CCT e referência</td><td><span class="mono">{{ brl(ficha_ct.piso_cct_centavos) }}</span> · {{ ficha_ct.cct_referencia or '—' }}</td></tr>
       <tr><td>Jornada e intervalo</td><td>{{ ficha_ct.jornada_descricao or '—' }} ({{ ficha_ct.jornada_semanal_horas or '—' }}h semanais · intervalo <span class="mono">{{ fmt_hhmm(ficha_ct.intervalo_minutos) }}</span>)</td></tr>
       <tr><td>Vale-Transporte (VT)</td><td>{% if ficha_ct.vt_optante %}Optante — {{ ficha_ct.vt_passagens_dia }} passagens/dia × {{ brl(ficha_ct.vt_tarifa_centavos) }}{% else %}Não optante{% endif %}</td></tr>
-      <tr><td>Vale-Refeição (VR)</td><td>{% if ficha_ct.vr_elegivel %}Elegível (PAT) — {{ brl(ficha_ct.vr_valor_dia_centavos) }}/dia{% else %}Não elegível na competência{% endif %}</td></tr>
+      <tr><td>Vale-Refeição (VR)</td><td>{% if ficha_ct.vr_elegivel %}Elegível — {{ brl(ficha_ct.vr_valor_dia_centavos) }}/dia trabalhado{% else %}Não elegível na competência{% endif %}</td></tr>
       <tr><td>Dependentes</td><td>IRRF: {{ ficha_ct.qtd_dependentes_ir or 0 }} · Salário-Família: {{ ficha_ct.qtd_dependentes_sf or 0 }}{% if ficha_ct.dependentes_json %} ({% for dp in ficha_ct.dependentes_json %}{{ dp.nome }} — {{ dp.parentesco }}{{ ', ' if not loop.last }}{% endfor %}){% endif %}</td></tr>
       <tr><td>ASO admissional (NR-7)</td><td><strong>{{ rot(ficha_ct.aso_status, 'aso_status') }}</strong>{% if ficha_ct.aso_observacao %} — {{ ficha_ct.aso_observacao }}{% endif %}</td></tr>
     </tbody>
@@ -513,7 +513,7 @@
 {% if extra_rubricas %}
   <h2>Espelho dinâmico do Motor Contábil (Rubricas no PostgreSQL)</h2>
   <table>
-    <thead><tr><th>Emp.</th><th>Código</th><th>Rubrica</th><th>Ref.</th><th class="num">Base (R$)</th><th class="num">Valor (R$)</th></tr></thead>
+    <thead><tr><th>Emp.</th><th>Código</th><th>Rubrica</th><th>Ref.</th><th>Fórmula</th><th class="num">Base (R$)</th><th class="num">Valor (R$)</th></tr></thead>
     <tbody>
       {% for it in extra_rubricas %}
         <tr>
@@ -521,6 +521,7 @@
           <td class="mono">{{ it.codigo_rubrica }}</td>
           <td>{{ it.nome_rubrica }}</td>
           <td class="mono">{{ it.referencia_texto }}</td>
+          <td class="mono">{{ it.formula_texto or '—' }}</td>
           <td class="num">{{ brl_tab(it.base_centavos) }}</td>
           <td class="num"><strong>{{ brl_tab(it.valor_centavos) }}</strong></td>
         </tr>
@@ -569,6 +570,26 @@
   <p class="fonte">Fonte: erp.folha_competencia, erp.folha_item, erp.lancamento e erp.partida.</p>
 {% endif %}
 
+{% if doc == 'd2_12_resumo_contab' and recibos_d2 %}
+  <h2>Recibos de Pagamento — Competência {{ resumo_executivo.competencia if resumo_executivo else '' }}</h2>
+  {% for r in recibos_d2 %}
+    <p class="tt">Recibo — {{ r.ct.codigo_empregado }} · {{ r.ct.nome_empregado }} ({{ r.ct.cargo }}, CBO <span class="mono">{{ r.ct.cbo }}</span>) · admissão {{ fmt_data(r.ct.data_admissao) }}</p>
+    <table class="keep">
+      <thead><tr><th>Rubrica</th><th>Ref.</th><th class="num">Proventos (R$)</th><th class="num">Descontos (R$)</th></tr></thead>
+      <tbody>
+        {% for it in r.proventos %}<tr><td>{{ it.nome_rubrica }}</td><td class="mono">{{ it.referencia_texto }}</td><td class="num">{{ brl_tab(it.valor_centavos) }}</td><td class="num">—</td></tr>{% endfor %}
+        {% for it in r.descontos %}<tr><td>{{ it.nome_rubrica }}</td><td class="mono">{{ it.referencia_texto }}</td><td class="num">—</td><td class="num">{{ brl_tab(it.valor_centavos) }}</td></tr>{% endfor %}
+        <tr><td><strong>Totais</strong></td><td></td><td class="num"><strong>{{ brl_tab(r.bruto) }}</strong></td><td class="num"><strong>{{ brl_tab(r.total_descontos) }}</strong></td></tr>
+        <tr><td><strong>Valor líquido</strong></td><td></td><td class="num" colspan="2"><strong>{{ brl(r.liquido) }}</strong></td></tr>
+        <tr><td>FGTS do mês (não descontado)</td><td></td><td class="num" colspan="2">{{ brl(r.fgts) }}</td></tr>
+        {% if r.vr %}<tr><td>Vale-refeição fornecido (benefício)</td><td></td><td class="num" colspan="2">{{ brl(r.vr) }}</td></tr>{% endif %}
+      </tbody>
+    </table>
+    <p>Recebi a importância líquida acima. Data: ____/____/2026 — Assinatura: ____________________________________</p>
+  {% endfor %}
+  <p class="fonte">Fonte: erp.folha_item (rubricas do motor da folha).</p>
+{% endif %}
+
 {# ==================== DOC 13 — AUDITORIA TRABALHISTA ==================== #}
 {% if doc == 'd2_13_auditoria' %}
   <h2>Planejamento, Papéis de Trabalho, Recálculo 100% e Achados (Banco de Dados)</h2>
@@ -615,9 +636,9 @@
   {% endif %}
 
   {% if aud_achados %}
-    <p class="tt">Tabela 3 — Quadro Consolidado de Achados de Auditoria (AUD-01 a AUD-10)</p>
+    <p class="tt">Tabela 3 — Quadro Consolidado de Achados de Auditoria</p>
     <table>
-      <thead><tr><th>Cód.</th><th>Achado</th><th>Evidência / Norma</th><th>Risco</th><th class="num">Valor V1 (R$)</th><th class="num">Recalculado (R$)</th><th>Correção proposta</th><th>Responsável / Prazo</th><th>Situação</th></tr></thead>
+      <thead><tr><th>Cód.</th><th>Achado</th><th>Evidência / Norma</th><th>Risco</th><th class="num">Valor envolvido (R$)</th><th>Correção proposta</th><th>Responsável / Prazo</th><th>Situação</th></tr></thead>
       <tbody>
         {% for a in aud_achados %}
           <tr>
@@ -625,8 +646,7 @@
             <td>{{ a.titulo }}</td>
             <td>{{ a.objetivo_ou_evidencia or '—' }}{% if a.norma_referencia %}<br><span class="mono">{{ a.norma_referencia }}</span>{% endif %}</td>
             <td>{{ a.procedimento_ou_risco or '—' }}</td>
-            <td class="num">{{ brl_tab(a.valor_v1_centavos) if a.valor_v1_centavos is not none else '—' }}</td>
-            <td class="num">{{ brl_tab(a.valor_recalculado_centavos) if a.valor_recalculado_centavos is not none else '—' }}</td>
+            <td class="num">{{ brl_tab(a.valor_recalculado_centavos) if a.valor_recalculado_centavos is not none else 'Não quantificado' }}</td>
             <td>{{ a.conclusao_ou_correcao or '—' }}</td>
             <td>{{ a.responsavel or '—' }}<br>{{ a.prazo_texto or '—' }}</td>
             <td>{{ rot(a.situacao_achado, 'situacao_achado') }}<br>{{ m.badge(a.status_validacao) }}</td>

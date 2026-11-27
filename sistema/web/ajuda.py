@@ -316,7 +316,7 @@ AJUDA: dict[str, str] = {
     "ct.intervalo": "Intervalo intrajornada em minutos (E1: 108 min = 1h48 literal do caso -> alerta 41h vs 44h; E2: 60 min).",
     "ct.jornada": "Descrição completa da jornada contratual.",
     "ct.vt": "Opção de Vale-Transporte, quantidade de viagens por dia (PR-08: 2/dia, Estudo de Caso 02 e aula de DP) e tarifa RMTC.",
-    "ct.vr": "Elegibilidade ao Vale-Refeição PAT e valor por dia útil trabalhado (E1: R$ 30,00; E2: sem VR em 09/2026).",
+    "ct.vr": "Elegibilidade ao vale-refeição e valor por dia trabalhado (E1: R$ 30,00; E2: sem VR — EC02, p. 3).",
     "ct.aso": "Situação real do ASO admissional (NR-7). Sem ASO apto, o eSocial S-2220 permanece bloqueado.",
     "ct.deps": "Quantidade de dependentes informados para IRRF e Salário-Família.",
     "par.categoria": "Grupo legal do parâmetro (INSS, IRRF, Redução Lei 15.270/2025, Salário-Família, FGTS ou CCT).",
