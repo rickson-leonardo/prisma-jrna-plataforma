@@ -236,7 +236,7 @@ Brasília-DF, 27 de novembro de 2026.
      AND strpos(concat_ws(' ', resposta_autoral, norma_citada), '1.708') > 0 AND strpos(concat_ws(' ', resposta_autoral, norma_citada), '1.590') = 0;
   IF n <> 0 THEN RAISE EXCEPTION 'Premissas citando a 1.708/2023 sem a 1.590/2020: %', n; END IF;
   SELECT count(*) INTO n FROM erp.documento_secao WHERE empresa_id = 1 AND documento IN ('d2_14_premissas', 'd2_15_ia')
-     AND conteudo_md ~ '(SRT00189|220 fórmulas|4 passagens|AUD-10|a `PR-18`|23/11/2026|24/11/2026|art\. 82|917,40|4\.238)';
+     AND conteudo_md ~ '(Registro MTE|220 fórmulas|4 passagens|AUD-10|`PR-01` a `PR-18`|23/11/2026|24/11/2026|art\. 82|917,40|4\.238)';
   IF n <> 0 THEN RAISE EXCEPTION 'Seções dos Docs 14–15 com legado: %', n; END IF;
   SELECT count(*) INTO n FROM auditoria.diario_ia WHERE empresa_id = 1 AND dossie = 'D2'
      AND concat_ws(' ', fonte_oficial, prompt_resumo, revisao_humana) ~ '(SRT00189|confronto triplo|10 achados|18 premissas|47 itens)';
