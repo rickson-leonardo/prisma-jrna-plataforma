@@ -43,8 +43,9 @@ DOCUMENTOS: dict[str, dict[str, Any]] = {
     "d2_11_folha": {"arquivo": "11_Folha_Set2026_Memoria_Calculo.pdf", "nn": "11", "curto": "Folha Set/2026 e Memória", "titulo": "Folha de pagamento setembro/2026 — memória de cálculo e sensibilidades", "just": False, "dossie_label": "Dossiê 2"},
     "d2_12_resumo_contab": {"arquivo": "12_Resumo_Provisoes_Contabilizacao.pdf", "nn": "12", "curto": "Resumo, Provisões e Partidas", "titulo": "Resumo consolidado, provisões, partidas dobradas e recibos — 09/2026", "just": False, "dossie_label": "Dossiê 2"},
     "d2_13_auditoria": {"arquivo": "13_Relatorio_Auditoria_Trabalhista.pdf", "nn": "13", "curto": "Auditoria Trabalhista (PT/AUD)", "titulo": "Relatório técnico de auditoria trabalhista e papéis de trabalho (09/2026)", "just": False, "dossie_label": "Dossiê 2"},
-    "d2_14_premissas": {"arquivo": "14_Registro_Premissas_Fontes.pdf", "nn": "14", "curto": "Registro de Premissas (PR-01..18)", "titulo": "Registro numerado de premissas adotadas e fontes oficiais", "just": False, "dossie_label": "Dossiê 2"},
+    "d2_14_premissas": {"arquivo": "14_Registro_Premissas_Fontes.pdf", "nn": "14", "curto": "Registro de Premissas (PR-01..20)", "titulo": "Registro numerado de premissas adotadas e fontes oficiais", "just": False, "dossie_label": "Dossiê 2"},
     "d2_15_ia": {"arquivo": "15_Declaracao_Uso_IA_LGPD.pdf", "nn": "15", "curto": "Declaração de Uso de IA e LGPD", "titulo": "Declaração transparente de uso de inteligência artificial e LGPD — Dossiê 2", "just": False, "dossie_label": "Dossiê 2"},
+    "d2_16_rastreabilidade": {"arquivo": "16_Rastreabilidade_Devolutiva_Correcoes.pdf", "nn": "16", "curto": "Rastreabilidade das Correções", "titulo": "Rastreabilidade — devolutiva da 1ª entrega, correções e evidências", "just": False, "dossie_label": "Dossiê 2"},
 }
 
 
@@ -145,6 +146,16 @@ def carregar_dados_dossie2() -> dict[str, Any]:
         cur.execute("SELECT * FROM auditoria.diario_ia WHERE empresa_id = %s AND dossie = 'D2' ORDER BY id", (emp_id,))
         diario_ia = cur.fetchall()
 
+        cur.execute(
+            """
+            SELECT av.*, c.codigo, c.matriz, c.descricao
+            FROM auditoria.avaliacao_conformidade av JOIN auditoria.criterio_conformidade c ON c.id = av.criterio_id
+            WHERE av.empresa_id = %s AND av.dossie = 'D2' ORDER BY c.matriz, c.codigo
+            """,
+            (emp_id,),
+        )
+        avaliacoes = cur.fetchall()
+
         escritorio = obter_dados_escritorio_d1(cur)
 
         cur.execute(
@@ -213,6 +224,7 @@ def carregar_dados_dossie2() -> dict[str, Any]:
         "esocial": esocial,
         "consultas": consultas,
         "diario_ia": diario_ia,
+        "avaliacoes": avaliacoes,
         "escritorio": escritorio,
         "socios": socios,
         "identificadores": identificadores,
@@ -393,6 +405,8 @@ def _registros_por_doc(doc: str, d: dict[str, Any]) -> list[dict[str, Any]]:
         regs.extend(d.get("parametros") or [])
     elif doc == "d2_15_ia":
         regs.extend(d.get("diario_ia") or [])
+    elif doc == "d2_16_rastreabilidade":
+        regs.extend(d.get("avaliacoes") or [])
     return regs
 
 
@@ -625,6 +639,8 @@ def html_documento(doc: str, para_web: bool = False, dados: dict[str, Any] | Non
         ctx_extra["parametros_grupos"] = _parametros_por_categoria(d.get("parametros") or [])
     elif doc == "d2_15_ia":
         ctx_extra["diario_ia"] = d.get("diario_ia") or []
+    elif doc == "d2_16_rastreabilidade":
+        ctx_extra["avaliacoes_d2"] = d.get("avaliacoes") or []
     elif doc == "d2_01_diagnostico":
         emp_pid = int(d["empresa"].get("pessoa_id") or 0)
         nire_matriz = next(

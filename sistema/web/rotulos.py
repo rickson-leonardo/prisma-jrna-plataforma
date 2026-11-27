@@ -124,7 +124,7 @@ ROTULOS: dict[str, dict[str, str]] = {
         "dp_esocial": "Roteiro eSocial S-1.3",
         "dp_parametros": "Parâmetros legais 2026 e CCT",
         "folha_pagamento": "Folha de pagamento e partidas dobradas",
-        "auditoria_trabalhista": "Auditoria trabalhista (PT-01..05 e AUD-01..10)",
+        "auditoria_trabalhista": "Auditoria trabalhista (PT-01..05 e AUD-01..08)",
     },
     "documento": {
         "indice": "00 · Índice Geral",
@@ -149,6 +149,7 @@ ROTULOS: dict[str, dict[str, str]] = {
         "d2_13_auditoria": "13 · Relatório de Auditoria Trabalhista",
         "d2_14_premissas": "14 · Registro de Premissas e Fontes",
         "d2_15_ia": "15 · Declaração de Uso de IA e LGPD",
+        "d2_16_rastreabilidade": "16 · Rastreabilidade das Correções",
     },
     "documento_d1": {
         "indice": "00 · Índice Geral",
@@ -175,6 +176,7 @@ ROTULOS: dict[str, dict[str, str]] = {
         "d2_13_auditoria": "13 · Relatório de Auditoria Trabalhista",
         "d2_14_premissas": "14 · Registro de Premissas e Fontes",
         "d2_15_ia": "15 · Declaração de Uso de IA e LGPD",
+        "d2_16_rastreabilidade": "16 · Rastreabilidade das Correções",
     },
     "codigo_doc_servico": {
         "proposta": "Proposta de Honorários (Doc. 02)",

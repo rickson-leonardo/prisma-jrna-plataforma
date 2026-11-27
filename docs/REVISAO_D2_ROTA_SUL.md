@@ -318,3 +318,9 @@ Correções: código na branch `d2-pente-fino` (testes 54 passaram, 23 pulados) 
 SQL 15, 16 e 17 aplicados (saneamento 9/9; notas V2 48/48); quarentena do D2 sem pendências. Documentos emitidos pela usuária e salvos em `G:\Meu Drive\Nath\Laboratório\Dossiê 02`, renomeados "00 - …" a "15 - …" (planilha como "11 - Planilha…"). A quarentena do Doc 00 emitido mostra todos os módulos homologados.
 
 Pendências que não impedem a entrega: respostas do professor às 2 perguntas (manifestação do advogado; consolidado de 24/09); registrar no acervo o texto das respostas do grupo (G-01 a G-11); `importar_dossie2.py` ainda guarda o rascunho legado (só afeta uma importação nova).
+
+## Doc 16 e ajuste do Doc 14 (27/11/2026)
+
+- **Doc 16 — Rastreabilidade** (decisão da usuária): devolutiva da 1ª entrega × correção × evidência, elemento a elemento (tabelas geradas de `auditoria.avaliacao_conformidade`), e as 14 inconsistências do caso identificadas e tratadas. Código na branch `d2-doc16`; migração 010 (Doc 16 como documento válido); `docs/revisao_d2_sql/18_doc16_rastreabilidade.sql` (migração + 3 seções + linha no inventário do Doc 00).
+- **Doc 14, Tabela 1 (colunas estreitas)**, apontado pela usuária na emissão: links longos sem quebra (classe `mono` com `white-space:nowrap`) alargavam a coluna de fonte. Correção: classe `url` que quebra o link, larguras fixas por coluna nas Tabelas 1 e 2 e selo de situação com quebra de linha. Conferido renderizando o PDF com link longo.
+- Restos de "PR-01..18" e "AUD-01..10" em rótulos e telas (cabeçalho do PDF do Doc 14 e nome do módulo na quarentena do Doc 00) corrigidos.

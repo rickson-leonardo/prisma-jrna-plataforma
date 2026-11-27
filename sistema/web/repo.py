@@ -1153,7 +1153,7 @@ def carregar_sustentacao(matriz: str | None = None, apenas_pendentes: bool = Fal
                         "d2_p5": ("/folha#rubricas", "Abrir Cálculo da Folha 09/2026 (Estação 9)"),
                         "d2_p6": ("/folha#partidas", "Abrir Provisões e Partidas Dobradas (Estação 9)"),
                         "d2_p7": ("/folha#auditoria", "Abrir Auditoria Trabalhista (Estação 9)"),
-                        "d2_p8": ("/sustentacao#consultas", "Abrir Registro de Premissas PR-01..18 (abaixo)"),
+                        "d2_p8": ("/sustentacao#consultas", "Abrir Registro de Premissas PR-01..20 (abaixo)"),
                         "d2_p9": ("/sustentacao#diario-ia", "Abrir Diário de Uso de IA (abaixo)"),
                     }
                     return mapa_d2.get(mat, ("/emissao", "Abrir Emissão Dossiê 2 (Estação 6)"))
@@ -1422,6 +1422,7 @@ DOCUMENTOS_SECAO_D2 = (
     "d2_04_termo_rt", "d2_05_onboarding", "d2_06_prontuario", "d2_07_ficha_e1",
     "d2_08_exp_e1", "d2_09_ficha_e2", "d2_10_exp_e2", "d2_11_folha",
     "d2_12_resumo_contab", "d2_13_auditoria", "d2_14_premissas", "d2_15_ia",
+    "d2_16_rastreabilidade",
 )
 DOCUMENTOS_SECAO = DOCUMENTOS_SECAO_D1 + DOCUMENTOS_SECAO_D2
 

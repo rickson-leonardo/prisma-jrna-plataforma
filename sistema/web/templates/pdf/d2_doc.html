@@ -413,7 +413,8 @@
   {% if premissas %}
     <h2>Registro Numerado de Premissas e Decisões (Banco de Dados)</h2>
     <p class="tt">Tabela 1 — Premissas adotadas (PR-01 a PR-{{ '%02d'|format(premissas|length) }})</p>
-    <table>
+    <table class="fixa">
+      <colgroup><col style="width:5%"><col style="width:14%"><col style="width:37%"><col style="width:13%"><col style="width:20%"><col style="width:11%"></colgroup>
       <thead><tr><th>Cód.</th><th>Premissa</th><th>Decisão e motivo</th><th>Documentos impactados</th><th>Fonte oficial e acesso</th><th>Quarentena</th></tr></thead>
       <tbody>
         {% for q in premissas %}
@@ -422,7 +423,7 @@
             <td>{{ q.enunciado }}</td>
             <td>{{ q.resposta_autoral }}</td>
             <td>{{ q.decisao_impactada or '—' }}</td>
-            <td>{{ q.norma_citada }}{% if q.link_oficial %}<br><span class="mono">{{ q.link_oficial }}</span>{% endif %}{% if q.data_acesso %}<br>Acesso: <span class="mono">{{ fmt_data(q.data_acesso) }}</span>{% endif %}</td>
+            <td>{{ q.norma_citada }}{% if q.link_oficial %}<br><span class="mono url">{{ q.link_oficial }}</span>{% endif %}{% if q.data_acesso %}<br>Acesso: <span class="mono">{{ fmt_data(q.data_acesso) }}</span>{% endif %}</td>
             <td>{{ m.badge(q.status_validacao) }}</td>
           </tr>
         {% endfor %}
@@ -431,7 +432,8 @@
     <p class="fonte">Fonte: erp.consulta_normativa (dossie = 'D2').</p>
 
     <p class="tt">Tabela 2 — Quadro de decisões e pendências sobre premissas</p>
-    <table>
+    <table class="fixa">
+      <colgroup><col style="width:5%"><col style="width:21%"><col style="width:21%"><col style="width:14%"><col style="width:28%"><col style="width:11%"></colgroup>
       <thead><tr><th>Cód.</th><th>Premissa</th><th>Responsável pela decisão</th><th>Prazo</th><th>Impacto se alterada</th><th>Quarentena</th></tr></thead>
       <tbody>
         {% for q in premissas %}
@@ -463,7 +465,7 @@
               <td class="num">{{ brl_tab(p.limite_centavos) if p.limite_centavos is not none else '—' }}</td>
               <td class="num">{{ pct(p.aliquota_micro) if p.aliquota_micro is not none else '—' }}</td>
               <td class="num">{{ brl_tab(p.deducao_centavos if p.deducao_centavos is not none else p.valor_centavos) if (p.deducao_centavos is not none or p.valor_centavos is not none) else '—' }}</td>
-              <td>{{ p.norma_citada or '—' }}{% if p.link_oficial %}<br><span class="mono">{{ p.link_oficial }}</span>{% endif %}{% if p.data_consulta %}<br>Consulta: <span class="mono">{{ fmt_data(p.data_consulta) }}</span>{% endif %}</td>
+              <td>{{ p.norma_citada or '—' }}{% if p.link_oficial %}<br><span class="mono url">{{ p.link_oficial }}</span>{% endif %}{% if p.data_consulta %}<br>Consulta: <span class="mono">{{ fmt_data(p.data_consulta) }}</span>{% endif %}</td>
               <td>{{ m.badge(p.status_validacao) }}</td>
             </tr>
           {% endfor %}
@@ -507,6 +509,43 @@
     <div><strong>{{ (rt.nome or 'Responsável Técnica')|upper }}</strong>Responsável Técnica — PRISMA JRNA<br><span class="mono">{{ rt.crc or '—' }}</span></div>
     <div><strong>PRISMA JRNA AUDITORIA E CONTABILIDADE</strong>Declaração conjunta de transparência e LGPD<br><span class="mono">{{ empresa.razao_social }}</span></div>
   </div>
+{% endif %}
+
+{# ==================== DOC 16 — RASTREABILIDADE DAS CORRECOES ==================== #}
+{% if doc == 'd2_16_rastreabilidade' and avaliacoes_d2 %}
+  <h2>Devolutiva da 1ª Entrega × Correção × Evidência (Banco de Dados)</h2>
+  <p class="tt">Tabela 1 — Resumo por produto (nota 0 a 4: devolutiva oficial da 1ª entrega × autoavaliação da dupla)</p>
+  <table class="keep">
+    <thead><tr><th>Produto</th><th class="num">Elementos</th><th class="num">Média 1ª entrega</th><th class="num">Média autoavaliação</th></tr></thead>
+    <tbody>
+      {% for mat, itens in avaliacoes_d2|groupby('matriz') %}
+        <tr>
+          <td class="mono">{{ mat|replace('d2_p', 'P') }}</td>
+          <td class="num">{{ itens|length }}</td>
+          <td class="num">{{ '%.2f'|format((itens|sum(attribute='nota_v1')) / (itens|length)) }}</td>
+          <td class="num">{{ '%.2f'|format((itens|sum(attribute='nota')) / (itens|length)) }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="tt">Tabela 2 — Elemento a elemento: o que a devolutiva apontou, o que foi corrigido e onde está a evidência</p>
+  <table>
+    <thead><tr><th>Produto</th><th>Elemento da régua</th><th class="num">1ª entrega</th><th>Devolutiva oficial (1ª entrega)</th><th>Correção e evidência</th><th class="num">Autoavaliação</th></tr></thead>
+    <tbody>
+      {% for a in avaliacoes_d2 %}
+        <tr>
+          <td class="mono">{{ a.matriz|replace('d2_p', 'P') }}</td>
+          <td><span class="mono">{{ a.codigo }}</span> · {{ (a.descricao or '').split('. Para chegar ao 4')[0] }}</td>
+          <td class="num">{{ a.nota_v1 if a.nota_v1 is not none else '—' }}</td>
+          <td>{{ a.critica_v1 or '—' }}</td>
+          <td>{{ a.justificativa_sustentacao or '—' }}<br><span class="mono">{{ a.referencia_localizacao or '' }}</span></td>
+          <td class="num"><strong>{{ a.nota if a.nota is not none else '—' }}</strong></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="fonte">Fonte: auditoria.avaliacao_conformidade × auditoria.criterio_conformidade (devolutiva oficial do Dossiê 2, G07). A autoavaliação é da dupla e não substitui a nota oficial.</p>
 {% endif %}
 
 {# ==================== DOCS 11 E 12 (EXISTENTES) ==================== #}

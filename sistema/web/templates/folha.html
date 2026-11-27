@@ -6,7 +6,7 @@
   <div>
     <div class="kicker">Estação 9 · Operação Rota Sul (Dossiê 2)</div>
     <h2>Folha de Pagamento 09/2026, Partidas Dobradas e Auditoria</h2>
-    <div class="subtitle">Cálculo determinístico em centavos, integração contábil L1–L4 (Adm. × Comercial) e Papéis de Trabalho PT-01..05 / AUD-01..10.</div>
+    <div class="subtitle">Cálculo determinístico em centavos, integração contábil L1–L4 (Adm. × Comercial) e Papéis de Trabalho PT-01..05 / AUD-01..08.</div>
   </div>
   <form method="post" action="{{ url_for('post_folha_recalcular') }}" class="acoes">
     {{ m.csrf() }}<button class="btn btn-primary" type="submit">Recalcular folha e partidas dobradas</button>{{ m.tip('acao.recalcular_folha', 'Recalcular folha') }}
@@ -104,7 +104,7 @@
   </div>
 </section>
 
-<div class="zona"><span class="mundo mundo-sus">P7 · Auditoria Trabalhista</span><h2>Papéis de Trabalho (PT-01..05) e Achados (AUD-01..10)</h2></div>
+<div class="zona"><span class="mundo mundo-sus">P7 · Auditoria Trabalhista</span><h2>Papéis de Trabalho (PT-01..05) e Achados (AUD-01..08)</h2></div>
 <section class="card" id="auditoria">
   {{ m.titulo_tabela('Tabela 9.4', 'Papéis de trabalho e achados (' ~ auditoria|length ~ ')', 'tab.auditoria_folha', 'erp.auditoria_folha') }}
   <div class="progs">{{ m.progresso(auditoria|selectattr('status_validacao', 'equalto', 'homologado_contadora')|list|length, auditoria|length, 'registros de auditoria homologados') }}</div>
